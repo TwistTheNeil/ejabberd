@@ -5,7 +5,7 @@
 %%% Created : 19 Mar 2003 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2014   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2015   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -914,7 +914,8 @@ iq_get_register_info(ServerHost, Host, From, Lang) ->
 					<<"You need a client that supports x:data "
 					  "to register the nickname">>)}]},
        #xmlel{name = <<"x">>,
-	      attrs = [{<<"xmlns">>, ?NS_XDATA}],
+	      attrs = [{<<"xmlns">>, ?NS_XDATA},
+		       {<<"type">>, <<"form">>}],
 	      children =
 		  [#xmlel{name = <<"title">>, attrs = [],
 			  children =
@@ -1091,7 +1092,7 @@ iq_get_vcard(Lang) ->
 		[{xmlcdata,
 		  <<(translate:translate(Lang,
 					 <<"ejabberd MUC module">>))/binary,
-		    "\nCopyright (c) 2003-2014 ProcessOne">>}]}].
+		    "\nCopyright (c) 2003-2015 ProcessOne">>}]}].
 
 
 broadcast_service_message(Host, Msg) ->

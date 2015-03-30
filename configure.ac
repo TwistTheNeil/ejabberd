@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.53)
-AC_INIT(ejabberd, m4_esyscmd([echo `git describe --tags 2>/dev/null || echo community` | sed 's/-g.*//' | tr -d '\012']), [ejabberd@process-one.net], [ejabberd])
+AC_INIT(ejabberd, m4_esyscmd([echo `git describe --tags 2>/dev/null || echo 0.0` | sed 's/-g.*//;s/-/./' | tr -d '\012']), [ejabberd@process-one.net], [ejabberd])
 REQUIRE_ERLANG_MIN="5.9.1 (Erlang/OTP R15B01)"
 REQUIRE_ERLANG_MAX="9.0.0 (No Max)"
 
@@ -82,12 +82,12 @@ AC_ARG_ENABLE(roster_gateway_workaround,
 esac],[roster_gateway_workaround=false])
 
 AC_ARG_ENABLE(transient_supervisors,
-[AC_HELP_STRING([--enable-transient_supervisors], [use Erlang supervision for transient process (default: no)])],
+[AC_HELP_STRING([--disable-transient-supervisors], [disable Erlang supervision for transient processes (default: no)])],
 [case "${enableval}" in
   yes) transient_supervisors=true ;;
   no)  transient_supervisors=false ;;
   *) AC_MSG_ERROR(bad value ${enableval} for --enable-transient_supervisors) ;;
-esac],[transient_supervisors=false])
+esac],[transient_supervisors=true])
 
 AC_ARG_ENABLE(full_xml,
 [AC_HELP_STRING([--enable-full-xml], [use XML features in XMPP stream (ex: CDATA) (default: no, requires XML compliant clients)])],
@@ -106,10 +106,10 @@ AC_ARG_ENABLE(mssql,
 esac],[db_type=generic])
 
 AC_ARG_ENABLE(all,
-[AC_HELP_STRING([--enable-all], [same as --enable-nif --enable-odbc --enable-mysql --enable-pgsql --enable-pam --enable-zlib --enable-riak --enable-json --enable-iconv --enable-debug --enable-http --enable-lager --enable-tools (useful for Dialyzer checks, default: no)])],
+[AC_HELP_STRING([--enable-all], [same as --enable-nif --enable-odbc --enable-mysql --enable-pgsql --enable-pam --enable-zlib --enable-riak --enable-redis --enable-json --enable-elixir --enable-iconv --enable-debug --enable-lager --enable-tools (useful for Dialyzer checks, default: no)])],
 [case "${enableval}" in
-  yes) nif=true odbc=true mysql=true pgsql=true pam=true zlib=true riak=true json=true iconv=true debug=true http=true lager=true tools=true ;;
-  no) nif=false odbc=false mysql=false pgsql=false pam=false zlib=false riak=false json=false iconv=false debug=false http=false lager=false tools=false ;;
+  yes) nif=true odbc=true mysql=true pgsql=true pam=true zlib=true riak=true redis=true json=true elixir=true iconv=true debug=true lager=true tools=true ;;
+  no) nif=false odbc=false mysql=false pgsql=false pam=false zlib=false riak=false redis=false json=false elixir=false iconv=false debug=false lager=false tools=false ;;
   *) AC_MSG_ERROR(bad value ${enableval} for --enable-all) ;;
 esac],[])
 
@@ -177,6 +177,14 @@ AC_ARG_ENABLE(riak,
   *) AC_MSG_ERROR(bad value ${enableval} for --enable-riak) ;;
 esac],[if test "x$riak" = "x"; then riak=false; fi])
 
+AC_ARG_ENABLE(redis,
+[AC_HELP_STRING([--enable-redis], [enable Redis support (default: no)])],
+[case "${enableval}" in
+  yes) redis=true ;;
+  no)  redis=false ;;
+  *) AC_MSG_ERROR(bad value ${enableval} for --enable-redis) ;;
+esac],[if test "x$redis" = "x"; then redis=false; fi])
+
 AC_ARG_ENABLE(json,
 [AC_HELP_STRING([--enable-json], [enable JSON support for mod_bosh (default: no)])],
 [case "${enableval}" in
@@ -184,6 +192,14 @@ AC_ARG_ENABLE(json,
   no)  json=false ;;
   *) AC_MSG_ERROR(bad value ${enableval} for --enable-json) ;;
 esac],[if test "x$json" = "x"; then json=false; fi])
+
+AC_ARG_ENABLE(elixir,
+[AC_HELP_STRING([--enable-elixir], [enable Elixir support (default: no)])],
+[case "${enableval}" in
+  yes) elixir=true ;;
+  no)  elixir=false ;;
+  *) AC_MSG_ERROR(bad value ${enableval} for --enable-elixir) ;;
+esac],[if test "x$elixir" = "x"; then elixir=false; fi])
 
 AC_ARG_ENABLE(iconv,
 [AC_HELP_STRING([--enable-iconv], [enable iconv support (default: yes)])],
@@ -200,14 +216,6 @@ AC_ARG_ENABLE(debug,
   no)  debug=false ;;
   *) AC_MSG_ERROR(bad value ${enableval} for --enable-debug) ;;
 esac],[if test "x$debug" = "x"; then debug=true; fi])
-
-AC_ARG_ENABLE(http,
-[AC_HELP_STRING([--enable-http], [build external HTTP libraries ('ibrowse' and 'lhttpc', default: no)])],
-[case "${enableval}" in
-  yes) http=true ;;
-  no)  http=false ;;
-  *) AC_MSG_ERROR(bad value ${enableval} for --enable-http) ;;
-esac],[if test "x$http" = "x"; then http=false; fi])
 
 AC_ARG_ENABLE(lager,
 [AC_HELP_STRING([--enable-lager], [enable lager support (default: yes)])],
@@ -235,6 +243,8 @@ if test "$ENABLEUSER" != ""; then
   AC_SUBST([INSTALLUSER], [$ENABLEUSER])
 fi
 
+ERLANG_DEPRECATED_TYPES_CHECK
+
 AC_SUBST(hipe)
 AC_SUBST(roster_gateway_workaround)
 AC_SUBST(transient_supervisors)
@@ -247,10 +257,11 @@ AC_SUBST(pgsql)
 AC_SUBST(pam)
 AC_SUBST(zlib)
 AC_SUBST(riak)
+AC_SUBST(redis)
 AC_SUBST(json)
+AC_SUBST(elixir)
 AC_SUBST(iconv)
 AC_SUBST(debug)
-AC_SUBST(http)
 AC_SUBST(lager)
 AC_SUBST(tools)
 

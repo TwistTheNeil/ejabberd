@@ -5,7 +5,7 @@
 %%% Created :
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2014   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2015   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -48,16 +48,11 @@
 
 -include("ejabberd.hrl").
 -include("logger.hrl").
+-include("ejabberd_http.hrl").
 
 -include("jlib.hrl").
 
 -include_lib("kernel/include/file.hrl").
-
-%%-include("ejabberd_http.hrl").
-%% TODO: When ejabberd-modules SVN gets the new ejabberd_http.hrl, delete this code:
--record(request,
-	{method, path, q = [], us, auth, lang = <<"">>,
-	 data = <<"">>, ip, host, port, tp, headers}).
 
 -record(state,
 	{host, docroot, accesslog, accesslogfd,

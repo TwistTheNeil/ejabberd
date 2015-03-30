@@ -5,7 +5,7 @@
 %%% Created :  6 Dec 2002 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2014   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2015   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -58,7 +58,7 @@
          server = <<"">>             :: binary(),
 	 authenticated = false       :: boolean(),
          auth_domain = <<"">>        :: binary(),
-	 connections = (?DICT):new() :: dict(),
+	 connections = (?DICT):new() :: ?TDICT,
          timer = make_ref()          :: reference()}).
 
 %-define(DBGFSM, true).
@@ -374,8 +374,8 @@ wait_for_feature_request({xmlstreamelement, El},
 				    #xmlel{name = <<"success">>,
 					   attrs = [{<<"xmlns">>, ?NS_SASL}],
 					   children = []}),
-		       ?DEBUG("(~w) Accepted s2s authentication for ~s",
-			      [StateData#state.socket, AuthDomain]),
+		       ?INFO_MSG("Accepted s2s EXTERNAL authentication for ~s (TLS=~p)",
+				 [AuthDomain, StateData#state.tls_enabled]),
 		       change_shaper(StateData, <<"">>,
 				     jlib:make_jid(<<"">>, AuthDomain, <<"">>)),
 		       {next_state, wait_for_stream,
@@ -515,6 +515,8 @@ stream_established({valid, From, To}, StateData) ->
 			    [{<<"from">>, To}, {<<"to">>, From},
 			     {<<"type">>, <<"valid">>}],
 			children = []}),
+    ?INFO_MSG("Accepted s2s dialback authentication for ~s (TLS=~p)",
+	      [From, StateData#state.tls_enabled]),
     LFrom = jlib:nameprep(From),
     LTo = jlib:nameprep(To),
     NSD = StateData#state{connections =

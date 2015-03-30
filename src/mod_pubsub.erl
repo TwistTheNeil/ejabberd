@@ -4,20 +4,20 @@
 %%% compliance with the License. You should have received a copy of the
 %%% Erlang Public License along with this software. If not, it can be
 %%% retrieved via the world wide web at http://www.erlang.org/.
-%%% 
+%%%
 %%%
 %%% Software distributed under the License is distributed on an "AS IS"
 %%% basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See
 %%% the License for the specific language governing rights and limitations
 %%% under the License.
-%%% 
+%%%
 %%%
 %%% The Initial Developer of the Original Code is ProcessOne.
-%%% Portions created by ProcessOne are Copyright 2006-2014, ProcessOne
+%%% Portions created by ProcessOne are Copyright 2006-2015, ProcessOne
 %%% All Rights Reserved.''
-%%% This software is copyright 2006-2014, ProcessOne.
+%%% This software is copyright 2006-2015, ProcessOne.
 %%%
-%%% @copyright 2006-2014 ProcessOne
+%%% @copyright 2006-2015 ProcessOne
 %%% @author Christophe Romain <christophe.romain@process-one.net>
 %%%   [http://www.process-one.net/]
 %%% @version {@vsn}, {@date} {@time}
@@ -74,7 +74,8 @@
 	 on_user_offline/3, remove_user/2,
 	 disco_local_identity/5, disco_local_features/5,
 	 disco_local_items/5, disco_sm_identity/5,
-	 disco_sm_features/5, disco_sm_items/5]).
+	 disco_sm_features/5, disco_sm_items/5,
+	 drop_pep_error/4]).
 
 %% exported iq handlers
 -export([iq_sm/3]).
@@ -86,7 +87,7 @@
 	 unsubscribe_node/5,
 	 publish_item/6,
 	 delete_item/4,
-	 send_items/6,
+	 send_items/7,
 	 get_items/2,
 	 get_item/3,
 	 get_cached_item/2,
@@ -344,6 +345,8 @@ init([ServerHost, Opts]) ->
 			     ?MODULE, disco_sm_features, 75),
 	  ejabberd_hooks:add(disco_sm_items, ServerHost, ?MODULE,
 			     disco_sm_items, 75),
+	  ejabberd_hooks:add(c2s_filter_packet_in, ServerHost, ?MODULE,
+			     drop_pep_error, 75),
 	  gen_iq_handler:add_iq_handler(ejabberd_sm, ServerHost,
 					?NS_PUBSUB, ?MODULE, iq_sm, IQDisc),
 	  gen_iq_handler:add_iq_handler(ejabberd_sm, ServerHost,
@@ -354,6 +357,7 @@ init([ServerHost, Opts]) ->
     ejabberd_router:register_route(Host),
     update_node_database(Host, ServerHost),
     update_state_database(Host, ServerHost),
+    update_item_database_binary(),
     put(server_host, ServerHost),
     init_nodes(Host, ServerHost, NodeTree, Plugins),
     State = #state{host = Host, server_host = ServerHost,
@@ -434,12 +438,93 @@ init_nodes(Host, ServerHost, _NodeTree, Plugins) ->
       false -> ok
     end.
 
+
+update_item_database_binary() ->
+    F = fun () ->
+		case catch mnesia:read({pubsub_last_item, mnesia:first(pubsub_last_item)}) of
+		    [First] when is_list(First#pubsub_last_item.itemid) ->
+			?INFO_MSG("Binarization of pubsub items table...", []),
+			lists:foreach(fun (Id) ->
+					      [Node] = mnesia:read({pubsub_last_item, Id}),
+
+					      ItemId = iolist_to_binary(Node#pubsub_last_item.itemid),
+
+					      ok = mnesia:delete({pubsub_last_item, Id}),
+					      ok = mnesia:write(Node#pubsub_last_item{itemid=ItemId})
+				      end,
+				      mnesia:all_keys(pubsub_last_item));
+		    _-> no_need
+		end
+	end,
+    case mnesia:transaction(F) of
+	{aborted, Reason} ->
+	    ?ERROR_MSG("Failed to binarize pubsub items table: ~p", [Reason]);
+	{atomic, no_need} ->
+	    ok;
+	{atomic, Result} ->
+	    ?INFO_MSG("Pubsub items table has been binarized: ~p", [Result])
+    end.
+
+
+update_node_database_binary() ->
+    F = fun () ->
+		case catch mnesia:read({pubsub_node, mnesia:first(pubsub_node)}) of
+		    [First] when is_list(First#pubsub_node.type) ->
+			?INFO_MSG("Binarization of pubsub nodes table...", []),
+			lists:foreach(fun ({H, N}) ->
+					      [Node] = mnesia:read({pubsub_node, {H, N}}),
+
+					      Type = iolist_to_binary(Node#pubsub_node.type),
+					      BN = case N of
+						       Binary when is_binary(Binary) ->
+							   N;
+						       _ ->
+							   {result, BN1} = node_call(Type, path_to_node, [N]),
+							   BN1
+						   end,
+					      BP = case [case P of
+							     Binary2 when is_binary(Binary2) -> P;
+							     _ -> element(2, node_call(Type, path_to_node, [P]))
+							 end
+							 || P <- Node#pubsub_node.parents] of
+						       [<<>>] -> [];
+						       Parents -> Parents
+						   end,
+
+					      BH = case H of
+						       {U, S, R} -> {iolist_to_binary(U), iolist_to_binary(S), iolist_to_binary(R)};
+						       String -> iolist_to_binary(String)
+						   end,
+
+					      Owners = [{iolist_to_binary(U), iolist_to_binary(S), iolist_to_binary(R)} ||
+							   {U, S, R} <- Node#pubsub_node.owners],
+
+					      ok = mnesia:delete({pubsub_node, {H, N}}),
+					      ok = mnesia:write(Node#pubsub_node{nodeid = {BH, BN},
+									    parents = BP,
+									    type = Type,
+									    owners = Owners});
+					  (_) -> ok
+				      end,
+				      mnesia:all_keys(pubsub_node));
+		    _-> no_need
+		end
+	end,
+    case mnesia:transaction(F) of
+	{aborted, Reason} ->
+	    ?ERROR_MSG("Failed to binarize pubsub node table: ~p", [Reason]);
+	{atomic, no_need} ->
+	    ok;
+	{atomic, Result} ->
+	    ?INFO_MSG("Pubsub nodes table has been binarized: ~p", [Result])
+    end.
+
 update_node_database(Host, ServerHost) ->
     mnesia:del_table_index(pubsub_node, type),
     mnesia:del_table_index(pubsub_node, parentid),
     case catch mnesia:table_info(pubsub_node, attributes) of
       [host_node, host_parent, info] ->
-	  ?INFO_MSG("upgrade node pubsub tables", []),
+	    ?INFO_MSG("Upgrading pubsub nodes table...", []),
 	  F = fun () ->
 		      {Result, LastIdx} = lists:foldl(fun ({pubsub_node,
 							    NodeId, ParentId,
@@ -566,10 +651,10 @@ update_node_database(Host, ServerHost) ->
 		 end,
 	  case mnesia:transaction(FNew) of
 	    {atomic, Result} ->
-		?INFO_MSG("Pubsub node tables updated correctly: ~p",
+		    ?INFO_MSG("Pubsub nodes table upgraded: ~p",
 			  [Result]);
 	    {aborted, Reason} ->
-		?ERROR_MSG("Problem updating Pubsub node tables:~n~p",
+		    ?ERROR_MSG("Problem upgrading Pubsub nodes table:~n~p",
 			   [Reason])
 	  end;
       [nodeid, parentid, type, owners, options] ->
@@ -670,10 +755,10 @@ update_node_database(Host, ServerHost) ->
 	  case mnesia:transaction(FNew) of
 	    {atomic, Result} ->
 		rename_default_nodeplugin(),
-		?INFO_MSG("Pubsub node tables updated correctly: ~p",
+		    ?INFO_MSG("Pubsub nodes table upgraded: ~p",
 			  [Result]);
 	    {aborted, Reason} ->
-		?ERROR_MSG("Problem updating Pubsub node tables:~n~p",
+		    ?ERROR_MSG("Problem upgrading Pubsub nodes table:~n~p",
 			   [Reason])
 	  end;
       [nodeid, id, parent, type, owners, options] ->
@@ -688,48 +773,7 @@ update_node_database(Host, ServerHost) ->
 	  rename_default_nodeplugin();
       _ -> ok
     end,
-    mnesia:transaction(fun () ->
-			       case catch mnesia:first(pubsub_node) of
-				 {_, L} when is_binary(L) ->
-				     lists:foreach(fun ({H, N})
-							   when is_binary(N) ->
-							   [Node] =
-							       mnesia:read({pubsub_node,
-									    {H,
-									     N}}),
-							   Type =
-							       Node#pubsub_node.type,
-							   BN = element(2,
-									node_call(Type,
-										  path_to_node,
-										  [N])),
-							   BP = case [element(2,
-									      node_call(Type,
-											path_to_node,
-											[P]))
-								      || P
-									     <- Node#pubsub_node.parents]
-								    of
-								  [<<>>] -> [];
-								  Parents ->
-								      Parents
-								end,
-							   mnesia:write(Node#pubsub_node{nodeid
-											     =
-											     {H,
-											      BN},
-											 parents
-											     =
-											     BP}),
-							   mnesia:delete({pubsub_node,
-									  {H,
-									   N}});
-						       (_) -> ok
-						   end,
-						   mnesia:all_keys(pubsub_node));
-				 _ -> ok
-			       end
-		       end).
+    update_node_database_binary().
 
 rename_default_nodeplugin() ->
     lists:foreach(fun (Node) ->
@@ -742,11 +786,14 @@ rename_default_nodeplugin() ->
 
 update_state_database(_Host, _ServerHost) ->
     case catch mnesia:table_info(pubsub_state, attributes) of
-	[stateid, items, affiliation, subscription] ->
-	    ?INFO_MSG("upgrade state pubsub tables", []),
-	    F = fun ({pubsub_state, {JID, NodeID}, Items, Aff, Sub}, Acc) ->
+	[stateid, nodeidx, items, affiliation, subscriptions] ->
+	    ?INFO_MSG("Upgrading pubsub states table...", []),
+	    F = fun ({pubsub_state, {{U,S,R}, NodeID}, _NodeIdx, Items, Aff, Sub}, Acc) ->
+			JID = {iolist_to_binary(U), iolist_to_binary(S), iolist_to_binary(R)},
 			Subs = case Sub of
 				   none ->
+				       [];
+				   [] ->
 				       [];
 				   _ ->
 				       {result, SubID} = pubsub_subscription:subscribe_node(JID, NodeID, []),
@@ -769,10 +816,10 @@ update_state_database(_Host, _ServerHost) ->
 		   end,
 	    case mnesia:transaction(FNew) of
 		{atomic, Result} ->
-		    ?INFO_MSG("Pubsub state tables updated correctly: ~p",
+		    ?INFO_MSG("Pubsub states table upgraded: ~p",
 			      [Result]);
 		{aborted, Reason} ->
-		    ?ERROR_MSG("Problem updating Pubsub state tables:~n~p",
+		    ?ERROR_MSG("Problem upgrading Pubsub states table:~n~p",
 			       [Reason])
 	    end;
 	_ ->
@@ -817,6 +864,7 @@ send_loop(State) ->
 									      N,
 									      NodeId,
 									      Type,
+									      Options,
 									      LJID,
 									      last);
 							       _ -> ok
@@ -913,6 +961,7 @@ send_loop(State) ->
 											 Node,
 											 NodeId,
 											 Type,
+											 Options,
 											 LJID,
 											 last);
 									  true ->
@@ -1179,8 +1228,12 @@ presence_probe(#jid{luser = U, lserver = S}, #jid{luser = U, lserver = S}, _Pid)
     %% ignore presence_probe from my other ressources
     %% to not get duplicated last items
     ok;
-presence_probe(#jid{luser = U, lserver = S, lresource = R}, #jid{lserver = Host} = JID, _Pid) ->
-    presence(Host, {presence, U, S, [R], JID}).
+presence_probe(#jid{luser = U, lserver = S, lresource = R}, #jid{lserver = S} = JID, _Pid) ->
+    presence(S, {presence, U, S, [R], JID});
+presence_probe(_Host, _JID, _Pid) ->
+    %% ignore presence_probe from remote contacts,
+    %% those are handled via caps_update
+    ok.
 
 presence(ServerHost, Presence) ->
     SendLoop = case
@@ -1277,6 +1330,33 @@ unsubscribe_user(Entity, Owner) ->
 				end,
 				plugins(Host))
 	  end).
+
+%% -------
+%% packet receive hook handling function
+%%
+
+drop_pep_error(#xmlel{name = <<"message">>, attrs = Attrs} = Packet, _JID, From,
+	       #jid{lresource = <<"">>} = To) ->
+    case xml:get_attr_s(<<"type">>, Attrs) of
+      <<"error">> ->
+	  case xml:get_subtag(Packet, <<"event">>) of
+	    #xmlel{attrs = EventAttrs} ->
+		case xml:get_attr_s(<<"xmlns">>, EventAttrs) of
+		  ?NS_PUBSUB_EVENT ->
+		      ?DEBUG("Dropping PEP error message from ~s to ~s",
+			     [jlib:jid_to_string(From),
+			      jlib:jid_to_string(To)]),
+		      drop;
+		  _ ->
+		      Packet
+		end;
+	    false ->
+		Packet
+	  end;
+      _ ->
+	  Packet
+    end;
+drop_pep_error(Acc, _JID, _From, _To) -> Acc.
 
 %% -------
 %% user remove hook handling function
@@ -1418,6 +1498,8 @@ terminate(_Reason,
 				?MODULE, disco_sm_features, 75),
 	  ejabberd_hooks:delete(disco_sm_items, ServerHost,
 				?MODULE, disco_sm_items, 75),
+	  ejabberd_hooks:delete(c2s_filter_packet_in, ServerHost,
+				?MODULE, drop_pep_error, 75),
 	  gen_iq_handler:remove_iq_handler(ejabberd_sm,
 					   ServerHost, ?NS_PUBSUB),
 	  gen_iq_handler:remove_iq_handler(ejabberd_sm,
@@ -1909,7 +1991,7 @@ iq_get_vcard(Lang) ->
 		[{xmlcdata,
 		  <<(translate:translate(Lang,
 					 <<"ejabberd Publish-Subscribe module">>))/binary,
-		    "\nCopyright (c) 2004-2014 ProcessOne">>}]}].
+		    "\nCopyright (c) 2004-2015 ProcessOne">>}]}].
 
 -spec(iq_pubsub/6 ::
 (
@@ -2846,7 +2928,8 @@ subscribe_node(Host, Node, From, JID, Configuration) ->
        {TNode, {Result, subscribed, SubId, send_last}}} ->
 	  NodeId = TNode#pubsub_node.id,
 	  Type = TNode#pubsub_node.type,
-	  send_items(Host, Node, NodeId, Type, Subscriber, last),
+	  Options = TNode#pubsub_node.options,
+	  send_items(Host, Node, NodeId, Type, Options, Subscriber, last),
 	  case Result of
 	    default -> {result, Reply({subscribed, SubId})};
 	    _ -> {result, Result}
@@ -3308,14 +3391,15 @@ get_allowed_items_call(Host, NodeIdx, From, Type, Options, Owners) ->
 %%	 Node = pubsubNode()
 %%	 NodeId = pubsubNodeId()
 %%	 Type = pubsubNodeType()
+%%	 Options = mod_pubsub:nodeOptions()
 %%	 LJID = {U, S, []}
 %%	 Number = last | integer()
 %% @doc <p>Resend the items of a node to the user.</p>
 %% @todo use cache-last-item feature
-send_items(Host, Node, NodeId, Type, {U, S, R} = LJID, last) ->
+send_items(Host, Node, NodeId, Type, Options, LJID, last) ->
     case get_cached_item(Host, NodeId) of
       undefined ->
-	  send_items(Host, Node, NodeId, Type, LJID, 1);
+	  send_items(Host, Node, NodeId, Type, Options, LJID, 1);
       LastItem ->
 	  {ModifNow, ModifUSR} =
 	      LastItem#pubsub_item.modification,
@@ -3325,24 +3409,9 @@ send_items(Host, Node, NodeId, Type, {U, S, R} = LJID, last) ->
 						   children =
 						       itemsEls([LastItem])}],
 					   ModifNow, ModifUSR),
-	  case is_tuple(Host) of
-	    false ->
-		ejabberd_router:route(service_jid(Host),
-				      jlib:make_jid(LJID), Stanza);
-	    true ->
-		case ejabberd_sm:get_session_pid(U, S, R) of
-		  C2SPid when is_pid(C2SPid) ->
-		      ejabberd_c2s:broadcast(C2SPid,
-					     {pep_message,
-					      <<((Node))/binary, "+notify">>},
-					     _Sender = service_jid(Host),
-					     Stanza);
-		  _ -> ok
-		end
-	  end
+	  dispatch_items(Host, LJID, Node, Options, Stanza)
     end;
-send_items(Host, Node, NodeId, Type, {U, S, R} = LJID,
-	   Number) ->
+send_items(Host, Node, NodeId, Type, Options, LJID, Number) ->
     ToSend = case node_action(Host, Type, get_items,
 			      [NodeId, LJID])
 		 of
@@ -3370,22 +3439,43 @@ send_items(Host, Node, NodeId, Type, {U, S, R} = LJID,
 					attrs = nodeAttr(Node),
 					children = itemsEls(ToSend)}])
 	     end,
-    case {is_tuple(Host), Stanza} of
-      {_, undefined} ->
-	  ok;
-      {false, _} ->
-	  ejabberd_router:route(service_jid(Host),
-				jlib:make_jid(LJID), Stanza);
-      {true, _} ->
-	  case ejabberd_sm:get_session_pid(U, S, R) of
-	    C2SPid when is_pid(C2SPid) ->
-		ejabberd_c2s:broadcast(C2SPid,
-				       {pep_message,
-					<<((Node))/binary, "+notify">>},
-				       _Sender = service_jid(Host), Stanza);
-	    _ -> ok
-	  end
-    end.
+    dispatch_items(Host, LJID, Node, Options, Stanza).
+
+-spec(dispatch_items/5 ::
+(
+  From    :: mod_pubsub:host(),
+  To      :: jid(),
+  Node    :: mod_pubsub:nodeId(),
+  Options :: mod_pubsub:nodeOptions(),
+  Stanza  :: xmlel() | undefined)
+    -> any()
+).
+
+dispatch_items(_From, _To, _Node, _Options, _Stanza = undefined) -> ok;
+dispatch_items({FromU, FromS, FromR} = From, {ToU, ToS, ToR} = To, Node,
+	       Options, BaseStanza) ->
+    NotificationType = get_option(Options, notification_type, headline),
+    Stanza = add_message_type(BaseStanza, NotificationType),
+    C2SPid = case ejabberd_sm:get_session_pid(ToU, ToS, ToR) of
+	       ToPid when is_pid(ToPid) -> ToPid;
+	       _ ->
+		   R = user_resource(FromU, FromS, FromR),
+		   case ejabberd_sm:get_session_pid(FromU, FromS, R) of
+		     FromPid when is_pid(FromPid) -> FromPid;
+		     _ -> undefined
+		   end
+	     end,
+    if C2SPid == undefined -> ok;
+       true ->
+	   ejabberd_c2s:send_filtered(C2SPid,
+				      {pep_message, <<Node/binary, "+notify">>},
+				      service_jid(From), jlib:make_jid(To),
+				      Stanza)
+    end;
+dispatch_items(From, To, _Node, Options, BaseStanza) ->
+    NotificationType = get_option(Options, notification_type, headline),
+    Stanza = add_message_type(BaseStanza, NotificationType),
+    ejabberd_router:route(service_jid(From), jlib:make_jid(To), Stanza).
 
 %% @spec (Host, JID, Plugins) -> {error, Reason} | {result, Response}
 %%	 Host = host()
@@ -4238,21 +4328,15 @@ payload_xmlelements([_ | Tail], Count) ->
 %% @spec (Els) -> stanza()
 %%	Els = [xmlelement()]
 %% @doc <p>Build pubsub event stanza</p>
-event_stanza(Els) -> event_stanza_withmoreels(Els, []).
-
-event_stanza_with_delay(Els, ModifNow, ModifUSR) ->
-    DateTime = calendar:now_to_datetime(ModifNow),
-    MoreEls = [jlib:timestamp_to_xml(DateTime, utc,
-				     ModifUSR, <<"">>)],
-    event_stanza_withmoreels(Els, MoreEls).
-
-event_stanza_withmoreels(Els, MoreEls) ->
+event_stanza(Els) ->
     #xmlel{name = <<"message">>, attrs = [],
 	   children =
 	       [#xmlel{name = <<"event">>,
 		       attrs = [{<<"xmlns">>, ?NS_PUBSUB_EVENT}],
-		       children = Els}
-		| MoreEls]}.
+		       children = Els}]}.
+
+event_stanza_with_delay(Els, ModifNow, ModifUSR) ->
+    jlib:add_delay_info(event_stanza(Els), ModifUSR, ModifNow).
 
 %%%%%% broadcast functions
 
@@ -4322,7 +4406,7 @@ broadcast_purge_node(Host, Node, NodeId, Type, NodeOptions) ->
 		    broadcast_stanza(Host, Node, NodeId, Type,
 				     NodeOptions, SubsByDepth, nodes, Stanza, false),
 		    {result, true};
-		_ -> 
+		_ ->
 		    {result, false}
 	    end;
 	_ ->
@@ -4410,10 +4494,7 @@ broadcast_stanza(Host, _Node, _NodeId, _Type, NodeOptions, SubsByDepth, NotifyTy
     NotificationType = get_option(NodeOptions, notification_type, headline),
     BroadcastAll = get_option(NodeOptions, broadcast_all_resources), %% XXX this is not standard, but usefull
     From = service_jid(Host),
-    Stanza = case NotificationType of
-	normal -> BaseStanza;
-	MsgType -> add_message_type(BaseStanza, iolist_to_binary(atom_to_list(MsgType)))
-	end,
+    Stanza = add_message_type(BaseStanza, NotificationType),
     %% Handles explicit subscriptions
     SubIDsByJID = subscribed_nodes_by_jid(NotifyType, SubsByDepth),
     lists:foreach(fun ({LJID, NodeName, SubIDs}) ->
@@ -4445,10 +4526,8 @@ broadcast_stanza({LUser, LServer, LResource}, Publisher, Node, NodeId, Type, Nod
     SenderResource = user_resource(LUser, LServer, LResource),
     case ejabberd_sm:get_session_pid(LUser, LServer, SenderResource) of
 	C2SPid when is_pid(C2SPid) ->
-	    Stanza = case get_option(NodeOptions, notification_type, headline) of
-		normal -> BaseStanza;
-		MsgType -> add_message_type(BaseStanza, iolist_to_binary(atom_to_list(MsgType)))
-		end,
+	    NotificationType = get_option(NodeOptions, notification_type, headline),
+	    Stanza = add_message_type(BaseStanza, NotificationType),
 	    %% set the from address on the notification to the bare JID of the account owner
 	    %% Also, add "replyto" if entity has presence subscription to the account owner
 	    %% See XEP-0163 1.1 section 4.3.1
@@ -5226,10 +5305,19 @@ itemsEls(Items) ->
 		#xmlel{name = <<"item">>, attrs = itemAttr(ItemId), children = Payload}
 	end, Items).
 
+-spec(add_message_type/2 ::
+(
+  Message :: xmlel(),
+  Type    :: atom())
+    -> xmlel()
+).
+
+add_message_type(Message, normal) -> Message;
 add_message_type(#xmlel{name = <<"message">>, attrs = Attrs, children = Els},
   Type) ->
     #xmlel{name = <<"message">>,
-	   attrs = [{<<"type">>, Type} | Attrs], children = Els};
+           attrs = [{<<"type">>, jlib:atom_to_binary(Type)} | Attrs],
+           children = Els};
 add_message_type(XmlEl, _Type) -> XmlEl.
 
 %% Place of <headers/> changed at the bottom of the stanza
@@ -5469,4 +5557,3 @@ parse_subscriptions([{State, Item}]) ->
         subscribed -> "s"
     end,
     string:join([STATE, Item],":").
-
