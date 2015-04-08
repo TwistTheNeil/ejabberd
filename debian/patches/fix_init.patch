@@ -1,3 +1,8 @@
+Description: adjust initscript template
+ Some tweaks to the initscript template are needed for Debian packaging to work
+ and to follow policy.
+Author: Philipp Huebner <debalance@debian.org>
+
 Index: ejabberd/ejabberd.init.template
 ===================================================================
 --- ejabberd.orig/ejabberd.init.template
