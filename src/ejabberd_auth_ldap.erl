@@ -5,7 +5,7 @@
 %%% Created : 12 Dec 2004 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2014   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2015   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -387,7 +387,7 @@ parse_options(Host) ->
 				       [{<<"%u">>, <<"*">>}]),
     {DNFilter, DNFilterAttrs} =
         eldap_utils:get_opt({ldap_dn_filter, Host}, [],
-                            fun({DNF, DNFA}) ->
+                            fun([{DNF, DNFA}]) ->
                                     NewDNFA = case DNFA of
                                                   undefined ->
                                                       [];

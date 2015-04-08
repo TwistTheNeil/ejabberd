@@ -11,6 +11,33 @@
                       ],
                       [
                         '/usr/share/autoconf/autoconf/autoconf.m4f',
+                        'm4/erlang-extra.m4',
+                        'configure.ac'
+                      ],
+                      {
+                        '_AM_AUTOCONF_VERSION' => 1,
+                        'm4_pattern_allow' => 1,
+                        'm4_pattern_forbid' => 1,
+                        'include' => 1,
+                        'AC_DEFUN_ONCE' => 1,
+                        'ERLANG_SUBST_LIB_VER' => 1,
+                        'm4_include' => 1,
+                        'AC_DEFUN' => 1,
+                        '_m4_warn' => 1,
+                        'AU_DEFUN' => 1,
+                        'ERLANG_VERSION_CHECK' => 1,
+                        'ERLANG_DEPRECATED_TYPES_CHECK' => 1
+                      }
+                    ], 'Autom4te::Request' ),
+             bless( [
+                      '1',
+                      1,
+                      [
+                        '/usr/share/autoconf'
+                      ],
+                      [
+                        '/usr/share/autoconf/autoconf/autoconf.m4f',
+                        'aclocal.m4',
                         'configure.ac'
                       ],
                       {

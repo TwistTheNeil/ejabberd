@@ -5,7 +5,7 @@
 %%% Created :  8 Dec 2004 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2014   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2015   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -62,7 +62,7 @@
          start_interval = 0                  :: non_neg_integer(),
          host = <<"">>                       :: binary(),
 	 max_pending_requests_len            :: non_neg_integer(),
-         pending_requests = {0, queue:new()} :: {non_neg_integer(), queue()}}).
+         pending_requests = {0, queue:new()} :: {non_neg_integer(), ?TQUEUE}}).
 
 -define(STATE_KEY, ejabberd_odbc_state).
 
@@ -204,7 +204,7 @@ decode_term(Bin) ->
 %%%----------------------------------------------------------------------
 init([Host, StartInterval]) ->
     case ejabberd_config:get_option(
-           {keepalive_interval, Host},
+           {odbc_keepalive_interval, Host},
            fun(I) when is_integer(I), I>0 -> I end) of
         undefined ->
             ok;
@@ -502,6 +502,7 @@ pgsql_connect(Server, Port, DB, Username, Password) ->
         {ok, Ref} ->
             pgsql:squery(Ref, [<<"alter database ">>, DB, <<" set ">>,
                                <<"standard_conforming_strings='off';">>]),
+            pgsql:squery(Ref, [<<"set standard_conforming_strings to 'off';">>]),
             {ok, Ref};
         Err ->
             Err

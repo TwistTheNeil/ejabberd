@@ -1,6 +1,6 @@
 %%%----------------------------------------------------------------------
 %%%
-%%% ejabberd, Copyright (C) 2002-2014   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2015   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -31,5 +31,18 @@
 	 host = <<"">>     :: binary(),
 	 port = 5280       :: inet:port_number(),
 	 tp = http, %         :: protocol(),
+	 opts = []         :: list(),
 	 headers = []      :: [{atom() | binary(), binary()}]}).
 
+
+-record(ws,
+	{socket                  :: inet:socket() | p1_tls:tls_socket(),
+	 sockmod = gen_tcp       :: gen_tcp | p1_tls,
+	 ip                      :: {inet:ip_address(), inet:port_number()},
+	 host = <<"">>           :: binary(),
+	 port = 5280             :: inet:port_number(),
+	 path = []               :: [binary()],
+	 headers = []            :: [{atom() | binary(), binary()}],
+	 local_path = []         :: [binary()],
+	 q = []                  :: [{binary() | nokey, binary()}],
+	 buf                     :: binary()}).

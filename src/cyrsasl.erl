@@ -5,7 +5,7 @@
 %%% Created :  8 Mar 2003 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2014   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2015   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -93,9 +93,15 @@ start() ->
 ).
 
 register_mechanism(Mechanism, Module, PasswordType) ->
-    ets:insert(sasl_mechanism,
-	       #sasl_mechanism{mechanism = Mechanism, module = Module,
-			       password_type = PasswordType}).
+    case is_disabled(Mechanism) of
+      false ->
+	  ets:insert(sasl_mechanism,
+		     #sasl_mechanism{mechanism = Mechanism, module = Module,
+				     password_type = PasswordType});
+      true ->
+	  ?DEBUG("SASL mechanism ~p is disabled", [Mechanism]),
+	  true
+    end.
 
 %%% TODO: use callbacks
 %%-include("ejabberd.hrl").
@@ -215,3 +221,19 @@ filter_anonymous(Host, Mechs) ->
       true  -> Mechs;
       false -> Mechs -- [<<"ANONYMOUS">>]
     end.
+
+-spec(is_disabled/1 ::
+(
+  Mechanism :: mechanism())
+    -> boolean()
+).
+
+is_disabled(Mechanism) ->
+    Disabled = ejabberd_config:get_option(
+		 disable_sasl_mechanisms,
+		 fun(V) when is_list(V) ->
+			 lists:map(fun(M) -> str:to_upper(M) end, V);
+		    (V) ->
+			 [str:to_upper(V)]
+		 end, []),
+    lists:member(Mechanism, Disabled).

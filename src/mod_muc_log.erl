@@ -5,7 +5,7 @@
 %%% Created : 12 Mar 2006 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2014   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2015   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -146,7 +146,13 @@ init([Host, Opts]) ->
                                     (plaintext) -> plaintext
                                  end, html),
     FilePermissions = gen_mod:get_opt(file_permissions, Opts,
-                                 fun({A, B}) -> {A, B}
+                                 fun(SubOpts) ->
+                                         F = fun({mode, Mode}, {_M, G}) ->
+                                                        {Mode, G};
+                                                ({group, Group}, {M, _G}) ->
+                                                        {M, Group}
+                                             end,
+                                         lists:foldl(F, {644, 33}, SubOpts)
                                  end, {644, 33}),
     CSSFile = gen_mod:get_opt(cssfile, Opts,
                               fun iolist_to_binary/1,
@@ -571,16 +577,7 @@ get_dateweek(Date, Lang) ->
       end).
 
 make_dir_rec(Dir) ->
-    DirS = binary_to_list(Dir),
-    case file:read_file_info(DirS) of
-      {ok, _} -> ok;
-      {error, enoent} ->
-	  DirL = [list_to_binary(F) || F <- filename:split(DirS)],
-	  DirR = lists:sublist(DirL, length(DirL) - 1),
-	  make_dir_rec(fjoin(DirR)),
-	  file:make_dir(DirS),
-	  file:change_mode(DirS, 8#00755) % -rwxr-xr-x
-    end.
+    filelib:ensure_dir(<<Dir/binary, $/>>).
 
 %% {ok, F1}=file:open("valid-xhtml10.png", [read]).
 %% {ok, F1b}=file:read(F1, 1000000).
@@ -1248,6 +1245,5 @@ calc_hour_offset(TimeHere) ->
 	  3600,
     TimeHereHour - TimeZeroHour.
 
-fjoin([]) -> <<"/">>;
 fjoin(FileList) ->
     list_to_binary(filename:join([binary_to_list(File) || File <- FileList])).

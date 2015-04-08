@@ -5,7 +5,7 @@
 %%% Created : 11 Dec 2002 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2014   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2015   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -1238,7 +1238,7 @@ read_subscription_and_groups(LUser, LServer, LJID,
     case catch odbc_queries:get_subscription(LServer,
 					     Username, SJID)
 	of
-      {selected, [<<"subscription">>], [{SSubscription}]} ->
+      {selected, [<<"subscription">>], [[SSubscription]]} ->
 	  Subscription = case SSubscription of
 			   <<"B">> -> both;
 			   <<"T">> -> to;
