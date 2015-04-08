@@ -7,13 +7,13 @@ Files: *
 Copyright: 2002-2014, ProcessOne
 License: GPL-2+ with OpenSSL exception
 
-Files: src/node* src/p*
+Files: src/node* src/p* src/*_pubsub_* include/pubsub.hrl
 Copyright: 2002-2014, ProcessOne
 License: EPL-1.1
 
 Files: configure
 Copyright: 1992-2010 Free Software Foundation, Inc.
-License:
+License: FSF
  This configure script is free software; the Free Software Foundation
  gives unlimited permission to copy, distribute and modify it.
 
