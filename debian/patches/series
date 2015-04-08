@@ -1,13 +1,9 @@
 remove_deps.diff
-disable_rebar_deps.diff
 disable_test.diff
 fix_includes.diff
 fix_examples.patch
 fix_init.patch
 enable-ipv6.diff
-fix_option_name.patch
-CVE-2014-8760.patch
 disable_internal_logrotate.patch
 fix_reopen_log.patch
 configure_ssl.patch
-avoid_hanging_c2s.patch

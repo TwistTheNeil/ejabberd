@@ -1,13 +1,8 @@
-Description: adjust initscript template
- Some tweaks to the initscript template are needed for Debian packaging to work
- and to follow policy.
-Author: Philipp Huebner <debalance@debian.org>
-
 Index: ejabberd/ejabberd.init.template
 ===================================================================
 --- ejabberd.orig/ejabberd.init.template
 +++ ejabberd/ejabberd.init.template
-@@ -16,34 +16,52 @@
+@@ -16,17 +16,29 @@
  
  set -o errexit
  
@@ -24,7 +19,7 @@ Index: ejabberd/ejabberd.init.template
  	echo "ERROR: ejabberd not found: $DIR"
  	exit 1
  }
--grep ^"$USER": /etc/passwd >/dev/null || {
+-getent passwd "$USER" >/dev/null || {
 -	echo "ERROR: System user not found: $USER"
 -	exit 2
 +
@@ -41,9 +36,8 @@ Index: ejabberd/ejabberd.init.template
 +	fi
  }
  
-+
  export PATH="${PATH:+$PATH:}/usr/sbin:/sbin"
- 
+@@ -34,16 +46,21 @@ export PATH="${PATH:+$PATH:}/usr/sbin:/s
  case "$1" in
    start)
      test -x "$CTL" || exit 0
@@ -51,7 +45,7 @@ Index: ejabberd/ejabberd.init.template
      echo "Starting ejabberd..."
 -    su - $USER -c "$CTL start"
 -    su - $USER -c "$CTL started"
-+    if ! /etc/init.d/ejabberd status > /dev/null; then 
++    if ! /etc/init.d/ejabberd status > /dev/null; then
 +	su - $USER -c "$CTL start"
 +	su - $USER -c "$CTL started"
 +    fi
@@ -73,7 +67,7 @@ Index: ejabberd/ejabberdctl.template
 ===================================================================
 --- ejabberd.orig/ejabberdctl.template
 +++ ejabberd/ejabberdctl.template
-@@ -7,12 +7,12 @@ ERL_MAX_PORTS=32000
+@@ -7,14 +7,14 @@ ERL_MAX_PORTS=32000
  ERL_PROCESSES=250000
  ERL_MAX_ETS_TABLES=1400
  FIREWALL_WINDOW=""
@@ -83,17 +77,10 @@ Index: ejabberd/ejabberdctl.template
  # define default environment variables
  SCRIPT_DIR=`cd ${0%/*} && pwd`
  ERL={{erl}}
+ IEX={{bindir}}/iex
+ EPMD={{bindir}}/epmd
 -INSTALLUSER={{installuser}}
 +INSTALLUSER=ejabberd
  
  # Compatibility in ZSH
  #setopt shwordsplit 2>/dev/null
-@@ -22,7 +22,7 @@ if [ "$INSTALLUSER" != "" ] ; then
-     EXEC_CMD="false"
-     for GID in `id -G`; do
-         if [ $GID -eq 0 ] ; then
--            EXEC_CMD="su $INSTALLUSER -p -c"
-+            EXEC_CMD="su $INSTALLUSER -c"
-         fi
-     done
-     if [ `id -g` -eq `id -g $INSTALLUSER` ] ; then

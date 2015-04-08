@@ -8,7 +8,7 @@ Index: ejabberd/Makefile.in
 ===================================================================
 --- ejabberd.orig/Makefile.in
 +++ ejabberd/Makefile.in
-@@ -260,10 +260,6 @@ dialyzer: erlang_plt deps_plt ejabberd_p
+@@ -262,10 +262,6 @@ dialyzer: erlang_plt ejabberd_plt
  	status=$$? ; if [ $$status -ne 2 ]; then exit $$status; else exit 0; fi
  
  test:
@@ -17,5 +17,5 @@ Index: ejabberd/Makefile.in
 -	@echo "*************************************************************************"
 -	$(REBAR) skip_deps=true ct
  
- .PHONY: src doc edoc dialyzer Makefile TAGS clean clean-rel distclean rel \
- 	install uninstall uninstall-binary uninstall-all translations deps test spec \
+ quicktest:
+ 	$(REBAR) skip_deps=true ct suites=elixir

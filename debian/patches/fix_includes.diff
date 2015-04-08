@@ -8,7 +8,7 @@ Index: ejabberd/src/mod_sip_proxy.erl
 ===================================================================
 --- ejabberd.orig/src/mod_sip_proxy.erl
 +++ ejabberd/src/mod_sip_proxy.erl
-@@ -21,7 +21,7 @@
+@@ -38,7 +38,7 @@
  
  -include("ejabberd.hrl").
  -include("logger.hrl").
@@ -21,7 +21,7 @@ Index: ejabberd/src/mod_sip.erl
 ===================================================================
 --- ejabberd.orig/src/mod_sip.erl
 +++ ejabberd/src/mod_sip.erl
-@@ -20,7 +20,7 @@
+@@ -37,7 +37,7 @@
  
  -include("ejabberd.hrl").
  -include("logger.hrl").
@@ -34,7 +34,7 @@ Index: ejabberd/src/mod_sip_registrar.erl
 ===================================================================
 --- ejabberd.orig/src/mod_sip_registrar.erl
 +++ ejabberd/src/mod_sip_registrar.erl
-@@ -20,7 +20,7 @@
+@@ -37,7 +37,7 @@
  
  -include("ejabberd.hrl").
  -include("logger.hrl").

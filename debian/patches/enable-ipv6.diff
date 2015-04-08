@@ -15,7 +15,7 @@ Index: ejabberd/ejabberd.yml.example
      module: ejabberd_c2s
      ##
      ## If TLS is compiled in and you installed a SSL
-@@ -123,6 +124,7 @@ listen:
+@@ -128,6 +129,7 @@ listen:
      access: c2s
    - 
      port: 5269
@@ -23,7 +23,7 @@ Index: ejabberd/ejabberd.yml.example
      module: ejabberd_s2s_in
    ##
    ## ejabberd_service: Interact with external components (transports, ...)
-@@ -155,6 +157,7 @@ listen:
+@@ -160,6 +162,7 @@ listen:
    ##   module: ejabberd_xmlrpc
    - 
      port: 5280
