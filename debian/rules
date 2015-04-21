@@ -24,6 +24,7 @@ override_dh_auto_build:
 .PHONY: override_dh_auto_install
 override_dh_auto_install:
 	dh_auto_install
+	install -m 644 debian/ejabberd.ufw.profile $(DESTDIR)/etc/ufw/applications.d/ejabberd
 	rm $(DESTDIR)/etc/ejabberd/ejabberd.yml
 	mkdir $(DESTDIR)/etc/init.d $(DESTDIR)/etc/default
 	cp ejabberd.init $(DESTDIR)/etc/init.d/ejabberd
