@@ -64,14 +64,16 @@ Index: ejabberd/Makefile.in
  install: all
  	#
  	# Configuration files
-@@ -138,10 +121,6 @@ install: all
+@@ -137,11 +120,7 @@ install: all
+ 	[ -d $(SBINDIR) ] || $(INSTALL) -d -m 755 $(SBINDIR)
  	$(INSTALL) -m 550 $(G_USER) ejabberdctl.example $(SBINDIR)/ejabberdctl
  	# Elixir binaries
- 	[ -d $(BINDIR) ] || $(INSTALL) -d -m 755 $(BINDIR)
+-	[ -d $(BINDIR) ] || $(INSTALL) -d -m 755 $(BINDIR)
 -	-[ -f deps/elixir/bin/iex ] && $(INSTALL) -m 550 $(G_USER) deps/elixir/bin/iex $(BINDIR)/iex
 -	-[ -f deps/elixir/bin/elixir ] && $(INSTALL) -m 550 $(G_USER) deps/elixir/bin/elixir $(BINDIR)/elixir
 -	-[ -f deps/elixir/bin/mix ] && $(INSTALL) -m 550 $(G_USER) deps/elixir/bin/mix $(BINDIR)/mix
 -	#
++	#[ -d $(BINDIR) ] || $(INSTALL) -d -m 755 $(BINDIR)
  	# Init script
  	$(SED) -e "s*@ctlscriptpath@*$(SBINDIR)*" \
  		-e "s*@installuser@*$(INIT_USER)*" ejabberd.init.template \
