@@ -32,3 +32,10 @@ Type: error
 _Description: The passwords do not match!
  The passwords you have typed do not match. Please try again.
 
+Template: ejabberd/invaliduser
+Type: error
+_Description: The username of the admin account is invalid!
+ The username you have typed contains forbidden characters. Please respect the 
+ JID syntax (http://tools.ietf.org/html/rfc6122#appendix-A.5). If you used
+ a full JID (e.g. user@hostname), you have to use the same hostname
+ you typed into the hostname configuration step.
