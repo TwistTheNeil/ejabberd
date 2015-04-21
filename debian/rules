@@ -53,3 +53,4 @@ override_dh_auto_clean:
 		ejabberd.init ejabberdctl.example include/XmppAddr.hrl src/XmppAddr.asn1db \
 		src/XmppAddr.erl src/eldap_filter_yecc.erl
 	dh_auto_clean
+	debconf-updatepo

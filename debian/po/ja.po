@@ -5,8 +5,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: ejabberd 2.0.5-1.1\n"
-"Report-Msgid-Bugs-To: twerner@debian.org\n"
-"POT-Creation-Date: 2008-02-15 10:37+0300\n"
+"Report-Msgid-Bugs-To: ejabberd@packages.debian.org\n"
+"POT-Creation-Date: 2015-04-21 20:31+0200\n"
 "PO-Revision-Date: 2009-11-07 14:26+0900\n"
 "Last-Translator: Hideki Yamane (Debian-JP) <henrich@debian.or.jp>\n"
 "Language-Team: Japanese <debian-japanese@lists.debian.org>\n"
@@ -96,3 +96,21 @@ msgstr "パスワードが一致しません!"
 #: ../templates:5001
 msgid "The passwords you have typed do not match. Please try again."
 msgstr "入力されたパスワードが一致しません。再入力してください。"
+
+#. Type: error
+#. Description
+#: ../templates:6001
+#, fuzzy
+#| msgid "The username of an admin account for ejabberd:"
+msgid "The username of the admin account is invalid!"
+msgstr "ejabberd 管理者アカウントのユーザ名:"
+
+#. Type: error
+#. Description
+#: ../templates:6001
+msgid ""
+"The username you have typed contains forbidden characters. Please respect "
+"the  JID syntax (http://tools.ietf.org/html/rfc6122#appendix-A.5). If you "
+"used a full JID (e.g. user@hostname), you have to use the same hostname you "
+"typed into the hostname configuration step."
+msgstr ""

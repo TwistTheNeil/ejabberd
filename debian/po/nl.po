@@ -7,8 +7,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: ejabberd 2.1.9-1\n"
-"Report-Msgid-Bugs-To: twerner@debian.org\n"
-"POT-Creation-Date: 2008-02-15 10:37+0300\n"
+"Report-Msgid-Bugs-To: ejabberd@packages.debian.org\n"
+"POT-Creation-Date: 2015-04-21 20:31+0200\n"
 "PO-Revision-Date: 2012-01-27 10:54+0100\n"
 "Last-Translator: Jeroen Schot <schot@a-eskwadraat.nl>\n"
 "Language-Team:  <nl@li.org>\n"
@@ -97,3 +97,21 @@ msgstr "De wachtwoorden komen niet overeen!"
 #: ../templates:5001
 msgid "The passwords you have typed do not match. Please try again."
 msgstr "De ingevoerde wachtwoorden komen niet overeen. Probeer opnieuw."
+
+#. Type: error
+#. Description
+#: ../templates:6001
+#, fuzzy
+#| msgid "The username of an admin account for ejabberd:"
+msgid "The username of the admin account is invalid!"
+msgstr "Naam van een beheerdersaccount voor ejabberd:"
+
+#. Type: error
+#. Description
+#: ../templates:6001
+msgid ""
+"The username you have typed contains forbidden characters. Please respect "
+"the  JID syntax (http://tools.ietf.org/html/rfc6122#appendix-A.5). If you "
+"used a full JID (e.g. user@hostname), you have to use the same hostname you "
+"typed into the hostname configuration step."
+msgstr ""
