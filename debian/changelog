@@ -1,3 +1,11 @@
+ejabberd (15.03-1) UNRELEASED; urgency=low
+
+  * New upstream release
+  * Update patches for ejabberd 15.03
+  * Drop debian/ejabberd.8 as there is no "ejabberd" executable anymore
+
+ -- Philipp Huebner <debalance@debian.org>  Tue, 21 Apr 2015 08:27:11 +0200
+
 ejabberd (14.07-4) unstable; urgency=medium
 
   [ Holger Weiss ]
