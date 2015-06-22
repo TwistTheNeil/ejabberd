@@ -1,7 +1,6 @@
-From b67af5e036e359f6cfc877c2617d9b3c3d877c89 Mon Sep 17 00:00:00 2001
-From: Badlop <badlop@process-one.net>
-Date: Tue, 14 Apr 2015 15:46:43 +0200
-Subject: [PATCH] Fix nick logging in mod_muc_log plaintext (#522)
+Description: Fix nick logging in mod_muc_log plaintext
+ Otherwise, nicknames in angle brackets < > where stripped from the logs
+Author: Badlop <badlop@process-one.net>
 
 ---
  src/mod_muc_log.erl | 7 ++++++-

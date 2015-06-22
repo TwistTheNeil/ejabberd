@@ -1,3 +1,14 @@
+ejabberd (15.03-1) unstable; urgency=medium
+
+  * Include upstream patch to fix logging of nicknames in muc logs
+    (Closes: #706897)
+  * Updated homepage field in debian/control (Closes: #784775)
+  * Adjust logrotate postrotate command in case ejabberd is not running
+    (Closes: #786588)
+  * Debconf now checks for valid JIDs (Closes:  #605404)
+
+ -- Philipp Huebner <debalance@debian.org>  Mon, 22 Jun 2015 20:11:37 +0200
+
 ejabberd (15.03-1~exp2) experimental; urgency=low
 
   * Enable redis client
