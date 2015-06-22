@@ -10,7 +10,7 @@ Build-Depends: debhelper (>= 9),
                erlang-redis-client, erlang-ssl, erlang-xmlrpc,
                hevea, po-debconf, rebar, texlive-latex-base, texlive-latex-recommended, texlive-latex-extra
 Standards-Version: 3.9.6
-Homepage: http://www.process-one.net/en/projects/ejabberd/
+Homepage: https://www.ejabberd.im
 Vcs-Git: git://git.deb.at/pkg/ejabberd.git
 Vcs-Browser: http://git.deb.at/w/pkg/ejabberd.git
 
