@@ -1,0 +1,34 @@
+From b67af5e036e359f6cfc877c2617d9b3c3d877c89 Mon Sep 17 00:00:00 2001
+From: Badlop <badlop@process-one.net>
+Date: Tue, 14 Apr 2015 15:46:43 +0200
+Subject: [PATCH] Fix nick logging in mod_muc_log plaintext (#522)
+
+---
+ src/mod_muc_log.erl | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/src/mod_muc_log.erl b/src/mod_muc_log.erl
+index 47b21a7..d941514 100644
+--- a/src/mod_muc_log.erl
++++ b/src/mod_muc_log.erl
+@@ -381,6 +381,11 @@ set_filemode(Fn, {FileMode, FileGroup}) ->
+ 	ok = file:change_mode(Fn, list_to_integer(integer_to_list(FileMode), 8)),
+     ok = file:change_group(Fn, FileGroup).
+ 
++htmlize_nick(Nick1, html) ->
++    htmlize(<<"<", Nick1/binary, ">">>, html);
++htmlize_nick(Nick1, plaintext) ->
++    htmlize(<<?PLAINTEXT_IN/binary, Nick1/binary, ?PLAINTEXT_OUT/binary>>, plaintext).
++
+ add_message_to_log(Nick1, Message, RoomJID, Opts,
+ 		   State) ->
+     #logstate{out_dir = OutDir, dir_type = DirType,
+@@ -391,7 +396,7 @@ add_message_to_log(Nick1, Message, RoomJID, Opts,
+ 	State,
+     Room = get_room_info(RoomJID, Opts),
+     Nick = htmlize(Nick1, FileFormat),
+-    Nick2 = htmlize(<<"<", Nick1/binary, ">">>, FileFormat),
++    Nick2 = htmlize_nick(Nick1, FileFormat),
+     Now = now(),
+     TimeStamp = case Timezone of
+ 		  local -> calendar:now_to_local_time(Now);
