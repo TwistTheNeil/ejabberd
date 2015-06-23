@@ -21,7 +21,8 @@ Index: ejabberd/ejabberd.init.template
 +EJABBERDRUN=/var/run/ejabberd
  
  test -x "$CTL" || {
- 	echo "ERROR: ejabberd not found: $DIR"
+-	echo "ERROR: ejabberd not found: $DIR"
++	log_daemon_msg "ERROR: ejabberd not found: $DIR"
  	exit 1
  }
 -getent passwd "$USER" >/dev/null || {
@@ -33,7 +34,7 @@ Index: ejabberd/ejabberd.init.template
 +	if [ ! -d $EJABBERDRUN ]; then
 +		mkdir -p $EJABBERDRUN
 +		if [ $? -ne 0 ]; then
-+			echo -n " failed"
++			log_daemon_msg -n " failed"
 +			return
 +		fi
 +		chmod 0755 $EJABBERDRUN
@@ -42,32 +43,52 @@ Index: ejabberd/ejabberd.init.template
  }
  
  export PATH="${PATH:+$PATH:}/usr/sbin:/sbin"
-@@ -34,16 +46,21 @@ export PATH="${PATH:+$PATH:}/usr/sbin:/s
+@@ -34,21 +46,26 @@ export PATH="${PATH:+$PATH:}/usr/sbin:/s
  case "$1" in
    start)
      test -x "$CTL" || exit 0
-+    mkrundir
-     echo "Starting ejabberd..."
+-    echo "Starting ejabberd..."
 -    su - $USER -c "$CTL start"
 -    su - $USER -c "$CTL started"
+-    echo "done."
++    mkrundir
++    log_daemon_msg "Starting ejabberd..."
 +    if ! /etc/init.d/ejabberd status > /dev/null; then
 +	su - $USER -c "$CTL start"
 +	su - $USER -c "$CTL started"
 +    fi
-     echo "done."
++    log_daemon_msg "done."
      ;;
    stop)
      test -x "$CTL" || exit 0
-     echo "Stopping ejabberd..."
+-    echo "Stopping ejabberd..."
 -    su - $USER -c "$CTL stop"
 -    su - $USER -c "$CTL stopped"
+-    echo "done."
++    log_daemon_msg "Stopping ejabberd..."
 +    if $CTL status >/dev/null || test $? = 1 ; then
 +	su - $USER -c "$CTL stop"
 +	su - $USER -c "$CTL stopped"
 +    fi
-     echo "done."
++    log_daemon_msg "done."
      ;;
    status)
+     test -x "$CTL" || exit 0
+-    echo "Getting ejabberd status..."
++    log_daemon_msg "Getting ejabberd status..."
+     su - $USER -c "$CTL status"
+     ;;
+   force-reload|restart)
+@@ -57,7 +74,8 @@ case "$1" in
+     ;;
+   *)
+     echo "Usage: $0 {start|stop|restart|force-reload|status}"
+-    exit 1
++    exit 3
++    ;;
+ esac
+ 
+ exit 0
 Index: ejabberd/ejabberdctl.template
 ===================================================================
 --- ejabberd.orig/ejabberdctl.template
