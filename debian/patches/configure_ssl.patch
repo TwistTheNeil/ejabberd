@@ -28,7 +28,15 @@ Index: ejabberd/ejabberd.yml.example
      ##   - "no_tlsv1"
      max_stanza_size: 65536
      shaper: c2s_shaper
-@@ -164,17 +164,17 @@ listen:
+@@ -158,23 +158,25 @@ listen:
+     http_bind: true
+     ## register: true
+     captcha: true
++    tls: true
++    certfile: "/etc/ejabberd/ejabberd.pem"
+ 
+ ##
+ ## s2s_use_starttls: Enable STARTTLS + Dialback for S2S connections.
  ## Allowed values are: false optional required required_trusted
  ## You must specify a certificate file.
  ##
