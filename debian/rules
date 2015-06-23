@@ -27,7 +27,7 @@ override_dh_auto_install:
 	install -m 644 debian/ejabberd.ufw.profile $(DESTDIR)/etc/ufw/applications.d/ejabberd
 	rm $(DESTDIR)/etc/ejabberd/ejabberd.yml
 	mkdir $(DESTDIR)/etc/init.d $(DESTDIR)/etc/default
-	cp ejabberd.init $(DESTDIR)/etc/init.d/ejabberd
+	cp -v $(CURDIR)/ejabberd.init $(CURDIR)/debian/
 	mv $(DESTDIR)/etc/ejabberd/ejabberdctl.cfg $(DESTDIR)/etc/default/ejabberd
 	ln -s ../default/ejabberd $(DESTDIR)/etc/ejabberd/ejabberdctl.cfg
 	rm -r $(DESTDIR)/var/lock
@@ -35,6 +35,10 @@ override_dh_auto_install:
 	rm $(DESTDIR)/usr/share/doc/ejabberd/COPYING
 	mkdir $(DESTDIR)/usr/share/ejabberd
 	cp ejabberd.yml.example $(DESTDIR)/usr/share/ejabberd/ejabberd.yml.example
+
+.PHONY: override_dh_installinit
+override_dh_installinit:
+	dh_installinit -vR
 
 .PHONY: override_dh_compress
 override_dh_compress:
@@ -52,5 +56,6 @@ override_dh_auto_clean:
 	rm -rf Makefile config.log config.status src/ejabberd.app.src vars.config ebin \
 		ejabberd.init ejabberdctl.example include/XmppAddr.hrl src/XmppAddr.asn1db \
 		src/XmppAddr.erl src/eldap_filter_yecc.erl
+	rm -f debian/ejabberd.init
 	dh_auto_clean
 	debconf-updatepo
