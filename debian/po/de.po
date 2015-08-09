@@ -133,7 +133,7 @@ msgstr ""
 "Der von Ihnen eingegebene Benutzername enthält verbotene Zeichen. Bitte "
 "berücksichtigen Sie die JID-Syntax (http://tools.ietf.org/html/"
 "rfc6122#appendix-A.5). Falls Sie eine volle JID verwendet haben (z.B. "
-"Benuztzer@Rechnername), müssen SIe den gleichen Rechnernamen verwenden, den "
+"Benuztzer@Rechnername), müssen Sie den gleichen Rechnernamen verwenden, den "
 "Sie auch im Konfigurationsschritt für den Rechnernamen eingegeben haben."
 
 #~ msgid "The username of an admin account for ejabberd:"
