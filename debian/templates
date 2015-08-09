@@ -19,7 +19,7 @@ _Description: Jabber server administrator username:
  Please provide the name of an account to administrate the ejabberd server.
  After the installation of ejabberd you can use this account to log in with any
  Jabber client to do administrative tasks or go to
- http://${hostname}:5280/admin/ and log in with this account to enter the admin
+ https://${hostname}:5280/admin/ and log in with this account to enter the admin
  interface.
  .
  You only need to enter the username part here (such as ${user}), but

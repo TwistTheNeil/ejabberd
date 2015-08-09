@@ -45,13 +45,13 @@ msgstr "Identifiant de l'administrateur du serveur Jabber :"
 msgid ""
 "Please provide the name of an account to administrate the ejabberd server. "
 "After the installation of ejabberd you can use this account to log in with "
-"any Jabber client to do administrative tasks or go to http://"
+"any Jabber client to do administrative tasks or go to https://"
 "${hostname}:5280/admin/ and log in with this account to enter the admin "
 "interface."
 msgstr ""
 "Veuillez indiquer un identifiant afin d'administrer le serveur ejabberd. "
 "Après l'installation, vous pourrez utilisez cette identité pour vous "
-"connecter avec tout client Jabber ou l'interface d'administration sur http://"
+"connecter avec tout client Jabber ou l'interface d'administration sur https://"
 "${hostname}:5280/admin/ pour réaliser des tâches administratives."
 
 #. Type: string
@@ -64,7 +64,7 @@ msgid ""
 msgstr ""
 "Veuillez seulement entrer ici l'identifiant (par exemple, « ${user} »). "
 "Cependant, vous devrez utiliser une identité Jabber complète (par exemple, "
-"« ${user}@ ${hostname} ») pour vous connecter à l'interface web."
+"« ${user}@${hostname} ») pour vous connecter à l'interface web."
 
 #. Type: string
 #. Description
