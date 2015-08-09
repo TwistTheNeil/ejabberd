@@ -1,4 +1,4 @@
-ejabberd (15.03-2) unstable; urgency=low
+ejabberd (15.03-2) unstable; urgency=medium
 
   [ Christian Perrier ]
   * Debconf templates and debian/control reviewed by the debian-l10n-
@@ -13,13 +13,15 @@ ejabberd (15.03-2) unstable; urgency=low
   * German (Torsten Werner).  Closes: #794599
   * Italian (Beatrice Torracca).  Closes: #794685
   * Dutch; (Frans Spiesschaert).  Closes: #794712
+  * Brazilian Portuguese; (Adriano Rafael Gomes).  Closes: #794970
+  * Portuguese; (Américo Monteiro). Closes: #795005
 
   [ Philipp Huebner ]
   * Convert package to use dh_installinit (Closes: #788007)
   * init script: replace echo with log_daemon_msg
   * web admin console now uses https by default
 
- -- Philipp Huebner <debalance@debian.org>  Sat, 08 Aug 2015 15:57:07 +0200
+ -- Philipp Huebner <debalance@debian.org>  Sun, 09 Aug 2015 11:35:07 +0200
 
 ejabberd (15.03-1) unstable; urgency=medium
 
