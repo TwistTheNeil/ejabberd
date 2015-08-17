@@ -20,6 +20,8 @@ ejabberd (15.03-2) unstable; urgency=medium
   * Convert package to use dh_installinit (Closes: #788007)
   * init script: replace echo with log_daemon_msg
   * web admin console now uses https by default
+  * ejabberdctl can now handle shell metacharacters in passwords
+    (Closes: #792831)
 
  -- Philipp Huebner <debalance@debian.org>  Sun, 09 Aug 2015 11:35:07 +0200
 

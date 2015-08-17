@@ -1,0 +1,18 @@
+Description: Let ejabberdctl handle more shell metacharacters
+ Backport of upstream patch, without it, ejabberdctl can't handle shell
+ metacharacters in passwords. Closes: #792831
+Author: Holger Weiss <holger@zedat.fu-berlin.de>
+
+Index: ejabberd/ejabberdctl.template
+===================================================================
+--- ejabberd.orig/ejabberdctl.template
++++ ejabberd/ejabberdctl.template
+@@ -394,7 +394,7 @@ ctl()
+ ctlexec()
+ {
+     CONN_NAME=$1; shift
+-    COMMAND=$@
++    COMMAND=$(echo $@ | sed 's/["&$;\|<>()]/\\&/g')
+     $EXEC_CMD "$ERL \
+       $NAME ${CONN_NAME} \
+       -noinput \
