@@ -4,11 +4,11 @@ Description: don't let "reopen-log" command rotate logs
  "postrotate" command in our logrotate configuration for ejabberd.
 Author: Holger Weiss <holger@zedat.fu-berlin.de>
 
-diff --git a/src/ejabberd_logger.erl b/src/ejabberd_logger.erl
-index 65899c8..257da7b 100644
---- a/src/ejabberd_logger.erl
-+++ b/src/ejabberd_logger.erl
-@@ -114,13 +114,7 @@ start() ->
+Index: ejabberd/src/ejabberd_logger.erl
+===================================================================
+--- ejabberd.orig/src/ejabberd_logger.erl
++++ ejabberd/src/ejabberd_logger.erl
+@@ -129,13 +129,7 @@ start() ->
      ok.
  
  reopen_log() ->

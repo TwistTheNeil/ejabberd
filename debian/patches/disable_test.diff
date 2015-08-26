@@ -8,13 +8,14 @@ Index: ejabberd/Makefile.in
 ===================================================================
 --- ejabberd.orig/Makefile.in
 +++ ejabberd/Makefile.in
-@@ -262,10 +262,6 @@ dialyzer: erlang_plt ejabberd_plt
+@@ -261,11 +261,6 @@ dialyzer: erlang_plt ejabberd_plt
  	status=$$? ; if [ $$status -ne 2 ]; then exit $$status; else exit 0; fi
  
  test:
 -	@echo "************************** NOTICE ***************************************"
 -	@cat test/README
 -	@echo "*************************************************************************"
+-	@cd priv && ln -sf ../sql
 -	$(REBAR) skip_deps=true ct
  
  quicktest:

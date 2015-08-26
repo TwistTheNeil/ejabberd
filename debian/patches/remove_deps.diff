@@ -7,7 +7,7 @@ Index: ejabberd/rebar.config.script
 ===================================================================
 --- ejabberd.orig/rebar.config.script
 +++ ejabberd/rebar.config.script
-@@ -169,9 +169,7 @@ Config = [{erl_opts, Macros ++ HiPE ++ D
+@@ -182,9 +182,7 @@ Config = [{erl_opts, Macros ++ HiPE ++ D
            {xref_checks, []},
  	  {xref_queries,
  	   [{"(XC - UC) || (XU - X - B - "
@@ -22,7 +22,7 @@ Index: ejabberd/Makefile.in
 ===================================================================
 --- ejabberd.orig/Makefile.in
 +++ ejabberd/Makefile.in
-@@ -71,26 +71,11 @@ else
+@@ -74,26 +74,11 @@ else
    INIT_USER=$(INSTALLUSER)
  endif
  
@@ -51,7 +51,7 @@ Index: ejabberd/Makefile.in
  xref: all
  	$(REBAR) skip_deps=true xref
  
-@@ -107,11 +92,9 @@ edoc:
+@@ -106,11 +91,9 @@ edoc:
          'case edoc:application(ejabberd, ".", []) of ok -> halt(0); error -> halt(1) end.'
  
  spec:
@@ -64,7 +64,7 @@ Index: ejabberd/Makefile.in
  install: all
  	#
  	# Configuration files
-@@ -137,11 +120,7 @@ install: all
+@@ -136,11 +119,7 @@ install: all
  	[ -d $(SBINDIR) ] || $(INSTALL) -d -m 755 $(SBINDIR)
  	$(INSTALL) -m 550 $(G_USER) ejabberdctl.example $(SBINDIR)/ejabberdctl
  	# Elixir binaries
@@ -77,7 +77,7 @@ Index: ejabberd/Makefile.in
  	# Init script
  	$(SED) -e "s*@ctlscriptpath@*$(SBINDIR)*" \
  		-e "s*@installuser@*$(INIT_USER)*" ejabberd.init.template \
-@@ -152,29 +131,20 @@ install: all
+@@ -151,29 +130,20 @@ install: all
  	$(INSTALL) -d $(BEAMDIR)
  	$(INSTALL) -m 644 ebin/*.app $(BEAMDIR)
  	$(INSTALL) -m 644 ebin/*.beam $(BEAMDIR)
@@ -105,9 +105,9 @@ Index: ejabberd/Makefile.in
  	$(INSTALL) -d $(SODIR)
 -	$(INSTALL) -m 644 $(DLLs) $(SODIR)
  	-[ -f $(SODIR)/jiffy.so ] && (cd $(PRIVDIR); ln -s lib/jiffy.so; true)
+ 	-[ -f $(SODIR)/sqlite3_drv.so ] && (cd $(PRIVDIR); ln -s lib/sqlite3_drv.so; true)
  	#
- 	# Translated strings
-@@ -240,8 +210,6 @@ uninstall-all: uninstall-binary
+@@ -239,8 +209,6 @@ uninstall-all: uninstall-binary
  	rm -rf $(LOGDIR)
  
  clean:
@@ -116,7 +116,7 @@ Index: ejabberd/Makefile.in
  	rm -rf test/*.beam
  	$(REBAR) clean
  
-@@ -252,7 +220,6 @@ distclean: clean clean-rel
+@@ -251,7 +219,6 @@ distclean: clean clean-rel
  	rm -f config.status
  	rm -f config.log
  	rm -rf autom4te.cache
@@ -124,7 +124,7 @@ Index: ejabberd/Makefile.in
  	rm -rf ebin
  	rm -f Makefile
  	rm -f vars.config
-@@ -267,8 +234,6 @@ TAGS:
+@@ -266,8 +233,6 @@ TAGS:
  
  Makefile: Makefile.in
  
@@ -133,7 +133,7 @@ Index: ejabberd/Makefile.in
  dialyzer/erlang.plt:
  	@mkdir -p dialyzer
  	@dialyzer --build_plt --output_plt dialyzer/erlang.plt \
-@@ -277,12 +242,6 @@ dialyzer/erlang.plt:
+@@ -276,12 +241,6 @@ dialyzer/erlang.plt:
  	runtime_tools asn1 observer xmerl et gs wx syntax_tools; \
  	status=$$? ; if [ $$status -ne 2 ]; then exit $$status; else exit 0; fi
  
@@ -146,7 +146,7 @@ Index: ejabberd/Makefile.in
  dialyzer/ejabberd.plt:
  	@mkdir -p dialyzer
  	@dialyzer --build_plt --output_plt dialyzer/ejabberd.plt \
-@@ -293,15 +252,11 @@ erlang_plt: dialyzer/erlang.plt
+@@ -292,15 +251,11 @@ erlang_plt: dialyzer/erlang.plt
  	@dialyzer --plt dialyzer/erlang.plt --check_plt -o dialyzer/erlang.log; \
  	status=$$? ; if [ $$status -ne 2 ]; then exit $$status; else exit 0; fi
  
@@ -166,7 +166,7 @@ Index: ejabberd/Makefile.in
 @@ -316,5 +271,5 @@ quicktest:
  	$(REBAR) skip_deps=true ct suites=elixir
  
- .PHONY: src doc edoc dialyzer Makefile TAGS clean clean-rel distclean rel \
+ .PHONY: src edoc dialyzer Makefile TAGS clean clean-rel distclean rel \
 -	install uninstall uninstall-binary uninstall-all translations deps test spec \
 -	quicktest erlang_plt deps_plt ejabberd_plt
 +	install uninstall uninstall-binary uninstall-all translations test spec \

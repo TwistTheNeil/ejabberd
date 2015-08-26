@@ -7,5 +7,4 @@ enable-ipv6.diff
 disable_internal_logrotate.patch
 fix_reopen_log.patch
 configure_ssl.patch
-fix_muc_logs.patch
 fix_ejabberdctl_metachars.patch
