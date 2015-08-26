@@ -22,13 +22,11 @@ override_dh_auto_install:
 	dh_auto_install
 	
 	# install init script and service file
-	install -d $(DESTDIR)/etc/init.d $(DESTDIR)/etc/default
 	install -m 755 $(CURDIR)/ejabberd.init $(CURDIR)/debian/
 	install -m 644 $(CURDIR)/ejabberd.service.template $(CURDIR)/debian/ejabberd.service
 	
 	# ejabberd.yml is generated from the template through debconf
 	rm $(DESTDIR)/etc/ejabberd/ejabberd.yml
-	install -d $(DESTDIR)/usr/share/ejabberd
 	install -m 644 ejabberd.yml.example $(DESTDIR)/usr/share/ejabberd/ejabberd.yml.example
 	
 	# ejabberdctl.cfg goes into /etc/default/
@@ -39,9 +37,8 @@ override_dh_auto_install:
 	install -m 644 debian/ejabberd.ufw.profile $(DESTDIR)/etc/ufw/applications.d/ejabberd
 	
 	# remove unnecessary files/folders
-	rm -r $(DESTDIR)/var/lock
-	rm -rf $(DESTDIR)/usr/lib/$(DPKG_CACHE_DEB_BUILD_MULTIARCH)/ejabberd/priv/lib
 	rm $(DESTDIR)/usr/share/doc/ejabberd/COPYING
+	find $(DESTDIR) -type d -empty -delete
 
 .PHONY: override_dh_installinit
 override_dh_installinit:

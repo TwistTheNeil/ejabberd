@@ -1,4 +1,3 @@
-* Install systemd service file and patch PID file creation
 * Call for debconf translation updates
 * Update ejabberdctl.8
 
