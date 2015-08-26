@@ -1,5 +1,7 @@
-* Add a debconf check for the config change to YAML / add info to Jessie release notes
-
+* Clean up (Build-)Depends and move some packages to Recommends/Suggests
+* Add versioned Conflicts: ejabberd-contrib
+* Install systemd service file and patch PID file creation
+* Call for debconf translation updates
 * Update ejabberdctl.8
 
 
