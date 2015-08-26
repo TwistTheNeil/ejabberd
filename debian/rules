@@ -16,11 +16,6 @@ override_dh_auto_configure:
 	        dh_auto_configure -- --enable-odbc --enable-mysql --enable-pgsql --enable-pam \
 			--enable-zlib --enable-json --enable-iconv --enable-lager --enable-redis
 
-.PHONY: override_dh_auto_build
-override_dh_auto_build:
-	dh_auto_build
-	cd doc && make all
-
 .PHONY: override_dh_auto_install
 override_dh_auto_install:
 	dh_auto_install
@@ -51,11 +46,6 @@ override_dh_installdeb:
 
 .PHONY: override_dh_auto_clean
 override_dh_auto_clean:
-	cd doc && make clean
-	rm -f doc/version.tex
-	rm -rf Makefile config.log config.status src/ejabberd.app.src vars.config ebin \
-		ejabberd.init ejabberdctl.example include/XmppAddr.hrl src/XmppAddr.asn1db \
-		src/XmppAddr.erl src/eldap_filter_yecc.erl
 	rm -f debian/ejabberd.init
 	dh_auto_clean
 	debconf-updatepo
