@@ -1,3 +1,4 @@
+fix_rebar.diff
 remove_deps.diff
 disable_test.diff
 fix_includes.diff
