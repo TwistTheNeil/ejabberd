@@ -27,10 +27,13 @@
 
 -author('alexey@process-one.net').
 
+-protocol({xep, 49, '1.2'}).
+
 -behaviour(gen_mod).
 
 -export([start/2, stop/1, process_sm_iq/3, import/3,
-	 remove_user/2, get_data/2, export/1, import/1]).
+	 remove_user/2, get_data/2, export/1, import/1,
+	 mod_opt_type/1]).
 
 -include("ejabberd.hrl").
 -include("logger.hrl").
@@ -49,7 +52,7 @@
 start(Host, Opts) ->
     IQDisc = gen_mod:get_opt(iqdisc, Opts, fun gen_iq_handler:check_type/1,
                              one_queue),
-    case gen_mod:db_type(Opts) of
+    case gen_mod:db_type(Host, Opts) of
       mnesia ->
 	  mnesia:create_table(private_storage,
 			      [{disc_only_copies, [node()]},
@@ -319,3 +322,7 @@ import(_LServer, riak, #private_storage{usns = {LUser, LServer, _}} = PS) ->
 		      [{'2i', [{<<"us">>, {LUser, LServer}}]}]);
 import(_, _, _) ->
     pass.
+
+mod_opt_type(db_type) -> fun gen_mod:v_db/1;
+mod_opt_type(iqdisc) -> fun gen_iq_handler:check_type/1;
+mod_opt_type(_) -> [db_type, iqdisc].

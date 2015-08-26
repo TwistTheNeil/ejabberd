@@ -25,8 +25,10 @@
 %%%-------------------------------------------------------------------
 -module(ejabberd_logger).
 
+-behaviour(ejabberd_config).
+
 %% API
--export([start/0, reopen_log/0, get/0, set/1, get_log_path/0]).
+-export([start/0, reopen_log/0, get/0, set/1, get_log_path/0, opt_type/1]).
 
 -include("ejabberd.hrl").
 
@@ -46,8 +48,10 @@
 %% If not defined it checks the environment variable EJABBERD_LOG_PATH.
 %% And if that one is neither defined, returns the default value:
 %% "ejabberd.log" in current directory.
+%% Note: If the directory where to place the ejabberd log file to not exist,
+%% it is not created and no log file will be generated.
 get_log_path() ->
-    case application:get_env(ejabberd, log_path) of
+    case ejabberd_config:env_binary_to_list(ejabberd, log_path) of
 	{ok, Path} ->
 	    Path;
 	undefined ->
@@ -58,6 +62,17 @@ get_log_path() ->
 		    Path
 	    end
     end.
+
+opt_type(log_rotate_date) ->
+    fun(S) -> binary_to_list(iolist_to_binary(S)) end;
+opt_type(log_rotate_size) ->
+    fun(I) when is_integer(I), I >= 0 -> I end;
+opt_type(log_rotate_count) ->
+    fun(I) when is_integer(I), I >= 0 -> I end;
+opt_type(log_rate_limit) ->
+    fun(I) when is_integer(I), I >= 0 -> I end;
+opt_type(_) ->
+    [log_rotate_date, log_rotate_size, log_rotate_count, log_rate_limit].
 
 -ifdef(LAGER).
 

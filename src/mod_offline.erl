@@ -26,6 +26,11 @@
 -module(mod_offline).
 
 -author('alexey@process-one.net').
+
+-protocol({xep, 22, '1.4'}).
+-protocol({xep, 23, '1.3'}).
+-protocol({xep, 160, '1.0'}).
+
 -define(GEN_SERVER, p1_server).
 -behaviour(?GEN_SERVER).
 
@@ -52,9 +57,9 @@
 	 webadmin_user/4,
 	 webadmin_user_parse_query/5]).
 
-%% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2,
-	 handle_info/2, terminate/2, code_change/3]).
+	 handle_info/2, terminate/2, code_change/3,
+	 mod_opt_type/1]).
 
 -include("ejabberd.hrl").
 -include("logger.hrl").
@@ -108,7 +113,7 @@ stop(Host) ->
 %%====================================================================
 
 init([Host, Opts]) ->
-    case gen_mod:db_type(Opts) of
+    case gen_mod:db_type(Host, Opts) of
       mnesia ->
 	  mnesia:create_table(offline_msg,
 			      [{disc_only_copies, [node()]}, {type, bag},
@@ -1057,10 +1062,7 @@ count_offline_messages(LUser, LServer, riak) ->
             Res;
         _ ->
             0
-    end;
-count_offline_messages(_Acc, User, Server) ->
-    N = count_offline_messages(User, Server),
-    {stop, N}.
+    end.
 
 %% Return the number of records matching a given match expression.
 %% This function is intended to be used inside a Mnesia transaction.
@@ -1138,3 +1140,11 @@ import(_LServer, riak, #offline_msg{us = US, timestamp = TS} = M) ->
 		      [{i, TS}, {'2i', [{<<"us">>, US}]}]);
 import(_, _, _) ->
     pass.
+
+mod_opt_type(access_max_user_messages) ->
+    fun (A) -> A end;
+mod_opt_type(db_type) -> fun gen_mod:v_db/1;
+mod_opt_type(store_empty_body) ->
+    fun (V) when is_boolean(V) -> V end;
+mod_opt_type(_) ->
+    [access_max_user_messages, db_type, store_empty_body].

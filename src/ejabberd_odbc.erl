@@ -25,6 +25,8 @@
 
 -module(ejabberd_odbc).
 
+-behaviour(ejabberd_config).
+
 -author('alexey@process-one.net').
 
 -define(GEN_FSM, p1_fsm).
@@ -40,6 +42,8 @@
 	 escape/1,
 	 escape_like/1,
 	 to_bool/1,
+	 sqlite_db/1,
+	 sqlite_file/1,
          encode_term/1,
          decode_term/1,
 	 keep_alive/1]).
@@ -49,16 +53,16 @@
 	 handle_info/3, terminate/3, print_state/1,
 	 code_change/4]).
 
-%% gen_fsm states
 -export([connecting/2, connecting/3,
-	 session_established/2, session_established/3]).
+	 session_established/2, session_established/3,
+	 opt_type/1]).
 
 -include("ejabberd.hrl").
 -include("logger.hrl").
 
 -record(state,
 	{db_ref = self()                     :: pid(),
-         db_type = odbc                      :: pgsql | mysql | odbc,
+         db_type = odbc                      :: pgsql | mysql | sqlite | odbc,
          start_interval = 0                  :: non_neg_integer(),
          host = <<"">>                       :: binary(),
 	 max_pending_requests_len            :: non_neg_integer(),
@@ -191,13 +195,30 @@ to_bool(_) -> false.
 
 encode_term(Term) ->
     escape(list_to_binary(
-             erl_prettypr:format(erl_syntax:abstract(Term)))).
+             erl_prettypr:format(erl_syntax:abstract(Term),
+                                 [{paper, 65535}, {ribbon, 65535}]))).
 
 decode_term(Bin) ->
     Str = binary_to_list(<<Bin/binary, ".">>),
     {ok, Tokens, _} = erl_scan:string(Str),
     {ok, Term} = erl_parse:parse_term(Tokens),
     Term.
+
+-spec sqlite_db(binary()) -> atom().
+sqlite_db(Host) ->
+    list_to_atom("ejabberd_sqlite_" ++ binary_to_list(Host)).
+
+-spec sqlite_file(binary()) -> string().
+sqlite_file(Host) ->
+    case ejabberd_config:get_option({odbc_database, Host},
+				    fun iolist_to_binary/1) of
+	undefined ->
+	    {ok, Cwd} = file:get_cwd(),
+	    filename:join([Cwd, "sqlite", atom_to_list(node()),
+			   binary_to_list(Host), "ejabberd.db"]);
+	File ->
+	    binary_to_list(File)
+    end.
 
 %%%----------------------------------------------------------------------
 %%% Callback functions from gen_fsm
@@ -224,7 +245,8 @@ init([Host, StartInterval]) ->
 connecting(connect, #state{host = Host} = State) ->
     ConnectRes = case db_opts(Host) of
 		   [mysql | Args] -> apply(fun mysql_connect/5, Args);
-		   [pgsql | Args] -> apply(fun pgsql_connect/5, Args);
+           [pgsql | Args] -> apply(fun pgsql_connect/5, Args);
+           [sqlite | Args] -> apply(fun sqlite_connect/1, Args);
 		   [odbc | Args] -> apply(fun odbc_connect/1, Args)
 		 end,
     {_, PendingRequests} = State#state.pending_requests,
@@ -327,8 +349,9 @@ handle_info(Info, StateName, State) ->
 terminate(_Reason, _StateName, State) ->
     ejabberd_odbc_sup:remove_pid(State#state.host, self()),
     case State#state.db_type of
-      mysql -> catch p1_mysql_conn:stop(State#state.db_ref);
-      _ -> ok
+        mysql -> catch p1_mysql_conn:stop(State#state.db_ref);
+        sqlite -> catch sqlite3:close(sqlite_db(State#state.host));
+        _ -> ok
     end,
     ok.
 
@@ -456,7 +479,10 @@ sql_query_internal(Query) ->
 						   [{timeout, (?TRANSACTION_TIMEOUT) - 1000},
 						    {result_type, binary}])),
 		%% ?INFO_MSG("MySQL, Received result~n~p~n", [R]),
-		R
+		  R;
+	      sqlite ->
+		  Host = State#state.host,
+		  sqlite_to_odbc(Host, sqlite3:sql_exec(sqlite_db(Host), Query))
 	  end,
     case Res of
       {error, <<"No SQL-driver information available.">>} ->
@@ -486,7 +512,49 @@ abort_on_driver_error(Reply, From) ->
 %% Open an ODBC database connection
 odbc_connect(SQLServer) ->
     ejabberd:start_app(odbc),
-    odbc:connect(binary_to_list(SQLServer), [{scrollable_cursors, off}]).
+    odbc:connect(binary_to_list(SQLServer), [{scrollable_cursors, off},
+                                             {binary_strings, on}]).
+
+%% == Native SQLite code
+
+%% part of init/1
+%% Open a database connection to SQLite
+
+sqlite_connect(Host) ->
+    File = sqlite_file(Host),
+    case filelib:ensure_dir(File) of
+	ok ->
+	    case sqlite3:open(sqlite_db(Host), [{file, File}]) of
+		{ok, Ref} ->
+		    sqlite3:sql_exec(
+		      sqlite_db(Host), "pragma foreign_keys = on"),
+		    {ok, Ref};
+		{error, {already_started, Ref}} ->
+		    {ok, Ref};
+		{error, Reason} ->
+		    {error, Reason}
+	    end;
+	Err ->
+	    Err
+    end.
+
+%% Convert SQLite query result to Erlang ODBC result formalism
+sqlite_to_odbc(Host, ok) ->
+    {updated, sqlite3:changes(sqlite_db(Host))};
+sqlite_to_odbc(Host, {rowid, _}) ->
+    {updated, sqlite3:changes(sqlite_db(Host))};
+sqlite_to_odbc(_Host, [{columns, Columns}, {rows, TRows}]) ->
+    Rows = [lists:map(
+	      fun(I) when is_integer(I) ->
+		      jlib:integer_to_binary(I);
+		 (B) ->
+		      B
+	      end, tuple_to_list(Row)) || Row <- TRows],
+    {selected, [list_to_binary(C) || C <- Columns], Rows};
+sqlite_to_odbc(_Host, {error, _Code, Reason}) ->
+    {error, Reason};
+sqlite_to_odbc(_Host, _) ->
+    {updated, undefined}.
 
 %% == Native PostgreSQL code
 
@@ -570,7 +638,7 @@ mysql_item_to_odbc(Columns, Recs) ->
     {selected, [element(2, Column) || Column <- Columns], Recs}.
 
 to_odbc({selected, Columns, Recs}) ->
-    {selected, Columns, [tuple_to_list(Rec) || Rec <- Recs]};
+    {selected, [list_to_binary(Column) || Column <- Columns], [tuple_to_list(Rec) || Rec <- Recs]};
 to_odbc(Res) ->
     Res.
 
@@ -585,6 +653,7 @@ db_opts(Host) ->
     Type = ejabberd_config:get_option({odbc_type, Host},
                                       fun(mysql) -> mysql;
                                          (pgsql) -> pgsql;
+                                         (sqlite) -> sqlite;
                                          (odbc) -> odbc
                                       end, odbc),
     Server = ejabberd_config:get_option({odbc_server, Host},
@@ -593,6 +662,8 @@ db_opts(Host) ->
     case Type of
         odbc ->
             [odbc, Server];
+        sqlite ->
+            [sqlite, Host];
         _ ->
             Port = ejabberd_config:get_option(
                      {odbc_port, Host},
@@ -623,3 +694,24 @@ fsm_limit_opts() ->
       N when is_integer(N) -> [{max_queue, N}];
       _ -> []
     end.
+
+opt_type(max_fsm_queue) ->
+    fun (N) when is_integer(N), N > 0 -> N end;
+opt_type(odbc_database) -> fun iolist_to_binary/1;
+opt_type(odbc_keepalive_interval) ->
+    fun (I) when is_integer(I), I > 0 -> I end;
+opt_type(odbc_password) -> fun iolist_to_binary/1;
+opt_type(odbc_port) ->
+    fun (P) when is_integer(P), P > 0, P < 65536 -> P end;
+opt_type(odbc_server) -> fun iolist_to_binary/1;
+opt_type(odbc_type) ->
+    fun (mysql) -> mysql;
+	(pgsql) -> pgsql;
+	(sqlite) -> sqlite;
+	(odbc) -> odbc
+    end;
+opt_type(odbc_username) -> fun iolist_to_binary/1;
+opt_type(_) ->
+    [max_fsm_queue, odbc_database, odbc_keepalive_interval,
+     odbc_password, odbc_port, odbc_server, odbc_type,
+     odbc_username].

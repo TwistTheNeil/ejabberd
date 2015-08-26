@@ -24,15 +24,16 @@
 %%%----------------------------------------------------------------------
 
 -module(ext_mod).
+
+-behaviour(ejabberd_config).
 -author("Christophe Romain <christophe.romain@process-one.net>").
 
-%% Packaging service
 -export([start/0, stop/0, update/0, check/1,
-         available_command/0, available/0, available/1,
-         installed_command/0, installed/0, installed/1,
-         install/1, uninstall/1,
-         upgrade/0, upgrade/1,
-         add_sources/2, del_sources/1]).
+	 available_command/0, available/0, available/1,
+	 installed_command/0, installed/0, installed/1,
+	 install/1, uninstall/1, upgrade/0, upgrade/1,
+	 add_sources/2, del_sources/1, modules_dir/0,
+	 opt_type/1]).
 
 -include("ejabberd_commands.hrl").
 
@@ -163,6 +164,7 @@ install(Package) when is_binary(Package) ->
             case compile_and_install(Module, Attrs) of
                 ok ->
                     code:add_patha(module_ebin_dir(Module)),
+                    ejabberd_config:reload_file(),
                     ok;
                 Error ->
                     delete_path(module_lib_dir(Module)),
@@ -181,7 +183,8 @@ uninstall(Package) when is_binary(Package) ->
             code:purge(Module),
             code:delete(Module),
             code:del_path(module_ebin_dir(Module)),
-            delete_path(module_lib_dir(Module));
+            delete_path(module_lib_dir(Module)),
+            ejabberd_config:reload_file();
         false ->
             {error, not_installed}
     end.
@@ -302,7 +305,15 @@ extract_url(Path, DestDir) ->
      ++[{error, unsupported_source}]).
 
 extract_github_master(Repos, DestDir) ->
-    case extract(zip, geturl(Repos ++ "/archive/master.zip"), DestDir) of
+    Base = case string:tokens(Repos, ":") of
+        ["git@github.com", T1] -> "https://github.com/"++T1;
+        _ -> Repos
+    end,
+    Url = case lists:reverse(Base) of
+        [$t,$i,$g,$.|T2] -> lists:reverse(T2);
+        _ -> Base
+    end,
+    case extract(zip, geturl(Url++"/archive/master.zip"), DestDir) of
         ok ->
             RepDir = filename:join(DestDir, module_name(Repos)),
             file:rename(RepDir++"-master", RepDir);
@@ -310,9 +321,23 @@ extract_github_master(Repos, DestDir) ->
             Error
     end.
 
-copy_file(From, To) ->
-    filelib:ensure_dir(To),
-    file:copy(From, To).
+copy(From, To) ->
+    case filelib:is_dir(From) of
+        true ->
+            Copy = fun(F) ->
+                    SubFrom = filename:join(From, F),
+                    SubTo = filename:join(To, F),
+                    copy(SubFrom, SubTo)
+            end,
+            lists:foldl(fun({ok, C2}, {ok, C1}) -> {ok, C1+C2};
+                           ({ok, _}, Error) -> Error;
+                           (Error, _) -> Error
+                end, {ok, 0},
+                [Copy(filename:basename(X)) || X<-filelib:wildcard(From++"/*")]);
+        false ->
+            filelib:ensure_dir(To),
+            file:copy(From, To)
+    end.
 
 delete_path(Path) ->
     case filelib:is_dir(Path) of
@@ -422,9 +447,14 @@ compile_and_install(Module, Spec) ->
         true ->
             {ok, Dir} = file:get_cwd(),
             file:set_cwd(SrcDir),
-            Result = case compile(Module, Spec, LibDir) of
-                ok -> install(Module, Spec, LibDir);
-                Error -> Error
+            Result = case compile_deps(Module, Spec, LibDir) of
+                ok ->
+                    case compile(Module, Spec, LibDir) of
+                        ok -> install(Module, Spec, LibDir);
+                        Error -> Error
+                    end;
+                Error ->
+                    Error
             end,
             file:set_cwd(Dir),
             Result;
@@ -436,19 +466,47 @@ compile_and_install(Module, Spec) ->
             end
     end.
 
+compile_deps(_Module, _Spec, DestDir) ->
+    case filelib:is_dir("deps") of
+        true -> ok;
+        false -> fetch_rebar_deps()
+    end,
+    Ebin = filename:join(DestDir, "ebin"),
+    filelib:ensure_dir(filename:join(Ebin, ".")),
+    Result = lists:foldl(fun(Dep, Acc) ->
+                Inc = filename:join(Dep, "include"),
+                Src = filename:join(Dep, "src"),
+                Options = [{outdir, Ebin}, {i, Inc}],
+                [file:copy(App, Ebin) || App <- filelib:wildcard(Src++"/*.app")],
+                Acc++[case compile:file(File, Options) of
+                        {ok, _} -> ok;
+                        {ok, _, _} -> ok;
+                        {ok, _, _, _} -> ok;
+                        error -> {error, {compilation_failed, File}};
+                        Error -> Error
+                    end
+                     || File <- filelib:wildcard(Src++"/*.erl")]
+        end, [], filelib:wildcard("deps/*")),
+    case lists:dropwhile(
+            fun(ok) -> true;
+                (_) -> false
+            end, Result) of
+        [] -> ok;
+        [Error|_] -> Error
+    end.
+
 compile(_Module, _Spec, DestDir) ->
     Ebin = filename:join(DestDir, "ebin"),
     filelib:ensure_dir(filename:join(Ebin, ".")),
     EjabBin = filename:dirname(code:which(ejabberd)),
     EjabInc = filename:join(filename:dirname(EjabBin), "include"),
-    Logger = case code:is_loaded(lager) of
-        {file, _} -> [{d, 'LAGER'}];
-        _ -> []
-    end,
+    XmlHrl = filename:join(EjabInc, "xml.hrl"),
+    Logger = [{d, 'LAGER'} || code:is_loaded(lager)=/=false],
+    ExtLib = [{d, 'NO_EXT_LIB'} || filelib:is_file(XmlHrl)],
     Options = [{outdir, Ebin}, {i, "include"}, {i, EjabInc},
-               {d, 'NO_EXT_LIB'},  %% use include instead of include_lib
                verbose, report_errors, report_warnings]
-              ++ Logger,
+              ++ Logger ++ ExtLib,
+    [file:copy(App, Ebin) || App <- filelib:wildcard("src/*.app")],
     Result = [case compile:file(File, Options) of
             {ok, _} -> ok;
             {ok, _, _} -> ok;
@@ -465,11 +523,59 @@ compile(_Module, _Spec, DestDir) ->
         [Error|_] -> Error
     end.
 
-install(Module, _Spec, DestDir) ->
-    SpecFile = filename:flatten([Module, ".spec"]),
-    [copy_file(File, filename:join(DestDir, File))
-     || File <- [SpecFile | filelib:wildcard("{ebin,priv,conf,include}/**")]],
-    ok.
+install(Module, Spec, DestDir) ->
+    Errors = lists:dropwhile(fun({_, {ok, _}}) -> true;
+                                (_) -> false
+            end, [{File, copy(File, filename:join(DestDir, File))}
+                  || File <- filelib:wildcard("{ebin,priv,conf,include}/**")]),
+    Result = case Errors of
+        [{F, {error, E}}|_] ->
+            {error, {F, E}};
+        [] ->
+            SpecPath = proplists:get_value(path, Spec),
+            SpecFile = filename:flatten([Module, ".spec"]),
+            copy(filename:join(SpecPath, SpecFile), filename:join(DestDir, SpecFile))
+    end,
+    case Result of
+        {ok, _} -> ok;
+        Error -> Error
+    end.
+
+%% -- minimalist rebar spec parser, only support git
+
+fetch_rebar_deps() ->
+    case rebar_deps("rebar.config")++rebar_deps("rebar.config.script") of
+        [] ->
+            ok;
+        Deps ->
+            filelib:ensure_dir(filename:join("deps", ".")),
+            lists:foreach(fun({_App, Cmd}) ->
+                        os:cmd("cd deps; "++Cmd++"; cd ..")
+                end, Deps)
+    end.
+rebar_deps(Script) ->
+    case file:script(Script) of
+        {ok, Config} when is_list(Config) ->
+            [rebar_dep(Dep) || Dep <- proplists:get_value(deps, Config, [])];
+        {ok, {deps, Deps}} ->
+            [rebar_dep(Dep) || Dep <- Deps];
+        _ ->
+            []
+    end.
+rebar_dep({App, _, {git, Url}}) ->
+    {App, "git clone "++Url++" "++filename:basename(App)};
+rebar_dep({App, _, {git, Url, {branch, Ref}}}) ->
+    {App, "git clone -n "++Url++" "++filename:basename(App)++
+     "; (cd "++filename:basename(App)++
+     "; git checkout -q origin/"++Ref++")"};
+rebar_dep({App, _, {git, Url, {tag, Ref}}}) ->
+    {App, "git clone -n "++Url++" "++filename:basename(App)++
+     "; (cd "++filename:basename(App)++
+     "; git checkout -q "++Ref++")"};
+rebar_dep({App, _, {git, Url, Ref}}) ->
+    {App, "git clone -n "++Url++" "++filename:basename(App)++
+     "; (cd "++filename:basename(App)++
+     "; git checkout -q "++Ref++")"}.
 
 %% -- YAML spec parser
 
@@ -484,3 +590,10 @@ format({Key, Val}) when is_binary(Val) ->
     {Key, binary_to_list(Val)};
 format({Key, Val}) -> % TODO: improve Yaml parsing
     {Key, Val}.
+
+opt_type(allow_contrib_modules) ->
+    fun (false) -> false;
+	(no) -> false;
+	(_) -> true
+    end;
+opt_type(_) -> [allow_contrib_modules].

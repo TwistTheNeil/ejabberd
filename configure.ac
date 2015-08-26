@@ -2,9 +2,11 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.53)
-AC_INIT(ejabberd, m4_esyscmd([echo `git describe --tags 2>/dev/null || echo 0.0` | sed 's/-g.*//;s/-/./' | tr -d '\012']), [ejabberd@process-one.net], [ejabberd])
+AC_INIT(ejabberd, 15.07, ejabberd@process-one.net, ejabberd)
 REQUIRE_ERLANG_MIN="5.9.1 (Erlang/OTP R15B01)"
 REQUIRE_ERLANG_MAX="9.0.0 (No Max)"
+
+AC_CONFIG_MACRO_DIR([m4])
 
 # Checks for programs.
 AC_PROG_MAKE_SET
@@ -106,10 +108,10 @@ AC_ARG_ENABLE(mssql,
 esac],[db_type=generic])
 
 AC_ARG_ENABLE(all,
-[AC_HELP_STRING([--enable-all], [same as --enable-nif --enable-odbc --enable-mysql --enable-pgsql --enable-pam --enable-zlib --enable-riak --enable-redis --enable-json --enable-elixir --enable-iconv --enable-debug --enable-lager --enable-tools (useful for Dialyzer checks, default: no)])],
+[AC_HELP_STRING([--enable-all], [same as --enable-nif --enable-odbc --enable-mysql --enable-pgsql --enable-sqlite --enable-pam --enable-zlib --enable-riak --enable-redis --enable-json --enable-elixir --enable-iconv --enable-debug --enable-lager --enable-tools (useful for Dialyzer checks, default: no)])],
 [case "${enableval}" in
-  yes) nif=true odbc=true mysql=true pgsql=true pam=true zlib=true riak=true redis=true json=true elixir=true iconv=true debug=true lager=true tools=true ;;
-  no) nif=false odbc=false mysql=false pgsql=false pam=false zlib=false riak=false redis=false json=false elixir=false iconv=false debug=false lager=false tools=false ;;
+  yes) nif=true odbc=true mysql=true pgsql=true sqlite=true pam=true zlib=true riak=true redis=true json=true elixir=true iconv=true debug=true lager=true tools=true ;;
+  no) nif=false odbc=false mysql=false pgsql=false sqlite=false pam=false zlib=false riak=false redis=false json=false elixir=false iconv=false debug=false lager=false tools=false ;;
   *) AC_MSG_ERROR(bad value ${enableval} for --enable-all) ;;
 esac],[])
 
@@ -152,6 +154,14 @@ AC_ARG_ENABLE(pgsql,
   no)  pgsql=false ;;
   *) AC_MSG_ERROR(bad value ${enableval} for --enable-pgsql) ;;
 esac],[if test "x$pgsql" = "x"; then pgsql=false; fi])
+
+AC_ARG_ENABLE(sqlite,
+[AC_HELP_STRING([--enable-sqlite], [enable SQLite support (default: no)])],
+[case "${enableval}" in
+  yes) sqlite=true ;;
+  no)  sqlite=false ;;
+  *) AC_MSG_ERROR(bad value ${enableval} for --enable-sqlite) ;;
+esac],[if test "x$sqlite" = "x"; then sqlite=false; fi])
 
 AC_ARG_ENABLE(pam,
 [AC_HELP_STRING([--enable-pam], [enable PAM support (default: no)])],
@@ -245,6 +255,13 @@ fi
 
 ERLANG_DEPRECATED_TYPES_CHECK
 
+if test "$sqlite" = "true"; then
+   AX_LIB_SQLITE3([3.6.19])
+   if test "x$SQLITE3_VERSION" = "x"; then
+      AC_MSG_ERROR(SQLite3 library >= 3.6.19 was not found)
+   fi
+fi
+
 AC_SUBST(hipe)
 AC_SUBST(roster_gateway_workaround)
 AC_SUBST(transient_supervisors)
@@ -254,6 +271,7 @@ AC_SUBST(db_type)
 AC_SUBST(odbc)
 AC_SUBST(mysql)
 AC_SUBST(pgsql)
+AC_SUBST(sqlite)
 AC_SUBST(pam)
 AC_SUBST(zlib)
 AC_SUBST(riak)

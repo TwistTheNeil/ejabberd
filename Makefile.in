@@ -43,6 +43,9 @@ SODIR = $(PRIVDIR)/lib
 # /usr/lib/ejabberd/priv/msgs
 MSGSDIR = $(PRIVDIR)/msgs
 
+# /usr/lib/ejabberd/priv/sql
+SQLDIR = $(PRIVDIR)/sql
+
 # /var/lib/ejabberd/
 SPOOLDIR = $(DESTDIR)@localstatedir@/lib/ejabberd
 
@@ -97,10 +100,6 @@ xref: all
 
 translations:
 	contrib/extract_translations/prepare-translation.sh -updateall
-
-doc:
-	echo making $$target in doc; \
-	(cd doc && $(MAKE) $$target) || exit 1
 
 edoc:
 	$(ERL) -noinput +B -eval \
@@ -176,10 +175,15 @@ install: all
 	$(INSTALL) -d $(SODIR)
 	$(INSTALL) -m 644 $(DLLs) $(SODIR)
 	-[ -f $(SODIR)/jiffy.so ] && (cd $(PRIVDIR); ln -s lib/jiffy.so; true)
+	-[ -f $(SODIR)/sqlite3_drv.so ] && (cd $(PRIVDIR); ln -s lib/sqlite3_drv.so; true)
 	#
 	# Translated strings
 	$(INSTALL) -d $(MSGSDIR)
 	$(INSTALL) -m 644 priv/msgs/*.msg $(MSGSDIR)
+	#
+	# Copy lite.sql
+	-[ -d deps/sqlite3 ] && $(INSTALL) -d $(SQLDIR)
+	-[ -d deps/sqlite3 ] && $(INSTALL) -m 644 sql/lite.sql $(SQLDIR)
 	#
 	# Spool directory
 	$(INSTALL) -d -m 750 $(O_USER) $(SPOOLDIR)
@@ -199,16 +203,9 @@ install: all
 	#
 	# Documentation
 	$(INSTALL) -d $(DOCDIR)
-	[ -f doc/dev.html ] \
-		&& $(INSTALL) -m 644 doc/dev.html $(DOCDIR) \
-		|| echo "No doc/dev.html was built"
 	[ -f doc/guide.html ] \
 		&& $(INSTALL) -m 644 doc/guide.html $(DOCDIR) \
-		|| echo "No doc/guide.html was built"
-	[ -f doc/guide.pdf ] \
-		&& $(INSTALL) -m 644 doc/guide.pdf $(DOCDIR) \
-		|| echo "No doc/guide.pdf was built"
-	$(INSTALL) -m 644 doc/*.png $(DOCDIR)
+		|| echo "Documentation not included in sources"
 	$(INSTALL) -m 644 COPYING $(DOCDIR)
 
 uninstall: uninstall-binary
@@ -229,6 +226,8 @@ uninstall-binary:
 	rm -fr $(SODIR)
 	rm -f  $(MSGSDIR)/*.msgs
 	rm -fr $(MSGSDIR)
+	rm -f  $(SQLDIR)/*.sql
+	rm -fr $(SQLDIR)
 	rm -fr $(PRIVDIR)
 	rm -fr $(EJABBERDDIR)
 
@@ -310,11 +309,12 @@ test:
 	@echo "************************** NOTICE ***************************************"
 	@cat test/README
 	@echo "*************************************************************************"
+	@cd priv && ln -sf ../sql
 	$(REBAR) skip_deps=true ct
 
 quicktest:
 	$(REBAR) skip_deps=true ct suites=elixir
 
-.PHONY: src doc edoc dialyzer Makefile TAGS clean clean-rel distclean rel \
+.PHONY: src edoc dialyzer Makefile TAGS clean clean-rel distclean rel \
 	install uninstall uninstall-binary uninstall-all translations deps test spec \
 	quicktest erlang_plt deps_plt ejabberd_plt

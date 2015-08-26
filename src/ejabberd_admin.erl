@@ -42,7 +42,6 @@
 	 %% Purge DB
 	 delete_expired_messages/0, delete_old_messages/1,
 	 %% Mnesia
-	 export2odbc/2,
 	 set_master/1,
 	 backup_mnesia/1, restore_mnesia/1,
 	 dump_mnesia/1, dump_table/2, load_mnesia/1,
@@ -168,6 +167,10 @@ commands() ->
                         desc = "Export all tables as SQL queries to a file",
                         module = ejd2odbc, function = export,
                         args = [{host, string}, {file, string}], result = {res, rescode}},
+     #ejabberd_commands{name = convert_to_scram, tags = [odbc],
+			desc = "Convert the passwords in 'users' ODBC table to SCRAM",
+			module = ejabberd_auth_odbc, function = convert_to_scram,
+			args = [{host, binary}], result = {res, rescode}},
 
      #ejabberd_commands{name = convert_to_yaml, tags = [config],
                         desc = "Convert the input file from Erlang to YAML format",
@@ -191,7 +194,7 @@ commands() ->
 
      #ejabberd_commands{name = export2odbc, tags = [mnesia],
 			desc = "Export virtual host information from Mnesia tables to SQL files",
-			module = ?MODULE, function = export2odbc,
+			module = ejd2odbc, function = export,
 			args = [{host, string}, {directory, string}],
 			result = {res, rescode}},
      #ejabberd_commands{name = set_master, tags = [mnesia],
@@ -407,23 +410,6 @@ delete_old_messages(Days) ->
 %%%
 %%% Mnesia management
 %%%
-
-export2odbc(Host, Directory) ->
-    Tables = [{export_last, last},
-              {export_offline, offline},
-              {export_private_storage, private_storage},
-              {export_roster, roster},
-              {export_vcard, vcard},
-              {export_vcard_search, vcard_search},
-              {export_passwd, passwd}],
-    Export = fun({TableFun, Table}) ->
-                     Filename = filename:join([Directory, atom_to_list(Table)++".txt"]),
-                     io:format("Trying to export Mnesia table '~p' on Host '~s' to file '~s'~n", [Table, Host, Filename]),
-                     Res = (catch ejd2odbc:TableFun(Host, Filename)),
-                     io:format("  Result: ~p~n", [Res])
-             end,
-    lists:foreach(Export, Tables),
-    ok.
 
 set_master("self") ->
     set_master(node());

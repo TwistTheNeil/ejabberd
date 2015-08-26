@@ -25,11 +25,12 @@
 
 -module(ejabberd_auth_odbc).
 
+-behaviour(ejabberd_config).
+
 -author('alexey@process-one.net').
 
 -behaviour(ejabberd_auth).
 
-%% External exports
 -export([start/1, set_password/3, check_password/3,
 	 check_password/5, try_register/3,
 	 dirty_get_registered_users/0, get_vh_registered_users/1,
@@ -37,9 +38,8 @@
 	 get_vh_registered_users_number/1,
 	 get_vh_registered_users_number/2, get_password/2,
 	 get_password_s/2, is_user_exists/2, remove_user/2,
-	 remove_user/3, store_type/0,
-	 plain_password_required/0,
-         convert_to_scram/1]).
+	 remove_user/3, store_type/0, plain_password_required/0,
+	 convert_to_scram/1, opt_type/1]).
 
 -include("ejabberd.hrl").
 -include("logger.hrl").
@@ -83,7 +83,7 @@ check_password(User, Server, Password) ->
                                 #scram{storedkey = StoredKey,
                                        serverkey = ServerKey,
                                        salt = Salt,
-                                       iterationcount = binary_to_integer(
+                                       iterationcount = jlib:binary_to_integer(
                                                           IterationCount)},
                             is_password_scram_valid(Password, Scram);
                         {selected, [<<"password">>, <<"serverkey">>,
@@ -168,7 +168,7 @@ set_password(User, Server, Password) ->
                                  ejabberd_odbc:escape(Scram#scram.storedkey),
                                  ejabberd_odbc:escape(Scram#scram.serverkey),
                                  ejabberd_odbc:escape(Scram#scram.salt),
-                                 integer_to_binary(Scram#scram.iterationcount)
+                                 jlib:integer_to_binary(Scram#scram.iterationcount)
                                 )
                         of
                         {atomic, ok} -> ok;
@@ -204,7 +204,7 @@ try_register(User, Server, Password) ->
                                  ejabberd_odbc:escape(Scram#scram.storedkey),
                                  ejabberd_odbc:escape(Scram#scram.serverkey),
                                  ejabberd_odbc:escape(Scram#scram.salt),
-                                 integer_to_binary(Scram#scram.iterationcount)
+                                 jlib:integer_to_binary(Scram#scram.iterationcount)
                                 ) of
                         {updated, 1} -> {atomic, ok};
                         _ -> {atomic, exists}
@@ -278,7 +278,7 @@ get_password(User, Server) ->
                             {jlib:decode_base64(StoredKey),
                              jlib:decode_base64(ServerKey),
                              jlib:decode_base64(Salt),
-                             binary_to_integer(IterationCount)};
+                             jlib:binary_to_integer(IterationCount)};
                         _ -> false
                     end;
                 false ->
@@ -439,7 +439,7 @@ convert_to_scram(Server) ->
                         case ejabberd_odbc:sql_query_t(
                                [<<"select username, password from users where "
                                  "iterationcount=0 limit ">>,
-                                integer_to_binary(?BATCH_SIZE),
+                                jlib:integer_to_binary(?BATCH_SIZE),
                                 <<";">>]) of
                             {selected, [<<"username">>, <<"password">>], []} ->
                                 ok;
@@ -453,7 +453,7 @@ convert_to_scram(Server) ->
                                             ejabberd_odbc:escape(Scram#scram.storedkey),
                                             ejabberd_odbc:escape(Scram#scram.serverkey),
                                             ejabberd_odbc:escape(Scram#scram.salt),
-                                            integer_to_binary(Scram#scram.iterationcount)
+                                            jlib:integer_to_binary(Scram#scram.iterationcount)
                                            )
                                   end, Rs),
                                 continue;
@@ -467,3 +467,6 @@ convert_to_scram(Server) ->
                 Error -> Error
             end
     end.
+
+opt_type(auth_password_format) -> fun (V) -> V end;
+opt_type(_) -> [auth_password_format].
