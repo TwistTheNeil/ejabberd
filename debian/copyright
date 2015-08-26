@@ -23,6 +23,7 @@ License: MIT
 
 Files: debian/*
 Copyright: 2014-2015, Philipp Hübner <debalance@debian.org>
+           2015, Mathias Ertl <mati@jabber.at>
            2010-2013, Konstantin Khomoutov <flatworm@users.sourceforge.net>
            2009-2013, Gerfried Fuchs <rhonda@debian.org>
            2009, Hideki Yamane <henrich@debian.or.jp>

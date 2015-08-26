@@ -4,6 +4,7 @@ disable_test.diff
 fix_includes.diff
 fix_examples.patch
 fix_init.patch
+systemd.patch
 enable-ipv6.diff
 disable_internal_logrotate.patch
 fix_reopen_log.patch
