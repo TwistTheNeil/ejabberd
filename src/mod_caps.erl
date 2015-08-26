@@ -29,6 +29,8 @@
 
 -author('henoch@dtek.chalmers.se').
 
+-protocol({xep, 115, '1.5'}).
+
 -behaviour(gen_server).
 
 -behaviour(gen_mod).
@@ -45,10 +47,9 @@
 -export([init/1, handle_info/2, handle_call/3,
 	 handle_cast/2, terminate/2, code_change/3]).
 
-%% hook handlers
--export([user_send_packet/3, user_receive_packet/4,
+-export([user_send_packet/4, user_receive_packet/5,
 	 c2s_presence_in/2, c2s_filter_packet/6,
-	 c2s_broadcast_recipients/6]).
+	 c2s_broadcast_recipients/6, mod_opt_type/1]).
 
 -include("ejabberd.hrl").
 -include("logger.hrl").
@@ -142,11 +143,12 @@ read_caps([_ | Tail], Result) ->
     read_caps(Tail, Result);
 read_caps([], Result) -> Result.
 
-user_send_packet(#jid{luser = User, lserver = Server} = From,
+user_send_packet(#xmlel{name = <<"presence">>, attrs = Attrs,
+			children = Els} = Pkt,
+		 _C2SState,
+		 #jid{luser = User, lserver = Server} = From,
 		 #jid{luser = User, lserver = Server,
-		      lresource = <<"">>},
-		 #xmlel{name = <<"presence">>, attrs = Attrs,
-		       children = Els} = Pkt) ->
+		      lresource = <<"">>}) ->
     Type = xml:get_attr_s(<<"type">>, Attrs),
     if Type == <<"">>; Type == <<"available">> ->
 	   case read_caps(Els) of
@@ -157,13 +159,14 @@ user_send_packet(#jid{luser = User, lserver = Server} = From,
        true -> ok
     end,
     Pkt;
-user_send_packet( _From, _To, Pkt) ->
+user_send_packet(Pkt, _C2SState, _From, _To) ->
     Pkt.
 
-user_receive_packet(#jid{lserver = Server},
-		    From, _To,
-		    #xmlel{name = <<"presence">>, attrs = Attrs,
-			   children = Els} = Pkt) ->
+user_receive_packet(#xmlel{name = <<"presence">>, attrs = Attrs,
+			   children = Els} = Pkt,
+		    _C2SState,
+		    #jid{lserver = Server},
+		    From, _To) ->
     Type = xml:get_attr_s(<<"type">>, Attrs),
     IsRemote = not lists:member(From#jid.lserver, ?MYHOSTS),
     if IsRemote and
@@ -176,7 +179,7 @@ user_receive_packet(#jid{lserver = Server},
        true -> ok
     end,
     Pkt;
-user_receive_packet( _JID, _From, _To, Pkt) ->
+user_receive_packet(Pkt, _C2SState, _JID, _From, _To) ->
     Pkt.
 
 -spec caps_stream_features([xmlel()], binary()) -> [xmlel()].
@@ -240,27 +243,24 @@ c2s_presence_in(C2SState,
 		  error -> gb_trees:empty()
 		end,
 	   Caps = read_caps(Els),
-	   {CapsUpdated, NewRs} = case Caps of
-				    nothing when Insert == true -> {false, Rs};
-				    _ when Insert == true ->
-					case gb_trees:lookup(LFrom, Rs) of
-					  {value, Caps} -> {false, Rs};
-					  none ->
-					      {true,
-					       gb_trees:insert(LFrom, Caps,
-							       Rs)};
-					  _ ->
-					      {true,
-					       gb_trees:update(LFrom, Caps, Rs)}
-					end;
-				    _ -> {false, gb_trees:delete_any(LFrom, Rs)}
-				  end,
-	   if CapsUpdated ->
-		  ejabberd_hooks:run(caps_update, To#jid.lserver,
-				     [From, To,
-                                      get_features(To#jid.lserver, Caps)]);
-	      true -> ok
-	   end,
+	   NewRs = case Caps of
+		     nothing when Insert == true -> Rs;
+		     _ when Insert == true ->
+			 case gb_trees:lookup(LFrom, Rs) of
+			   {value, Caps} -> Rs;
+			   none ->
+				ejabberd_hooks:run(caps_add, To#jid.lserver,
+						   [From, To,
+						    get_features(To#jid.lserver, Caps)]),
+				gb_trees:insert(LFrom, Caps, Rs);
+			   _ ->
+				ejabberd_hooks:run(caps_update, To#jid.lserver,
+						   [From, To,
+						    get_features(To#jid.lserver, Caps)]),
+				gb_trees:update(LFrom, Caps, Rs)
+			 end;
+		     _ -> gb_trees:delete_any(LFrom, Rs)
+		   end,
 	   ejabberd_c2s:set_aux_field(caps_resources, NewRs,
 				      C2SState);
        true -> C2SState
@@ -321,7 +321,7 @@ init_db(_, _) ->
     ok.
 
 init([Host, Opts]) ->
-    init_db(gen_mod:db_type(Opts), Host),
+    init_db(gen_mod:db_type(Host, Opts), Host),
     MaxSize = gen_mod:get_opt(cache_size, Opts,
                               fun(I) when is_integer(I), I>0 -> I end,
                               1000),
@@ -752,3 +752,11 @@ import_next(LServer, DBType, NodePair) ->
             ok
     end,
     import_next(LServer, DBType, ets:next(caps_features_tmp, NodePair)).
+
+mod_opt_type(cache_life_time) ->
+    fun (I) when is_integer(I), I > 0 -> I end;
+mod_opt_type(cache_size) ->
+    fun (I) when is_integer(I), I > 0 -> I end;
+mod_opt_type(db_type) -> fun gen_mod:v_db/1;
+mod_opt_type(_) ->
+    [cache_life_time, cache_size, db_type].

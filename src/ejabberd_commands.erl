@@ -317,7 +317,13 @@ execute_command2(Command, Arguments) ->
     Module = Command#ejabberd_commands.module,
     Function = Command#ejabberd_commands.function,
     ?DEBUG("Executing command ~p:~p with Args=~p", [Module, Function, Arguments]),
-    apply(Module, Function, Arguments).
+    try apply(Module, Function, Arguments) of
+	Response ->
+	    Response
+    catch
+	Problem ->
+	    {error, Problem}
+    end.
 
 -spec get_tags_commands() -> [{string(), [string()]}].
 
@@ -370,6 +376,15 @@ check_access_commands(AccessCommands, Auth, Method, Command, Arguments) ->
     AccessCommandsAllowed =
 	lists:filter(
 	  fun({Access, Commands, ArgumentRestrictions}) ->
+		  case check_access(Access, Auth) of
+		      true ->
+			  check_access_command(Commands, Command, ArgumentRestrictions,
+					       Method, Arguments);
+		      false ->
+			  false
+		  end;
+	      ({Access, Commands}) ->
+		  ArgumentRestrictions = [],
 		  case check_access(Access, Auth) of
 		      true ->
 			  check_access_command(Commands, Command, ArgumentRestrictions,

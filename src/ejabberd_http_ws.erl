@@ -24,16 +24,17 @@
 %%%----------------------------------------------------------------------
 -module(ejabberd_http_ws).
 
+-behaviour(ejabberd_config).
+
 -author('ecestari@process-one.net').
 
 -behaviour(gen_fsm).
 
-% External exports
 -export([start/1, start_link/1, init/1, handle_event/3,
 	 handle_sync_event/4, code_change/4, handle_info/3,
-	 terminate/3, send_xml/2, setopts/2, sockname/1, peername/1,
-	 controlling_process/2, become_controller/2, close/1,
-	 socket_handoff/6]).
+	 terminate/3, send_xml/2, setopts/2, sockname/1,
+	 peername/1, controlling_process/2, become_controller/2,
+	 close/1, socket_handoff/6, opt_type/1]).
 
 -include("ejabberd.hrl").
 -include("logger.hrl").
@@ -138,7 +139,11 @@ handle_event({activate, From}, StateName, StateData) ->
              StateData#state{waiting_input = From}};
       Input ->
             Receiver = From,
-            Receiver ! {tcp, StateData#state.socket, Input},
+            lists:foreach(fun(I) when is_binary(I)->
+                                  Receiver ! {tcp, StateData#state.socket, I};
+                             (I2) ->
+                                  Receiver ! {tcp, StateData#state.socket, [I2]}
+                          end, Input),
             {next_state, StateName,
              StateData#state{input = [], waiting_input = false,
                              last_receiver = Receiver}}
@@ -187,7 +192,19 @@ handle_sync_event({send_xml, Packet}, _From, StateName,
         skip ->
             ok
     end,
-    {reply, ok, StateName, StateData};
+    SN2 = case Packet2 of
+              {xmlstreamelement, #xmlel{name = <<"close">>}} ->
+                  stream_end_sent;
+              _ ->
+                  StateName
+          end,
+    {reply, ok, SN2, StateData};
+handle_sync_event(close, _From, StateName, #state{ws = {_, WsPid}, rfc_compilant = true} = StateData)
+  when StateName /= stream_end_sent ->
+    Close = #xmlel{name = <<"close">>,
+                   attrs = [{<<"xmlns">>, <<"urn:ietf:params:xml:ns:xmpp-framing">>}]},
+    WsPid ! {send, xml:element_to_binary(Close)},
+    {stop, normal, StateData};
 handle_sync_event(close, _From, _StateName, StateData) ->
     {stop, normal, StateData}.
 
@@ -197,7 +214,7 @@ handle_info({received, Packet}, StateName, StateDataI) ->
     {StateData, Parsed} = parse(StateDataI, Packet),
     SD = case StateData#state.waiting_input of
              false ->
-                 Input = StateData#state.input ++ Parsed,
+                 Input = StateData#state.input ++ if is_binary(Parsed) -> [Parsed]; true -> Parsed end,
                  StateData#state{input = Input};
              Receiver ->
                  Receiver ! {tcp, StateData#state.socket, Parsed},
@@ -337,3 +354,10 @@ parsed_items(List) ->
     after 0 ->
             lists:reverse(List)
     end.
+
+opt_type(websocket_ping_interval) ->
+    fun (I) when is_integer(I), I >= 0 -> I end;
+opt_type(websocket_timeout) ->
+    fun (I) when is_integer(I), I > 0 -> I end;
+opt_type(_) ->
+    [websocket_ping_interval, websocket_timeout].

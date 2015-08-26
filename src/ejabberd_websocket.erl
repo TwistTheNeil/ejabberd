@@ -38,6 +38,8 @@
 
 -module(ejabberd_websocket).
 
+-protocol({rfc, 6455}).
+
 -author('ecestari@process-one.net').
 
 -export([check/2, socket_handoff/8]).
@@ -73,9 +75,10 @@ check(_Path, Headers) ->
 		  {_, HVal} ->
 		      case Val of
 			ignore -> false; % ignore value -> ok, remove from list
-			HVal -> false;   % expected val -> ok, remove from list
 			_ ->
-			    true         % val is different, keep in list
+			    % expected value -> ok, remove from list (false)
+			    % value is different, keep in list (true)
+			    str:to_lower(HVal) /= Val
                       end
                 end
         end,

@@ -35,13 +35,15 @@
          get_version/0, get_myhosts/0, get_mylang/0,
          prepare_opt_val/4, convert_table_to_binary/5,
          transform_options/1, collect_options/1,
-         convert_to_yaml/1, convert_to_yaml/2]).
+         convert_to_yaml/1, convert_to_yaml/2,
+         env_binary_to_list/2, opt_type/1, may_hide_data/1]).
 
 -include("ejabberd.hrl").
 -include("logger.hrl").
 -include("ejabberd_config.hrl").
 -include_lib("kernel/include/file.hrl").
 
+-callback opt_type(atom()) -> function() | [atom()].
 
 %% @type macro() = {macro_key(), macro_value()}
 
@@ -64,7 +66,8 @@ start() ->
 			 {attributes, record_info(fields, local_config)}]),
     mnesia:add_table_copy(local_config, node(), ram_copies),
     Config = get_ejabberd_config_path(),
-    State = read_file(Config),
+    State0 = read_file(Config),
+    State = validate_opts(State0),
     %% This start time is used by mod_last:
     {MegaSecs, Secs, _} = now(),
     UnixTime = MegaSecs*1000000 + Secs,
@@ -84,7 +87,7 @@ start() ->
 %% If not specified, the default value 'ejabberd.yml' is assumed.
 %% @spec () -> string()
 get_ejabberd_config_path() ->
-    case application:get_env(config) of
+    case get_env_config() of
 	{ok, Path} -> Path;
 	undefined ->
 	    case os:getenv("EJABBERD_CONFIG_PATH") of
@@ -95,13 +98,26 @@ get_ejabberd_config_path() ->
 	    end
     end.
 
+-spec get_env_config() -> {ok, string()} | undefined.
+get_env_config() ->
+    %% First case: the filename can be specified with: erl -config "/path/to/ejabberd.yml".
+    case application:get_env(config) of
+	R = {ok, _Path} -> R;
+	undefined ->
+            %% Second case for embbeding ejabberd in another app, for example for Elixir:
+            %% config :ejabberd,
+            %%   file: "config/ejabberd.yml"
+            application:get_env(ejabberd, file)
+    end.
+
 %% @doc Read the ejabberd configuration file.
 %% It also includes additional configuration files and replaces macros.
 %% This function will crash if finds some error in the configuration file.
 %% @spec (File::string()) -> #state{}.
 read_file(File) ->
     read_file(File, [{replace_macros, true},
-                     {include_files, true}]).
+                     {include_files, true},
+                     {include_modules_configs, true}]).
 
 read_file(File, Opts) ->
     Terms1 = get_plain_terms_file(File, Opts),
@@ -155,6 +171,22 @@ convert_to_yaml(File, Output) ->
             file:write_file(FileName, Data)
     end.
 
+%% Some Erlang apps expects env parameters to be list and not binary.
+%% For example, Mnesia is not able to start if mnesia dir is passed as a binary.
+%% However, binary is most common on Elixir, so it is easy to make a setup mistake.
+-spec env_binary_to_list(atom(), atom()) -> {ok, any()}|undefined.
+env_binary_to_list(Application, Parameter) ->
+    %% Application need to be loaded to allow setting parameters
+    application:load(Application),
+    case application:get_env(Application, Parameter) of
+        {ok, Val} when is_binary(Val) ->
+            BVal = binary_to_list(Val),
+            application:set_env(Application, Parameter, BVal),
+            {ok, BVal};
+        Other ->
+            Other
+    end.
+
 %% @doc Read an ejabberd configuration file and return the terms.
 %% Input is an absolute or relative path to an ejabberd config file.
 %% Returns a list of plain terms,
@@ -171,7 +203,14 @@ get_plain_terms_file(File1, Opts) ->
     File = get_absolute_path(File1),
     case consult(File) of
 	{ok, Terms} ->
-            BinTerms = strings_to_binary(Terms),
+            BinTerms1 = strings_to_binary(Terms),
+            ModInc = case proplists:get_bool(include_modules_configs, Opts) of
+                         true ->
+                             filelib:wildcard(ext_mod:modules_dir() ++ "/*/conf/*.{yml,yaml}");
+                         _ ->
+                             []
+                     end,
+            BinTerms = BinTerms1 ++ [{include_config_file, list_to_binary(V)} || V <- ModInc],
             case proplists:get_bool(include_files, Opts) of
                 true ->
                     include_config_files(BinTerms);
@@ -345,7 +384,26 @@ include_config_files(Terms) ->
                fun({File, Opts}) ->
                        include_config_file(File, Opts)
                end, lists:flatten(FileOpts)),
-    Terms1 ++ Terms2.
+
+    SpecialTerms = dict:from_list([{hosts, []}, {listen, []}, {modules, []}]),
+    PartDict = dict:store(rest, [], SpecialTerms),
+    Partition = fun(L) ->
+                        lists:foldr(fun({Name, Val} = Pair, Dict) ->
+                                            case dict:find(Name, SpecialTerms) of
+                                                {ok, _} ->
+                                                    dict:append_list(Name, Val, Dict);
+                                                _ ->
+                                                    dict:append(rest, Pair, Dict)
+                                            end;
+                                       (Tuple, Dict2) ->
+                                            dict:append(rest, Tuple, Dict2)
+                                    end, PartDict, L)
+                end,
+
+    Merged = dict:merge(fun(_Name, V1, V2) -> V1 ++ V2 end,
+                        Partition(Terms1), Partition(Terms2)),
+    Rest = dict:fetch(rest, Merged),
+    dict:to_list(dict:erase(rest, Merged)) ++ Rest.
 
 transform_include_option({include_config_file, File}) when is_list(File) ->
     case is_string(File) of
@@ -423,11 +481,11 @@ split_terms_macros(Terms) ->
     lists:foldl(
       fun(Term, {TOs, Ms}) ->
 	      case Term of
-		  {define_macro, Key, Value} -> 
+		  {define_macro, Key, Value} ->
 		      case is_correct_macro({Key, Value}) of
-			  true -> 
+			  true ->
 			      {TOs, Ms++[{Key, Value}]};
-			  false -> 
+			  false ->
 			      exit({macro_not_properly_defined, Term})
 		      end;
                   {define_macro, KeyVals} ->
@@ -657,6 +715,45 @@ get_option(Opt, F, Default) ->
             end
     end.
 
+get_modules_with_options() ->
+    {ok, Mods} = application:get_key(ejabberd, modules),
+    lists:foldl(
+      fun(Mod, D) ->
+	      case catch Mod:opt_type('') of
+		  Opts when is_list(Opts) ->
+		      lists:foldl(
+			fun(Opt, Acc) ->
+				dict:append(Opt, Mod, Acc)
+			end, D, Opts);
+		  {'EXIT', {undef, _}} ->
+		      D
+	      end
+      end, dict:new(), [?MODULE|Mods]).
+
+validate_opts(#state{opts = Opts} = State) ->
+    ModOpts = get_modules_with_options(),
+    NewOpts = lists:filter(
+		fun(#local_config{key = {Opt, _Host}, value = Val}) ->
+			case dict:find(Opt, ModOpts) of
+			    {ok, [Mod|_]} ->
+				VFun = Mod:opt_type(Opt),
+				case catch VFun(Val) of
+				    {'EXIT', _} ->
+					?ERROR_MSG("ignoring option '~s' with "
+						   "invalid value: ~p",
+						   [Opt, Val]),
+					false;
+				    _ ->
+					true
+				end;
+			    _ ->
+				?ERROR_MSG("unknown option '~s' will be likely"
+					   " ignored", [Opt]),
+				true
+			end
+		end, Opts),
+    State#state{opts = NewOpts}.
+
 -spec get_vh_by_auth_method(atom()) -> [binary()].
 
 %% Return the list of hosts handled by a given module
@@ -679,7 +776,10 @@ is_file_readable(Path) ->
     end.
 
 get_version() ->
-    list_to_binary(element(2, application:get_key(ejabberd, vsn))).
+    case application:get_key(ejabberd, vsn) of
+        undefined -> "";
+        {ok, Vsn} -> list_to_binary(Vsn)
+    end.
 
 -spec get_myhosts() -> [binary()].
 
@@ -713,14 +813,24 @@ replace_module(Module) ->
         false -> Module
     end.
 
-replace_modules(Modules) -> lists:map( fun({Module, Opts}) -> case
-    replace_module(Module) of {NewModule, DBType} ->
-    emit_deprecation_warning(Module, NewModule, DBType), NewOpts =
-    [{db_type, DBType} | lists:keydelete(db_type, 1, Opts)],
-    {NewModule, transform_module_options(Module, NewOpts)}; NewModule
-    -> if Module /= NewModule -> emit_deprecation_warning(Module,
-    NewModule); true -> ok end, {NewModule,
-    transform_module_options(Module, Opts)} end end, Modules).
+replace_modules(Modules) ->
+    lists:map(
+        fun({Module, Opts}) ->
+                case replace_module(Module) of
+                    {NewModule, DBType} ->
+                        emit_deprecation_warning(Module, NewModule, DBType),
+                        NewOpts = [{db_type, DBType} |
+                                   lists:keydelete(db_type, 1, Opts)],
+                        {NewModule, transform_module_options(Module, NewOpts)};
+                    NewModule ->
+                        if Module /= NewModule ->
+                                emit_deprecation_warning(Module, NewModule);
+                           true ->
+                                ok
+                        end,
+                        {NewModule, transform_module_options(Module, Opts)}
+                end
+        end, Modules).
 
 %% Elixir module naming
 %% ====================
@@ -1029,4 +1139,32 @@ emit_deprecation_warning(Module, NewModule) ->
         false ->
             ?WARNING_MSG("Module ~s is deprecated, use ~s instead",
                          [Module, NewModule])
+    end.
+
+opt_type(hosts) ->
+    fun(L) when is_list(L) ->
+	    lists:map(
+	      fun(H) ->
+		      iolist_to_binary(H)
+	      end, L)
+    end;
+opt_type(language) ->
+    fun iolist_to_binary/1;
+opt_type(_) ->
+    [hosts, language].
+
+-spec may_hide_data(string()) -> string();
+                   (binary()) -> binary().
+
+may_hide_data(Data) ->
+    case ejabberd_config:get_option(
+	hide_sensitive_log_data,
+	    fun(false) -> false;
+	       (true) -> true
+	    end,
+        false) of
+	false ->
+	    Data;
+	true ->
+	    "hidden_by_ejabberd"
     end.

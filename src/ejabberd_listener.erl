@@ -24,20 +24,15 @@
 %%%----------------------------------------------------------------------
 
 -module(ejabberd_listener).
+
+-behaviour(ejabberd_config).
 -author('alexey@process-one.net').
 
--export([start_link/0, init/1, start/3,
-	 init/3,
-	 start_listeners/0,
-	 start_listener/3,
-	 stop_listeners/0,
-	 stop_listener/2,
-	 parse_listener_portip/2,
-	 add_listener/3,
-	 delete_listener/2,
-         transform_options/1,
-         validate_cfg/1
-	]).
+-export([start_link/0, init/1, start/3, init/3,
+	 start_listeners/0, start_listener/3, stop_listeners/0,
+	 stop_listener/2, parse_listener_portip/2,
+	 add_listener/3, delete_listener/2, transform_options/1,
+	 validate_cfg/1, opt_type/1]).
 
 -include("ejabberd.hrl").
 -include("logger.hrl").
@@ -195,20 +190,15 @@ listen_tcp(PortIP, Module, SockOpts, Port, IPS) ->
 	    ets:delete(listen_sockets, Port),
 	    ListenSocket;
 	_ ->
-	    SockOpts2 = try erlang:system_info(otp_release) >= "R13B" of
-			    true -> [{send_timeout_close, true} | SockOpts];
-			    false -> SockOpts
-			catch
-			    _:_ -> []
-			end,
 	    Res = gen_tcp:listen(Port, [binary,
 					{packet, 0},
 					{active, false},
 					{reuseaddr, true},
 					{nodelay, true},
 					{send_timeout, ?TCP_SEND_TIMEOUT},
+					{send_timeout_close, true},
 					{keepalive, true} |
-					SockOpts2]),
+					SockOpts]),
 	    case Res of
 		{ok, ListenSocket} ->
 		    ListenSocket;
@@ -307,7 +297,7 @@ accept(ListenSocket, Module, Opts) ->
 	    case {inet:sockname(Socket), inet:peername(Socket)} of
 		{{ok, {Addr, Port}}, {ok, {PAddr, PPort}}} ->
 		    ?INFO_MSG("(~w) Accepted connection ~s:~p -> ~s:~p",
-			      [Socket, inet_parse:ntoa(PAddr), PPort,
+			      [Socket, ejabberd_config:may_hide_data(inet_parse:ntoa(PAddr)), PPort,
 			       inet_parse:ntoa(Addr), Port]);
 		_ ->
 		    ok
@@ -546,7 +536,7 @@ normalize_proto(UnknownProto) ->
 socket_error(Reason, PortIP, Module, SockOpts, Port, IPS) ->
     ReasonT = case Reason of
 		  eaddrnotavail ->
-		      "IP address not available: " ++ IPS;
+		      "IP address not available: " ++ binary_to_list(IPS);
 		  eaddrinuse ->
 		      "IP address and port number already used: "
 			  ++binary_to_list(IPS)++" "++integer_to_list(Port);
@@ -665,3 +655,6 @@ prepare_mod(sip) ->
     esip_socket;
 prepare_mod(Mod) when is_atom(Mod) ->
     Mod.
+
+opt_type(listen) -> fun validate_cfg/1;
+opt_type(_) -> [listen].
