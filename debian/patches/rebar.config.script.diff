@@ -1,0 +1,19 @@
+Description: remove dependencies from rebar config
+ Without this patch, dependencies would be downloaded and compiled
+ by rebar at build time.
+Author: Philipp Huebner <debalance@debian.org>
+
+Index: ejabberd/rebar.config.script
+===================================================================
+--- ejabberd.orig/rebar.config.script
++++ ejabberd/rebar.config.script
+@@ -182,9 +182,7 @@ Config = [{erl_opts, Macros ++ HiPE ++ D
+           {xref_checks, []},
+ 	  {xref_queries,
+ 	   [{"(XC - UC) || (XU - X - B - "
+-	     ++ string:join(CfgXrefs, " - ") ++ ")", []}]},
+-          {post_hooks, PostHooks ++ CfgPostHooks},
+-          {deps, Deps ++ CfgDeps}] ++ ElixirConfig,
++	     ++ string:join(CfgXrefs, " - ") ++ ")", []}]}],
+ %%io:format("ejabberd configuration:~n  ~p~n", [Config]),
+ Config.

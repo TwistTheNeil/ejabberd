@@ -1,4 +1,4 @@
-Description: populate ejabberd.service
+Description: populate ejabberd.service.template
  Turn the service template into an actual service file for systemd
 Author: Mathias Ertl <mati@jabber.at>
 
@@ -6,9 +6,12 @@ Index: ejabberd/ejabberd.service.template
 ===================================================================
 --- ejabberd.orig/ejabberd.service.template
 +++ ejabberd/ejabberd.service.template
-@@ -7,11 +7,13 @@ User=ejabberd
+@@ -5,13 +5,14 @@ After=network.target
+ [Service]
+ User=ejabberd
  Group=ejabberd
- LimitNOFILE=16000
+-LimitNOFILE=16000
++LimitNOFILE=32768
  RestartSec=5
 -ExecStart=/bin/sh @ctlscriptpath@/ejabberdctl start
 -ExecStop=@ctlscriptpath@/ejabberdctl stop
@@ -17,7 +20,6 @@ Index: ejabberd/ejabberd.service.template
 -RemainAfterExit=yes
 +ExecStart=/bin/sh /usr/sbin/ejabberdctl start
 +ExecStop=/usr/sbin/ejabberdctl stop
-+ExecReload=/usr/sbin/ejabberdctl reload_config
 +Type=forking
 +Restart=on-failure
 +PIDFile=/run/ejabberd/ejabberd.pid

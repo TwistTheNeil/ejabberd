@@ -1,0 +1,111 @@
+Description: adjust ejabberd.yml.example to sane defaults
+ ejabberd's default configuration needs to be altered to be
+ a useful on Debian systems
+Author: Philipp Huebner <debalance@debian.org>
+
+Index: ejabberd/ejabberd.yml.example
+===================================================================
+--- ejabberd.orig/ejabberd.yml.example
++++ ejabberd/ejabberd.yml.example
+@@ -39,23 +39,10 @@
+ loglevel: 4
+ 
+ ##
+-## rotation: Describe how to rotate logs. Either size and/or date can trigger
+-## log rotation. Setting count to N keeps N rotated logs. Setting count to 0
+-## does not disable rotation, it instead rotates the file and keeps no previous
+-## versions around. Setting size to X rotate log when it reaches X bytes.
+-## To disable rotation set the size to 0 and the date to ""
+-## Date syntax is taken from the syntax newsyslog uses in newsyslog.conf.
+-## Some examples:
+-##  $D0     rotate every night at midnight
+-##  $D23    rotate every day at 23:00 hr
+-##  $W0D23  rotate every week on Sunday at 23:00 hr
+-##  $W5D16  rotate every week on Friday at 16:00 hr
+-##  $M1D0   rotate on the first day of every month at midnight
+-##  $M5D6   rotate on every 5th day of the month at 6:00 hr
+-##
+-log_rotate_size: 10485760
++## rotation: Disable ejabberd's internal log rotation, as the Debian package
++## uses logrotate(8).
++log_rotate_size: 0
+ log_rotate_date: ""
+-log_rotate_count: 1
+ 
+ ##
+ ## overload protection: If you want to limit the number of messages per second
+@@ -113,14 +100,15 @@ hosts:
+ listen: 
+   - 
+     port: 5222
++    ip: "::"
+     module: ejabberd_c2s
+     ##
+     ## If TLS is compiled in and you installed a SSL
+     ## certificate, specify the full path to the
+     ## file and uncomment these lines:
+     ##
+-    ## certfile: "/path/to/ssl.pem"
+-    ## starttls: true
++    certfile: "/etc/ejabberd/ejabberd.pem"
++    starttls: true
+     ##
+     ## To enforce TLS encryption for client connections,
+     ## use this instead of the "starttls" option:
+@@ -129,14 +117,15 @@ listen:
+     ##
+     ## Custom OpenSSL options
+     ##
+-    ## protocol_options:
+-    ##   - "no_sslv3"
++    protocol_options:
++      - "no_sslv3"
+     ##   - "no_tlsv1"
+     max_stanza_size: 65536
+     shaper: c2s_shaper
+     access: c2s
+   - 
+     port: 5269
++    ip: "::"
+     module: ejabberd_s2s_in
+   ##
+   ## ejabberd_service: Interact with external components (transports, ...)
+@@ -169,6 +158,7 @@ listen:
+   ##   module: ejabberd_xmlrpc
+   - 
+     port: 5280
++    ip: "::"
+     module: ejabberd_http
+     request_handlers:
+       "/websocket": ejabberd_http_ws
+@@ -177,6 +167,8 @@ listen:
+     http_bind: true
+     ## register: true
+     captcha: true
++    tls: true
++    certfile: "/etc/ejabberd/ejabberd.pem"
+ 
+ ###.  ==================
+ ###'  S2S GLOBAL OPTIONS
+@@ -186,17 +178,17 @@ listen:
+ ## Allowed values are: false optional required required_trusted
+ ## You must specify a certificate file.
+ ##
+-## s2s_use_starttls: optional
++s2s_use_starttls: optional
+ 
+ ##
+ ## s2s_certfile: Specify a certificate file.
+ ##
+-## s2s_certfile: "/path/to/ssl.pem"
++s2s_certfile: "/etc/ejabberd/ejabberd.pem"
+ 
+ ## Custom OpenSSL options
+ ##
+-## s2s_protocol_options:
+-##   - "no_sslv3"
++s2s_protocol_options:
++  - "no_sslv3"
+ ##   - "no_tlsv1"
+ 
+ ##
