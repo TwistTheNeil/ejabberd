@@ -14,8 +14,7 @@ DESTDIR=$(CURDIR)/debian/ejabberd
 .PHONY: override_dh_auto_configure
 override_dh_auto_configure:
 	        dh_auto_configure -- --enable-odbc --enable-mysql --enable-pgsql --enable-pam \
-			--enable-zlib --enable-json --enable-iconv --enable-lager --enable-redis \
-			--enable-sqlite
+			--enable-zlib --enable-iconv --enable-lager --enable-redis --enable-sqlite
 
 .PHONY: override_dh_auto_install
 override_dh_auto_install:
