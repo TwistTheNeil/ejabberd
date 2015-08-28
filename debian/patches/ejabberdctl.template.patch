@@ -24,7 +24,66 @@ Index: ejabberd/ejabberdctl.template
  
  # check the proper system user is used if defined
  if [ "$INSTALLUSER" != "" ] ; then
-@@ -405,7 +405,7 @@ ctl()
+@@ -29,7 +29,7 @@ if [ "$INSTALLUSER" != "" ] ; then
+             EXEC_CMD="su $INSTALLUSER -c"
+         fi
+     done
+-    if [ `id -g` -eq `id -g $INSTALLUSER` ] ; then
++    if [ `id -nu` = "$INSTALLUSER" -o `id -g` -eq `id -g $INSTALLUSER` ] ; then
+         EXEC_CMD="sh -c"
+     fi
+     if [ "$EXEC_CMD" = "false" ] ; then
+@@ -50,7 +50,8 @@ while [ $# -ne 0 ] ; do
+         --node) ERLANG_NODE_ARG=$1 ; shift ;;
+         --config-dir) ETC_DIR="$1" ; shift ;;
+         --config) EJABBERD_CONFIG_PATH="$1" ; shift ;;
+-        --ctl-config) EJABBERDCTL_CONFIG_PATH="$1" ; shift ;;
++        --default) EJABBERDCTL_CONFIG_PATH="$1" ; shift ;;
++        --default-dir) DEFAULTDIR="$1" ; shift ;;
+         --logs) LOGS_DIR="$1" ; shift ;;
+         --spool) SPOOL_DIR="$1" ; shift ;;
+         *) ARGS="$ARGS $PARAM" ;;
+@@ -61,8 +62,11 @@ done
+ if [ "$ETC_DIR" = "" ] ; then
+     ETC_DIR={{sysconfdir}}/ejabberd
+ fi
++if [ "$DEFAULTDIR" = "" ] ; then
++    DEFAULTDIR={{sysconfdir}}/default
++fi
+ if [ "$EJABBERDCTL_CONFIG_PATH" = "" ] ; then
+-    EJABBERDCTL_CONFIG_PATH=$ETC_DIR/ejabberdctl.cfg
++    EJABBERDCTL_CONFIG_PATH=$DEFAULTDIR/ejabberd
+ fi
+ if [ -f "$EJABBERDCTL_CONFIG_PATH" ] ; then
+     . "$EJABBERDCTL_CONFIG_PATH"
+@@ -107,6 +111,7 @@ EJABBERD_LOG_PATH=$LOGS_DIR/ejabberd.log
+ SASL_LOG_PATH=$LOGS_DIR/erlang.log
+ DATETIME=`date "+%Y%m%d-%H%M%S"`
+ ERL_CRASH_DUMP=$LOGS_DIR/erl_crash_$DATETIME.dump
++HOME=$SPOOL_DIR
+ ERL_INETRC=$ETC_DIR/inetrc
+ 
+ # define mnesia options
+@@ -319,7 +324,8 @@ help()
+     echo "Optional parameters when starting an ejabberd node:"
+     echo "  --config-dir dir   Config ejabberd:    $ETC_DIR"
+     echo "  --config file      Config ejabberd:    $EJABBERD_CONFIG_PATH"
+-    echo "  --ctl-config file  Config ejabberdctl: $EJABBERDCTL_CONFIG_PATH"
++    echo "  --default file     Config ejabberdctl: $EJABBERDCTL_CONFIG_PATH"
++    echo "  --default-dir      Config ejabberdctl: $DEFAULTDIR"
+     echo "  --logs dir         Directory for logs: $LOGS_DIR"
+     echo "  --spool dir        Database spool dir: $SPOOL_DIR"
+     echo "  --node nodename    ejabberd node name: $ERLANG_NODE"
+@@ -341,7 +347,7 @@ ctl()
+         JOT=/usr/bin/jot
+         if [ ! -x "$JOT" ] ; then
+             # no flock or jot, simply invoke ctlexec()
+-            CTL_CONN="ctl-${ERLANG_NODE}"
++            CTL_CONN="ctl-$$-${ERLANG_NODE}"
+             ctlexec $CTL_CONN $COMMAND
+             result=$?
+         else
+@@ -405,7 +411,7 @@ ctl()
  ctlexec()
  {
      CONN_NAME=$1; shift
