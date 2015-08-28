@@ -1,11 +1,16 @@
 ejabberd (15.07-1~exp1) experimental; urgency=low
 
-  * Imported Upstream version 15.07
-  * Refreshed patches for 15.07
+  * Imported Upstream version 15.07 (Closes: #792147)
+  * Complete overhaul of all patches for 15.07
   * Adjusted debian/rules and debian/docs to new upstream release
   * Added patch to use packaged version of rebar
+  * Moved several packages from Depends: to Recommends:
+  * Dropped erlang-jiffy and --enable-json because erlang-jiffy is only
+    used when --enable-json is specified, and --enable-json has no effect
+    in the community edition
+  * Added support for systemd (Closes: #772037)
 
- -- Philipp Huebner <debalance@debian.org>  Wed, 26 Aug 2015 12:35:08 +0200
+ -- Philipp Huebner <debalance@debian.org>  Fri, 28 Aug 2015 17:49:20 +0200
 
 ejabberd (15.03-2) unstable; urgency=low
 
