@@ -68,7 +68,7 @@ Index: ejabberd/Makefile.in
  	# Init script
  	$(SED) -e "s*@ctlscriptpath@*$(SBINDIR)*" \
  		-e "s*@installuser@*$(INIT_USER)*" ejabberd.init.template \
-@@ -151,29 +130,20 @@ install: all
+@@ -151,51 +130,28 @@ install: all
  	$(INSTALL) -d $(BEAMDIR)
  	$(INSTALL) -m 644 ebin/*.app $(BEAMDIR)
  	$(INSTALL) -m 644 ebin/*.beam $(BEAMDIR)
@@ -91,14 +91,44 @@ Index: ejabberd/Makefile.in
  	$(INSTALL) -m 750 $(O_USER) tools/leavecluster $(PBINDIR)
 -	-[ -f deps/p1_pam/priv/bin/epam ] \
 -		&& $(INSTALL) -m 750 $(O_USER) deps/p1_pam/priv/bin/epam $(PBINDIR)
- 	#
- 	# Binary system libraries
- 	$(INSTALL) -d $(SODIR)
+-	#
+-	# Binary system libraries
+-	$(INSTALL) -d $(SODIR)
 -	$(INSTALL) -m 644 $(DLLs) $(SODIR)
- 	-[ -f $(SODIR)/jiffy.so ] && (cd $(PRIVDIR); ln -s lib/jiffy.so; true)
- 	-[ -f $(SODIR)/sqlite3_drv.so ] && (cd $(PRIVDIR); ln -s lib/sqlite3_drv.so; true)
+-	-[ -f $(SODIR)/jiffy.so ] && (cd $(PRIVDIR); ln -s lib/jiffy.so; true)
+-	-[ -f $(SODIR)/sqlite3_drv.so ] && (cd $(PRIVDIR); ln -s lib/sqlite3_drv.so; true)
  	#
-@@ -239,8 +209,6 @@ uninstall-all: uninstall-binary
+ 	# Translated strings
+ 	$(INSTALL) -d $(MSGSDIR)
+ 	$(INSTALL) -m 644 priv/msgs/*.msg $(MSGSDIR)
+ 	#
+-	# Copy lite.sql
+-	-[ -d deps/sqlite3 ] && $(INSTALL) -d $(SQLDIR)
+-	-[ -d deps/sqlite3 ] && $(INSTALL) -m 644 sql/lite.sql $(SQLDIR)
+-	#
+ 	# Spool directory
+ 	$(INSTALL) -d -m 750 $(O_USER) $(SPOOLDIR)
+ 	$(CHOWN_COMMAND) -R @INSTALLUSER@ $(SPOOLDIR) >$(CHOWN_OUTPUT)
+ 	chmod -R 750 $(SPOOLDIR)
+ 	[ ! -f $(COOKIEFILE) ] || { $(CHOWN_COMMAND) @INSTALLUSER@ $(COOKIEFILE) >$(CHOWN_OUTPUT) ; chmod 400 $(COOKIEFILE) ; }
+ 	#
+-	# ejabberdctl lock directory
+-	$(INSTALL) -d -m 750 $(O_USER) $(CTLLOCKDIR)
+-	$(CHOWN_COMMAND) -R @INSTALLUSER@ $(CTLLOCKDIR) >$(CHOWN_OUTPUT)
+-	chmod -R 750 $(CTLLOCKDIR)
+-	#
+ 	# Log directory
+ 	$(INSTALL) -d -m 750 $(O_USER) $(LOGDIR)
+ 	$(CHOWN_COMMAND) -R @INSTALLUSER@ $(LOGDIR) >$(CHOWN_OUTPUT)
+@@ -206,7 +162,6 @@ install: all
+ 	[ -f doc/guide.html ] \
+ 		&& $(INSTALL) -m 644 doc/guide.html $(DOCDIR) \
+ 		|| echo "Documentation not included in sources"
+-	$(INSTALL) -m 644 COPYING $(DOCDIR)
+ 
+ uninstall: uninstall-binary
+ 
+@@ -239,8 +194,6 @@ uninstall-all: uninstall-binary
  	rm -rf $(LOGDIR)
  
  clean:
@@ -107,7 +137,7 @@ Index: ejabberd/Makefile.in
  	rm -rf test/*.beam
  	$(REBAR) clean
  
-@@ -251,7 +219,6 @@ distclean: clean clean-rel
+@@ -251,7 +204,6 @@ distclean: clean clean-rel
  	rm -f config.status
  	rm -f config.log
  	rm -rf autom4te.cache
@@ -115,7 +145,7 @@ Index: ejabberd/Makefile.in
  	rm -rf ebin
  	rm -f Makefile
  	rm -f vars.config
-@@ -266,8 +233,6 @@ TAGS:
+@@ -266,8 +218,6 @@ TAGS:
  
  Makefile: Makefile.in
  
@@ -124,7 +154,7 @@ Index: ejabberd/Makefile.in
  dialyzer/erlang.plt:
  	@mkdir -p dialyzer
  	@dialyzer --build_plt --output_plt dialyzer/erlang.plt \
-@@ -276,12 +241,6 @@ dialyzer/erlang.plt:
+@@ -276,12 +226,6 @@ dialyzer/erlang.plt:
  	runtime_tools asn1 observer xmerl et gs wx syntax_tools; \
  	status=$$? ; if [ $$status -ne 2 ]; then exit $$status; else exit 0; fi
  
@@ -137,7 +167,7 @@ Index: ejabberd/Makefile.in
  dialyzer/ejabberd.plt:
  	@mkdir -p dialyzer
  	@dialyzer --build_plt --output_plt dialyzer/ejabberd.plt \
-@@ -292,29 +251,20 @@ erlang_plt: dialyzer/erlang.plt
+@@ -292,29 +236,20 @@ erlang_plt: dialyzer/erlang.plt
  	@dialyzer --plt dialyzer/erlang.plt --check_plt -o dialyzer/erlang.log; \
  	status=$$? ; if [ $$status -ne 2 ]; then exit $$status; else exit 0; fi
  

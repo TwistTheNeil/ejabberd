@@ -35,10 +35,6 @@ override_dh_auto_install:
 	# install ufw profile
 	install -m 644 debian/ejabberd.ufw.profile $(DESTDIR)/etc/ufw/applications.d/ejabberd
 	
-	# remove unnecessary files/folders
-	rm $(DESTDIR)/usr/share/doc/ejabberd/COPYING
-	find $(DESTDIR) -type d -empty -delete
-
 .PHONY: override_dh_installinit
 override_dh_installinit:
 	dh_installinit -vR
