@@ -2,6 +2,7 @@ Makefile.in.diff
 rebar.config.script.diff
 src.ejabberd_logger.erl.patch
 src.includes.patch
+src.ext_mod.erl.patch
 ejabberdctl.template.patch
 ejabberd.init.template.patch
 ejabberd.service.template.patch

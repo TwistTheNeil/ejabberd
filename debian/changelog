@@ -5,6 +5,7 @@ ejabberd (15.09-1) experimental; urgency=medium
   * Recommend erlang-oauth2
   * Removed doc-base because documentation is now only available online at
     http://docs.ejabberd.im/
+  * Added src.ext_mod.erl.patch to fix support for upstream modules
 
  -- Philipp Huebner <debalance@debian.org>  Thu, 01 Oct 2015 11:33:29 +0200
 

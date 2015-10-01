@@ -1,0 +1,29 @@
+Description: search for include files in /usr/lib/erlang/lib
+ The erlang-p1-xml package installs xml.hrl into a directory such as
+ </usr/lib/erlang/lib/p1_xml-0.2015.06.15/include>.
+ This patch makes sure that all .hrl files in /usr/lib/erlang/lib
+ are found and considered/used.
+Author: Holger Weiss <holger@zedat.fu-berlin.de>
+
+Index: ejabberd/src/ext_mod.erl
+===================================================================
+--- ejabberd.orig/src/ext_mod.erl
++++ ejabberd/src/ext_mod.erl
+@@ -499,12 +499,12 @@ compile(_Module, _Spec, DestDir) ->
+     filelib:ensure_dir(filename:join(Ebin, ".")),
+     EjabBin = filename:dirname(code:which(ejabberd)),
+     EjabInc = filename:join(filename:dirname(EjabBin), "include"),
+-    XmlHrl = filename:join(EjabInc, "xml.hrl"),
++    ExtIncs = filelib:wildcard("/usr/lib/erlang/lib/*/include"),
++    IncOpts = [{i, "include"}, {i, EjabInc} | [{i, Dir} || Dir <- ExtIncs]],
+     Logger = [{d, 'LAGER'} || code:is_loaded(lager)=/=false],
+-    ExtLib = [{d, 'NO_EXT_LIB'} || filelib:is_file(XmlHrl)],
+-    Options = [{outdir, Ebin}, {i, "include"}, {i, EjabInc},
+-               verbose, report_errors, report_warnings]
+-              ++ Logger ++ ExtLib,
++    Options = [{outdir, Ebin} | IncOpts]
++              ++ [verbose, report_errors, report_warnings]
++              ++ [{d, 'NO_EXT_LIB'} | Logger],
+     [file:copy(App, Ebin) || App <- filelib:wildcard("src/*.app")],
+     Result = [case compile:file(File, Options) of
+             {ok, _} -> ok;
