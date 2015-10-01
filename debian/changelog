@@ -1,3 +1,11 @@
+ejabberd (15.09-1~1.gbpe15118) UNRELEASED; urgency=medium
+
+  ** SNAPSHOT build @e15118200d29cb55f31b990385d5752a5b07ab11 **
+
+  * Imported Upstream version 15.09
+
+ -- Philipp Huebner <debalance@debian.org>  Thu, 01 Oct 2015 10:43:15 +0200
+
 ejabberd (15.07-1~exp1) experimental; urgency=low
 
   * Imported Upstream version 15.07 (Closes: #792147)
