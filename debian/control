@@ -21,7 +21,7 @@ Depends: adduser, openssl, ucf, ${misc:Depends}, ${shlibs:Depends},
  		erlang-xmlrpc
 Breaks: ejabberd-contrib (<= 0.2015.08)
 Recommends: ejabberd-contrib (>> 0.2015.08), erlang-p1-mysql, erlang-p1-pam, erlang-p1-pgsql, erlang-redis-client, erlang-p1-sip,
- 		erlang-sqlite3, erlang-p1-stun
+ 		erlang-sqlite3, erlang-p1-stun, erlang-oauth2
 Suggests: libunix-syslog-perl, imagemagick | graphicsmagick-imagemagick-compat
 Provides: xmpp-server
 Description: distributed, fault-tolerant Jabber/XMPP server
