@@ -1,10 +1,12 @@
 * Call for debconf translation updates
 * Update ejabberdctl.8
+* add text to NEWS.Debian about modules now included upstream and new module packaging
+* once available, add erlang-oauth2 to Build-Depends
 
 
 ejabberdctl.8 tasks
 ===================
-* needs to be updated for current release (15.03)
+* needs to be updated for current release (15.09)
 
 * It seems (from the stop-kindly command) that ejabberdctl
   assumes all strings it is passed are encoded in UTF-8
