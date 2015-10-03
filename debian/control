@@ -20,9 +20,8 @@ Depends: adduser, openssl, ucf, ${misc:Depends}, ${shlibs:Depends},
  		erlang-p1-iconv, erlang-p1-stringprep, erlang-p1-tls, erlang-p1-utils, erlang-p1-xml, erlang-p1-yaml, erlang-p1-zlib,
  		erlang-xmlrpc
 Breaks: ejabberd-contrib (<= 0.2015.08)
-Recommends: ejabberd-contrib (>> 0.2015.08), erlang-p1-mysql, erlang-p1-pam, erlang-p1-pgsql, erlang-redis-client, erlang-p1-sip,
- 		erlang-sqlite3, erlang-p1-stun, erlang-oauth2
-Suggests: libunix-syslog-perl, imagemagick | graphicsmagick-imagemagick-compat
+Suggests: ejabberd-contrib (>> 0.2015.08), erlang-p1-mysql, erlang-p1-pam, erlang-p1-pgsql, erlang-redis-client, erlang-p1-sip,
+ 		erlang-sqlite3, erlang-p1-stun, erlang-oauth2, libunix-syslog-perl, imagemagick | graphicsmagick-imagemagick-compat
 Provides: xmpp-server
 Description: distributed, fault-tolerant Jabber/XMPP server
  ejabberd is a Jabber/XMPP server written in Erlang, featuring:
