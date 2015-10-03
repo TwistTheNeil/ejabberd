@@ -1,13 +1,14 @@
-ejabberd (15.09-1) experimental; urgency=medium
+ejabberd (15.09-1~exp1) experimental; urgency=low
 
   * Imported Upstream version 15.09
   * Refreshed patches for 15.09
-  * Recommend erlang-oauth2
+  * Moved all Recommends to Suggests
+  * Suggest erlang-oauth2
   * Removed doc-base because documentation is now only available online at
     http://docs.ejabberd.im/
   * Added src.ext_mod.erl.patch to fix support for upstream modules
 
- -- Philipp Huebner <debalance@debian.org>  Thu, 01 Oct 2015 11:33:29 +0200
+ -- Philipp Huebner <debalance@debian.org>  Sat, 03 Oct 2015 08:24:28 +0200
 
 ejabberd (15.07-1~exp1) experimental; urgency=low
 
