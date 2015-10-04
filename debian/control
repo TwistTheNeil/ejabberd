@@ -5,7 +5,7 @@ Maintainer: Konstantin Khomoutov <flatworm@users.sourceforge.net>
 Uploaders: Gerfried Fuchs <rhonda@debian.org>, Philipp Huebner <debalance@debian.org>
 Build-Depends: debhelper (>= 9), dh-systemd  (>= 1.5), libsqlite3-dev, po-debconf, rebar,
  		erlang-asn1, erlang-base, erlang-crypto, erlang-dev (>= 1:15.b), erlang-eunit, erlang-inets, erlang-lager,
- 		erlang-mnesia, erlang-p1-cache-tab, erlang-p1-iconv, erlang-p1-mysql, erlang-p1-pam, erlang-p1-pgsql,
+ 		erlang-mnesia, erlang-oauth2, erlang-p1-cache-tab, erlang-p1-iconv, erlang-p1-mysql, erlang-p1-pam, erlang-p1-pgsql,
  		erlang-p1-sip, erlang-p1-stringprep, erlang-p1-stun, erlang-p1-tls, erlang-p1-utils, erlang-p1-xml, erlang-p1-yaml,
  		erlang-p1-zlib, erlang-parsetools, erlang-redis-client, erlang-sqlite3, erlang-ssl
 Standards-Version: 3.9.6
