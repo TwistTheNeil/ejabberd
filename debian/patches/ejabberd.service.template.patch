@@ -18,7 +18,7 @@ Index: ejabberd/ejabberd.service.template
 -ExecReload=@ctlscriptpath@/ejabberdctl reload_config
 -Type=oneshot
 -RemainAfterExit=yes
-+ExecStart=/bin/sh /usr/sbin/ejabberdctl start
++ExecStart=/usr/sbin/ejabberdctl start
 +ExecStop=/usr/sbin/ejabberdctl stop
 +Type=forking
 +Restart=on-failure
