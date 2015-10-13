@@ -1,7 +1,11 @@
 ejabberd (15.09-2) UNRELEASED; urgency=medium
 
+  [ Philipp Huebner ]
   * Added AppArmor profile
   * systemd: added Requires=epmd.service to service file
+
+  [ Rhonda D'Vine ]
+  * Set team mail address as maintainer (Closes: #801415)
 
  -- Philipp Huebner <debalance@debian.org>  Fri, 09 Oct 2015 23:41:13 +0200
 
