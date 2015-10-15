@@ -1,8 +1,8 @@
-ejabberd (15.09-2) UNRELEASED; urgency=medium
+ejabberd (15.09-2) unstable; urgency=medium
 
- ejabberd now installs an AppArmor profile which is set to "enforce" by
- default, so make sure to check /var/log/syslog for AppArmor audit lines if
- you're using AppArmor and have trouble getting ejabberd to work.
+  ejabberd now installs an AppArmor profile which is set to "enforce" by
+  default, so make sure to check /var/log/syslog for AppArmor audit lines if
+  you're using AppArmor and have trouble getting ejabberd to work.
 
  -- Philipp Huebner <debalance@debian.org>  Fri, 09 Oct 2015 23:55:05 +0200
 
