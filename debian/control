@@ -4,10 +4,32 @@ Priority: optional
 Maintainer: Ejabberd Packaging Team <ejabberd@deb.at>
 Uploaders: Konstantin Khomoutov <flatworm@users.sourceforge.net>, Philipp Huebner <debalance@debian.org>, Rhonda D'Vine <rhonda@debian.org>
 Build-Depends: debhelper (>= 9), dh-apparmor, dh-systemd (>= 1.5), libsqlite3-dev, po-debconf, rebar,
- 		erlang-asn1, erlang-base, erlang-crypto, erlang-dev (>= 1:15.b), erlang-eunit, erlang-inets, erlang-lager,
- 		erlang-mnesia, erlang-oauth2, erlang-p1-cache-tab, erlang-p1-iconv, erlang-p1-mysql, erlang-p1-pam, erlang-p1-pgsql,
- 		erlang-p1-sip, erlang-p1-stringprep, erlang-p1-stun, erlang-p1-tls, erlang-p1-utils, erlang-p1-xml, erlang-p1-yaml,
- 		erlang-p1-zlib, erlang-parsetools, erlang-redis-client, erlang-sqlite3, erlang-ssl
+ 		erlang-asn1,
+ 		erlang-base,
+ 		erlang-crypto,
+ 		erlang-dev (>= 1:17),
+ 		erlang-eunit,
+ 		erlang-inets,
+ 		erlang-lager,
+ 		erlang-mnesia,
+ 		erlang-oauth2,
+ 		erlang-p1-cache-tab  (>= 0.2015.07.28),
+ 		erlang-p1-iconv      (>= 0.2015.06.24),
+ 		erlang-p1-mysql      (>= 0.2015.09.29),
+ 		erlang-p1-pam        (>= 0.2015.02.23),
+ 		erlang-p1-pgsql      (>= 0.2015.04.28),
+ 		erlang-p1-sip        (>= 0.2015.07.22),
+ 		erlang-p1-stringprep (>= 0.2015.02.04),
+ 		erlang-p1-stun       (>= 0.2015.09.16),
+ 		erlang-p1-tls        (>= 0.2015.08.03),
+ 		erlang-p1-utils      (>= 0.2015.10.07),
+ 		erlang-p1-xml        (>= 0.2015.10.23),
+ 		erlang-p1-yaml       (>= 0.2015.10.07),
+ 		erlang-p1-zlib       (>= 0.2015.02.23),
+ 		erlang-parsetools,
+ 		erlang-redis-client,
+ 		erlang-sqlite3,
+ 		erlang-ssl
 Standards-Version: 3.9.6
 Homepage: https://www.ejabberd.im
 Vcs-Git: git://git.deb.at/pkg/ejabberd.git
@@ -16,12 +38,27 @@ Vcs-Browser: http://git.deb.at/w/pkg/ejabberd.git
 Package: ejabberd
 Architecture: any
 Depends: adduser, openssl, ucf, ${misc:Depends}, ${shlibs:Depends},
- 		erlang-base (>= 1:15.b) | ${erlang-abi:Depends}, ${erlang:Depends}, erlang-lager, erlang-p1-cache-tab,
- 		erlang-p1-iconv, erlang-p1-stringprep, erlang-p1-tls, erlang-p1-utils, erlang-p1-xml, erlang-p1-yaml, erlang-p1-zlib
+ 		erlang-base (>= 1:17) | ${erlang-abi:Depends}, ${erlang:Depends},
+ 		erlang-lager,
+ 		erlang-p1-cache-tab  (>= 0.2015.07.28),
+ 		erlang-p1-iconv      (>= 0.2015.06.24),
+ 		erlang-p1-stringprep (>= 0.2015.02.04),
+ 		erlang-p1-tls        (>= 0.2015.08.03),
+ 		erlang-p1-utils      (>= 0.2015.10.07),
+ 		erlang-p1-xml        (>= 0.2015.10.23),
+ 		erlang-p1-yaml       (>= 0.2015.10.07),
+ 		erlang-p1-zlib       (>= 0.2015.02.23)
+Suggests: apparmor, apparmor-utils, libunix-syslog-perl, imagemagick | graphicsmagick-imagemagick-compat,
+ 		ejabberd-contrib     (>> 0.2015.08),
+ 		erlang-oauth2,
+ 		erlang-p1-mysql      (>= 0.2015.09.29),
+ 		erlang-p1-pam        (>= 0.2015.02.23),
+ 		erlang-p1-pgsql      (>= 0.2015.04.28),
+ 		erlang-p1-sip        (>= 0.2015.07.22),
+ 		erlang-p1-stun       (>= 0.2015.09.16),
+ 		erlang-sqlite3,
+ 		erlang-redis-client,
 Breaks: ejabberd-contrib (<= 0.2015.08)
-Suggests: ejabberd-contrib (>> 0.2015.08), erlang-p1-mysql, erlang-p1-pam, erlang-p1-pgsql, erlang-redis-client, erlang-p1-sip,
- 		erlang-sqlite3, erlang-p1-stun, erlang-oauth2, libunix-syslog-perl, imagemagick | graphicsmagick-imagemagick-compat,
- 		apparmor, apparmor-utils
 Provides: xmpp-server
 Description: distributed, fault-tolerant Jabber/XMPP server
  ejabberd is a Jabber/XMPP server written in Erlang, featuring:
