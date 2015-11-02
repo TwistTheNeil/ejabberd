@@ -7,7 +7,7 @@ Index: ejabberd/rebar.config.script
 ===================================================================
 --- ejabberd.orig/rebar.config.script
 +++ ejabberd/rebar.config.script
-@@ -187,9 +187,7 @@ Config = [{erl_opts, Macros ++ HiPE ++ D
+@@ -192,9 +192,7 @@ Config = [{erl_opts, Macros ++ HiPE ++ D
            {xref_checks, []},
  	  {xref_queries,
  	   [{"(XC - UC) || (XU - X - B - "

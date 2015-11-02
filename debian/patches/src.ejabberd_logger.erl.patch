@@ -8,7 +8,7 @@ Index: ejabberd/src/ejabberd_logger.erl
 ===================================================================
 --- ejabberd.orig/src/ejabberd_logger.erl
 +++ ejabberd/src/ejabberd_logger.erl
-@@ -129,13 +129,7 @@ start() ->
+@@ -128,13 +128,7 @@ start() ->
      ok.
  
  reopen_log() ->

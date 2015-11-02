@@ -9,7 +9,7 @@ Index: ejabberd/src/ext_mod.erl
 ===================================================================
 --- ejabberd.orig/src/ext_mod.erl
 +++ ejabberd/src/ext_mod.erl
-@@ -499,12 +499,12 @@ compile(_Module, _Spec, DestDir) ->
+@@ -509,12 +509,12 @@ compile(_Module, _Spec, DestDir) ->
      filelib:ensure_dir(filename:join(Ebin, ".")),
      EjabBin = filename:dirname(code:which(ejabberd)),
      EjabInc = filename:join(filename:dirname(EjabBin), "include"),
