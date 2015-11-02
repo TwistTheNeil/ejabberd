@@ -1,15 +1,13 @@
-ejabberd (15.10-1~1.gbpe83de2) UNRELEASED; urgency=medium
-
-  ** SNAPSHOT build @e83de25cad5756ea1cec82b80738255b1cc81704 **
+ejabberd (15.10-1) unstable; urgency=medium
 
   * Imported Upstream version 15.10
-  * Refreshed patches for ejabberd 15.10
+  * Refreshed patches for 15.10
   * Made (Build-)Depends on erlang-p1-* versioned
-  * Prevent download and compilation of deps by creating deps/.got
+  * Dropped heavy Makefile.in-patch, now handled through updated debian/rules
   * [Debconf translation updates]
   * Spanish; (Miroslav Kure).  Closes: #802777
 
- -- Philipp Huebner <debalance@debian.org>  Mon, 02 Nov 2015 17:17:54 +0100
+ -- Philipp Huebner <debalance@debian.org>  Mon, 02 Nov 2015 17:40:14 +0100
 
 ejabberd (15.09-2) unstable; urgency=medium
 
