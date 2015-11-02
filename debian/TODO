@@ -1,5 +1,5 @@
-* Call for debconf translation updates
 * Update ejabberdctl.8
+* Test and possibly improve the maintainer-scripts (dpkg-reconfigure, removal/purge)
 
 
 ejabberdctl.8 tasks
