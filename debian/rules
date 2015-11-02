@@ -13,7 +13,7 @@ DESTDIR=$(CURDIR)/debian/ejabberd
 
 .PHONY: override_dh_auto_configure
 override_dh_auto_configure:
-	mkdir $(CURDIR)/deps && touch $(CURDIR)/.got
+	mkdir $(CURDIR)/deps && touch $(CURDIR)/deps/.got $(CURDIR)/deps/.built
 	dh_auto_configure -- --enable-odbc --enable-mysql --enable-pgsql --enable-pam \
 			--enable-zlib --enable-iconv --enable-lager --enable-redis --enable-sqlite
 
@@ -52,6 +52,9 @@ override_dh_systemd_start:
 override_dh_compress:
 	dh_compress --exclude=ejabberd.yml
 
+.PHONY: override_dh_auto_test
+override_dh_auto_test:
+
 .PHONY: override_dh_installdeb
 override_dh_installdeb:
 	erlang-depends
@@ -59,7 +62,7 @@ override_dh_installdeb:
 
 .PHONY: override_dh_auto_clean
 override_dh_auto_clean:
-	rm -f Makefile config.log config.status
+	rm -f Makefile config.log config.status vars.config priv/sql
 	rm -rf .rebar deps ebin include/XmppAddr.hrl src/XmppAddr.asn1db src/XmppAddr.erl src/eldap_filter_yecc.erl
 	rm -f debian/ejabberd.init debian/ejabberd.service ejabberd.init ejabberdctl.example
 	dh_auto_clean
