@@ -7,7 +7,7 @@ ejabberd (15.10-1) unstable; urgency=medium
   * [Debconf translation updates]
   * Spanish; (Miroslav Kure).  Closes: #802777
 
- -- Philipp Huebner <debalance@debian.org>  Mon, 02 Nov 2015 17:40:14 +0100
+ -- Philipp Huebner <debalance@debian.org>  Mon, 02 Nov 2015 20:06:21 +0100
 
 ejabberd (15.09-2) unstable; urgency=medium
 

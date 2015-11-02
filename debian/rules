@@ -58,6 +58,8 @@ override_dh_auto_test:
 .PHONY: override_dh_installdeb
 override_dh_installdeb:
 	erlang-depends
+	rm -rf $(DESTDIR)/var/lock $(DESTDIR)/usr/bin
+	rm -f $(DESTDIR)/usr/share/doc/ejabberd/COPYING.gz
 	dh_installdeb
 
 .PHONY: override_dh_auto_clean
