@@ -1,3 +1,9 @@
+ejabberd (15.10-2) unstable; urgency=high
+
+  * Added Breaks+Replaces against ejabberd-mod-http-upload (Closes: #804114)
+
+ -- Philipp Huebner <debalance@debian.org>  Thu, 05 Nov 2015 15:10:19 +0100
+
 ejabberd (15.10-1) unstable; urgency=medium
 
   * Imported Upstream version 15.10
