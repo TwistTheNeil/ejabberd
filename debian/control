@@ -29,7 +29,8 @@ Build-Depends: debhelper (>= 9), dh-apparmor, dh-systemd (>= 1.5), libsqlite3-de
  		erlang-parsetools,
  		erlang-redis-client,
  		erlang-sqlite3,
- 		erlang-ssl
+ 		erlang-ssl,
+ 		erlang-xmerl
 Standards-Version: 3.9.6
 Homepage: https://www.ejabberd.im
 Vcs-Git: git://git.deb.at/pkg/ejabberd.git
@@ -47,7 +48,8 @@ Depends: adduser, openssl, ucf, ${misc:Depends}, ${shlibs:Depends},
  		erlang-p1-utils      (>= 0.2015.10.07),
  		erlang-p1-xml        (>= 0.2015.10.23),
  		erlang-p1-yaml       (>= 0.2015.10.07),
- 		erlang-p1-zlib       (>= 0.2015.02.23)
+ 		erlang-p1-zlib       (>= 0.2015.02.23),
+ 		erlang-xmerl
 Suggests: apparmor, apparmor-utils, libunix-syslog-perl, imagemagick | graphicsmagick-imagemagick-compat,
  		ejabberd-contrib     (>> 0.2015.08),
  		erlang-oauth2,
@@ -57,7 +59,7 @@ Suggests: apparmor, apparmor-utils, libunix-syslog-perl, imagemagick | graphicsm
  		erlang-p1-sip        (>= 0.2015.07.22),
  		erlang-p1-stun       (>= 0.2015.09.16),
  		erlang-sqlite3,
- 		erlang-redis-client,
+ 		erlang-redis-client
 Breaks: ejabberd-contrib (<= 0.2015.08), ejabberd-mod-http-upload
 Replaces: ejabberd-contrib (<= 0.2015.08), ejabberd-mod-http-upload
 Provides: xmpp-server
