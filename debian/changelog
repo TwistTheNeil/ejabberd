@@ -1,3 +1,9 @@
+ejabberd (15.10-3) unstable; urgency=medium
+
+  * Added missing (Build-)Depends on erlang-xmerl
+
+ -- Philipp Huebner <debalance@debian.org>  Sat, 14 Nov 2015 12:55:37 +0100
+
 ejabberd (15.10-2) unstable; urgency=high
 
   * Added Breaks+Replaces against ejabberd-mod-http-upload (Closes: #804114)
