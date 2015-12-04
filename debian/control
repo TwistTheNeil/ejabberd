@@ -62,7 +62,7 @@ Suggests: apparmor, apparmor-utils, libunix-syslog-perl, imagemagick | graphicsm
  		erlang-redis-client
 Breaks: ejabberd-contrib (<= 0.2015.08), ejabberd-mod-http-upload
 Replaces: ejabberd-contrib (<= 0.2015.08), ejabberd-mod-http-upload
-Provides: xmpp-server
+Provides: xmpp-server, stun-server, turn-server
 Description: distributed, fault-tolerant Jabber/XMPP server
  ejabberd is a Jabber/XMPP server written in Erlang, featuring:
   * distributed operation with load-balancing across a cluster;
