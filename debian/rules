@@ -35,7 +35,7 @@ override_dh_auto_install:
 	
 	# install ufw profile
 	install -m 644 debian/ejabberd.ufw.profile $(DESTDIR)/etc/ufw/applications.d/ejabberd
-
+	
 	# install AppArmor profile
 	install -m 644 debian/usr.sbin.ejabberdctl $(DESTDIR)/etc/apparmor.d/usr.sbin.ejabberdctl
 	dh_apparmor --profile-name=usr.sbin.ejabberdctl
@@ -65,7 +65,7 @@ override_dh_installdeb:
 .PHONY: override_dh_auto_clean
 override_dh_auto_clean:
 	rm -f Makefile config.log config.status vars.config priv/sql
-	rm -rf .rebar deps ebin include/XmppAddr.hrl src/XmppAddr.asn1db src/XmppAddr.erl src/eldap_filter_yecc.erl
+	rm -rf .rebar deps ebin include/XmppAddr.hrl src/XmppAddr.asn1db src/XmppAddr.erl src/eldap_filter_yecc.erl src/ejabberd.app.src
 	rm -f debian/ejabberd.init debian/ejabberd.service ejabberd.init ejabberdctl.example
 	dh_auto_clean
 	debconf-updatepo
