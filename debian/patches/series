@@ -1,6 +1,5 @@
 Makefile.in.diff
-rebar.config.script.diff
-src.ejabberd_logger.erl.patch
+rebar.config.diff
 src.includes.patch
 src.ext_mod.erl.patch
 ejabberdctl.template.patch
