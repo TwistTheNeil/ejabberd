@@ -48,7 +48,7 @@ esac
 
 case "$1" in
     remove|purge)
-	pkill -u ejabberd
+	pkill -u ejabberd || true
     ;;
 esac
 
