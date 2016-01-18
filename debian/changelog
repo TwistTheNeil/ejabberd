@@ -1,12 +1,14 @@
-ejabberd (16.01-1) UNRELEASED; urgency=medium
+ejabberd (16.01-1) unstable; urgency=medium
 
   * Imported Upstream version 16.01
   * Provides: +stun-server, turn-server
   * Refreshed patches for ejabberd 16.01
   * Dropped src.ejabberd_logger.erl.patch, now included upstream
   * Updated debian/copyright
+  * Added /etc/ejabberd/modules.d
+  * Fixed a bug in prerm that prevented package removal
 
- -- Philipp Huebner <debalance@debian.org>  Sun, 17 Jan 2016 15:14:20 +0100
+ -- Philipp Huebner <debalance@debian.org>  Mon, 18 Jan 2016 16:32:25 +0100
 
 ejabberd (15.10-3) unstable; urgency=medium
 
