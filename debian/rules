@@ -29,6 +29,9 @@ override_dh_auto_install:
 	rm $(DESTDIR)/etc/ejabberd/ejabberd.yml
 	install -m 644 ejabberd.yml.example $(DESTDIR)/usr/share/ejabberd/ejabberd.yml.example
 	
+	# set up /etc/ejabberd/modules.d
+	cp -v $(CURDIR)/debian/README.modules $(DESTDIR)/etc/ejabberd/modules.d/
+	
 	# ejabberdctl.cfg goes into /etc/default/
 	mv $(DESTDIR)/etc/ejabberd/ejabberdctl.cfg $(DESTDIR)/etc/default/ejabberd
 	ln -s ../default/ejabberd $(DESTDIR)/etc/ejabberd/ejabberdctl.cfg
