@@ -3,7 +3,7 @@ Section: net
 Priority: optional
 Maintainer: Ejabberd Packaging Team <ejabberd@deb.at>
 Uploaders: Konstantin Khomoutov <flatworm@users.sourceforge.net>, Philipp Huebner <debalance@debian.org>, Rhonda D'Vine <rhonda@debian.org>
-Build-Depends: debhelper (>= 9), dh-apparmor, dh-systemd (>= 1.5), libsqlite3-dev, po-debconf, rebar,
+Build-Depends: debhelper (>= 9), dh-apparmor, dh-systemd (>= 1.5), libsqlite3-dev, po-debconf, rebar (>= 2.6.0),
  		erlang-asn1,
  		erlang-base,
  		erlang-crypto,
