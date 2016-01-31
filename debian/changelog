@@ -1,6 +1,13 @@
+ejabberd (16.01-2) UNRELEASED; urgency=medium
+
+  * Build-depend on rebar >= 2.6.0
+  * Moved captcha.sh to /usr/share/ejabberd/
+
+ -- Philipp Huebner <debalance@debian.org>  Sun, 31 Jan 2016 17:19:14 +0100
+
 ejabberd (16.01-1) unstable; urgency=medium
 
-  * Imported Upstream version 16.01
+  * Imported Upstream version 16.01 (Closes: #804529)
   * Provides: +stun-server, turn-server
   * Refreshed patches for ejabberd 16.01
   * Dropped src.ejabberd_logger.erl.patch, now included upstream
