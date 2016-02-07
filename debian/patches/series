@@ -1,3 +1,4 @@
+src.ejabberd_app.erl.patch
 Makefile.in.diff
 rebar.config.diff
 src.includes.patch
