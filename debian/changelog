@@ -1,9 +1,10 @@
-ejabberd (16.01-2) UNRELEASED; urgency=medium
+ejabberd (16.01-2) unstable; urgency=medium
 
   * Build-depend on rebar >= 2.6.0
   * Moved captcha.sh to /usr/share/ejabberd/
+  * Build against erlang-p1-stringprep 1.0.2 (Closes: #814016)
 
- -- Philipp Huebner <debalance@debian.org>  Sun, 31 Jan 2016 17:19:14 +0100
+ -- Philipp Huebner <debalance@debian.org>  Sun, 07 Feb 2016 19:09:01 +0100
 
 ejabberd (16.01-1) unstable; urgency=medium
 
