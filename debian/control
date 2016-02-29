@@ -31,7 +31,7 @@ Build-Depends: debhelper (>= 9), dh-apparmor, dh-systemd (>= 1.5), libsqlite3-de
  		erlang-sqlite3,
  		erlang-ssl,
  		erlang-xmerl
-Standards-Version: 3.9.6
+Standards-Version: 3.9.7
 Homepage: https://www.ejabberd.im
 Vcs-Git: git://git.deb.at/pkg/ejabberd.git
 Vcs-Browser: http://git.deb.at/w/pkg/ejabberd.git
