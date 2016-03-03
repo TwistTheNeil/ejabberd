@@ -1,3 +1,15 @@
+ejabberd (16.02-1) unstable; urgency=medium
+
+  * Imported Upstream version 16.02
+  * Refreshed patches for ejabberd 16.02
+  * Updated Standards-Version: 3.9.7 (no changes needed)
+  * Updated versions of erlang-p1-* deps
+  * Updated debian/README.Debian
+  * Updated debian/NEWS
+  * Corrected typo in manpage
+
+ -- Philipp Huebner <debalance@debian.org>  Thu, 03 Mar 2016 16:22:24 +0100
+
 ejabberd (16.01-2) unstable; urgency=medium
 
   * Build-depend on rebar >= 2.6.0
