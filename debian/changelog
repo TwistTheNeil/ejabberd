@@ -1,3 +1,11 @@
+ejabberd (16.02-2) unstable; urgency=medium
+
+  * Added erlang-luerl to Suggests (for prosody import)
+  * [Debconf translation updates]
+  * Japanese; (Takuma Yamada).  Closes: #815529
+
+ -- Philipp Huebner <debalance@debian.org>  Wed, 09 Mar 2016 17:31:58 +0100
+
 ejabberd (16.02-1) unstable; urgency=medium
 
   * Imported Upstream version 16.02
