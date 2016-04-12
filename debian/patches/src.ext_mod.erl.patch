@@ -1,5 +1,5 @@
 Description: search for include files in /usr/lib/erlang/lib
- The erlang-p1-xml package installs xml.hrl into a directory such as
+ The erlang-p1-xml package installs fxml.hrl into a directory such as
  </usr/lib/erlang/lib/p1_xml-0.2015.06.15/include>.
  This patch makes sure that all .hrl files in /usr/lib/erlang/lib
  are found and considered/used.
