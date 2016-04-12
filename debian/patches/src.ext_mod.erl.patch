@@ -22,7 +22,7 @@ Index: ejabberd/src/ext_mod.erl
 +    IncOpts = [{i, "include"}, {i, EjabInc} | [{i, Dir} || Dir <- ExtIncs]],
 +    Options = [{outdir, Ebin} | IncOpts]
 +              ++ [verbose, report_errors, report_warnings]
-+              ++ [{d, 'NO_EXT_LIB'} | Logger],
++              ++ [{d, 'NO_EXT_LIB'}],
      [file:copy(App, Ebin) || App <- filelib:wildcard("src/*.app")],
      Result = [case compile:file(File, Options) of
              {ok, _} -> ok;
