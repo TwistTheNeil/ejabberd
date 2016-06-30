@@ -31,7 +31,7 @@
 -include("logger.hrl").
 
 -export([start/2, stop/1, compile/1, get_cookie/0,
-	 remove_node/1, set_password/3,
+	 remove_node/1, set_password/3, check_password/3,
 	 check_password_hash/4, delete_old_users/1,
 	 delete_old_users_vhost/2, ban_account/3,
 	 num_active_users/2, num_resources/2, resource_num/3,
@@ -162,7 +162,7 @@ get_commands_spec() ->
 			result_desc = "Status code: 0 on success, 1 otherwise"},
      #ejabberd_commands{name = check_password, tags = [accounts],
 			desc = "Check if a password is correct",
-			module = ejabberd_auth, function = check_password,
+			module = ?MODULE, function = check_password,
 			args = [{user, binary}, {host, binary}, {password, binary}],
 			args_example = [<<"peter">>, <<"myserver.com">>, <<"secret">>],
 			args_desc = ["User name to check", "Server to check", "Password to check"],
@@ -590,36 +590,38 @@ remove_node(Node) ->
 %%%
 
 set_password(User, Host, Password) ->
-    case ejabberd_auth:set_password(User, Host, Password) of
-	ok ->
-	    ok;
-	_ ->
-	    error
-    end.
+    Fun = fun () -> ejabberd_auth:set_password(User, Host, Password) end,
+    user_action(User, Host, Fun, ok).
+
+check_password(User, Host, Password) ->
+    ejabberd_auth:check_password(User, <<>>, Host, Password).
 
 %% Copied some code from ejabberd_commands.erl
 check_password_hash(User, Host, PasswordHash, HashMethod) ->
     AccountPass = ejabberd_auth:get_password_s(User, Host),
     AccountPassHash = case {AccountPass, HashMethod} of
 			  {A, _} when is_tuple(A) -> scrammed;
-			  {_, "md5"} -> get_md5(AccountPass);
-			  {_, "sha"} -> get_sha(AccountPass);
-			  _ -> undefined
+			  {_, <<"md5">>} -> get_md5(AccountPass);
+			  {_, <<"sha">>} -> get_sha(AccountPass);
+                          {_, Method} ->
+			      ?ERROR_MSG("check_password_hash called "
+ 					 "with hash method: ~p", [Method]),
+ 			      undefined
 		      end,
     case AccountPassHash of
 	scrammed ->
-	    ?ERROR_MSG("Passwords are scrammed, and check_password_hash can not work.", []),
+	    ?ERROR_MSG("Passwords are scrammed, and check_password_hash cannot work.", []),
 	    throw(passwords_scrammed_command_cannot_work);
-	undefined -> error;
+	undefined -> throw(unkown_hash_method);
 	PasswordHash -> ok;
-	_ -> error
+	_ -> false
     end.
 get_md5(AccountPass) ->
-    lists:flatten([io_lib:format("~.16B", [X])
-		   || X <- binary_to_list(erlang:md5(AccountPass))]).
+    iolist_to_binary([io_lib:format("~2.16.0B", [X])
+                      || X <- binary_to_list(erlang:md5(AccountPass))]).
 get_sha(AccountPass) ->
-    lists:flatten([io_lib:format("~.16B", [X])
-		   || X <- binary_to_list(p1_sha:sha1(AccountPass))]).
+    iolist_to_binary([io_lib:format("~2.16.0B", [X])
+ 		      || X <- binary_to_list(p1_sha:sha1(AccountPass))]).
 
 num_active_users(Host, Days) ->
     list_last_activity(Host, true, Days).
@@ -782,7 +784,8 @@ resource_num(User, Host, Num) ->
 	true ->
 	    lists:nth(Num, Resources);
 	false ->
-	    lists:flatten(io_lib:format("Error: Wrong resource number: ~p", [Num]))
+            throw({bad_argument,
+                   lists:flatten(io_lib:format("Wrong resource number: ~p", [Num]))})
     end.
 
 kick_session(User, Server, Resource, ReasonText) ->
@@ -860,26 +863,36 @@ connected_users_vhost(Host) ->
 dirty_get_sessions_list2() ->
     mnesia:dirty_select(
       session,
-      [{#session{usr = '$1', sid = '$2', priority = '$3', info = '$4', _ = '_'},
-	[],
-	[['$1', '$2', '$3', '$4']]}]).
+      [{#session{usr = '$1', sid = {'$2', '$3'}, priority = '$4', info = '$5',
+		 _ = '_'},
+	[{is_pid, '$3'}],
+	[['$1', {{'$2', '$3'}}, '$4', '$5']]}]).
 
 %% Make string more print-friendly
 stringize(String) ->
     %% Replace newline characters with other code
     ejabberd_regexp:greplace(String, <<"\n">>, <<"\\n">>).
 
+set_presence(User, Host, Resource, Type, Show, Status, Priority)
+        when is_integer(Priority) ->
+    BPriority = integer_to_binary(Priority),
+    set_presence(User, Host, Resource, Type, Show, Status, BPriority);
 set_presence(User, Host, Resource, Type, Show, Status, Priority) ->
-    Pid = ejabberd_sm:get_session_pid(User, Host, Resource),
-    USR = jid:to_string(jid:make(User, Host, Resource)),
-    US = jid:to_string(jid:make(User, Host, <<>>)),
-    Message = {route_xmlstreamelement,
-	       {xmlel, <<"presence">>,
-		[{<<"from">>, USR}, {<<"to">>, US}, {<<"type">>, Type}],
-		[{xmlel, <<"show">>, [], [{xmlcdata, Show}]},
-		 {xmlel, <<"status">>, [], [{xmlcdata, Status}]},
-		 {xmlel, <<"priority">>, [], [{xmlcdata, Priority}]}]}},
-    Pid ! Message.
+    case ejabberd_sm:get_session_pid(User, Host, Resource) of
+	none ->
+	    error;
+	Pid ->
+	    USR = jid:to_string(jid:make(User, Host, Resource)),
+	    US = jid:to_string(jid:make(User, Host, <<>>)),
+	    Message = {route_xmlstreamelement,
+		    {xmlel, <<"presence">>,
+			[{<<"from">>, USR}, {<<"to">>, US}, {<<"type">>, Type}],
+			[{xmlel, <<"show">>, [], [{xmlcdata, Show}]},
+			{xmlel, <<"status">>, [], [{xmlcdata, Status}]},
+			{xmlel, <<"priority">>, [], [{xmlcdata, Priority}]}]}},
+	    Pid ! Message,
+	    ok
+    end.
 
 user_sessions_info(User, Host) ->
     CurrentSec = calendar:datetime_to_gregorian_seconds({date(), time()}),
@@ -888,7 +901,9 @@ user_sessions_info(User, Host) ->
 		   {'EXIT', _Reason} ->
 		       [];
 		   Ss ->
-		       Ss
+		       lists:filter(fun(#session{sid = {_, Pid}}) ->
+					    is_pid(Pid)
+				    end, Ss)
 	       end,
     lists:map(
       fun(Session) ->
@@ -1151,7 +1166,8 @@ subscribe_roster({Name, Server, Group, Nick}, [{Name, Server, _, _} | Roster]) -
     subscribe_roster({Name, Server, Group, Nick}, Roster);
 %% Subscribe Name2 to Name1
 subscribe_roster({Name1, Server1, Group1, Nick1}, [{Name2, Server2, Group2, Nick2} | Roster]) ->
-    subscribe(Name1, Server1, Name2, Server2, Nick2, Group2, <<"both">>, []),
+    subscribe(Name1, Server1, list_to_binary(Name2), list_to_binary(Server2),
+	list_to_binary(Nick2), list_to_binary(Group2), <<"both">>, []),
     subscribe_roster({Name1, Server1, Group1, Nick1}, Roster).
 
 push_alltoall(S, G) ->
@@ -1309,8 +1325,7 @@ srg_get_info(Group, Host) ->
 	Os when is_list(Os) -> Os;
 	error -> []
     end,
-    [{jlib:atom_to_binary(Title),
-      io_lib:format("~p", [btl(Value)])} || {Title, Value} <- Opts].
+    [{jlib:atom_to_binary(Title), btl(Value)} || {Title, Value} <- Opts].
 
 btl([]) -> [];
 btl([B|L]) -> [btl(B)|btl(L)];
@@ -1568,6 +1583,20 @@ decide_rip_jid({UName, UServer}, Match_list) ->
 	      end
       end,
       Match_list).
+
+user_action(User, Server, Fun, OK) ->
+    case ejabberd_auth:is_user_exists(User, Server) of
+        true ->
+ 	    case catch Fun() of
+                OK -> ok;
+ 		{error, Error} -> throw(Error);
+                Error ->
+                    ?ERROR_MSG("Command returned: ~p", [Error]),
+ 		    1
+ 	    end;
+ 	false ->
+ 	    throw({not_found, "unknown_user"})
+    end.
 
 %% Copied from ejabberd-2.0.0/src/acl.erl
 is_regexp_match(String, RegExp) ->
