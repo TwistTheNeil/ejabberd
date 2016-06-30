@@ -107,6 +107,8 @@
 	nodeOptions/0,
 	subOption/0,
 	subOptions/0,
+	pubOption/0,
+	pubOptions/0,
 	%%
 	affiliation/0,
 	subscription/0,
@@ -254,10 +256,12 @@ init([ServerHost, Opts]) ->
 	    fun(A) when is_integer(A) andalso A >= 0 -> A end, ?MAXITEMS),
     MaxSubsNode = gen_mod:get_opt(max_subscriptions_node, Opts,
 	    fun(A) when is_integer(A) andalso A >= 0 -> A end, undefined),
-    DefaultNodeCfg = gen_mod:get_opt(default_node_config, Opts,
-	    fun(A) when is_list(A) -> filter_node_options(A) end, []),
     pubsub_index:init(Host, ServerHost, Opts),
     {Plugins, NodeTree, PepMapping} = init_plugins(Host, ServerHost, Opts),
+    DefaultModule = plugin(Host, hd(Plugins)),
+    BaseOptions = DefaultModule:options(),
+    DefaultNodeCfg = gen_mod:get_opt(default_node_config, Opts,
+	    fun(A) when is_list(A) -> filter_node_options(A, BaseOptions) end, []),
     mnesia:create_table(pubsub_last_item,
 	[{ram_copies, [node()]},
 	    {attributes, record_info(fields, pubsub_last_item)}]),
@@ -1034,7 +1038,10 @@ do_route(ServerHost, Access, Plugins, Host, From, To, Packet) ->
 				none ->
 				    ok;
 				invalid ->
-				    Err = jlib:make_error_reply(Packet, ?ERR_BAD_REQUEST),
+				    Lang = fxml:get_attr_s(<<"xml:lang">>, Attrs),
+				    Txt = <<"Incorrect authorization response">>,
+				    Err = jlib:make_error_reply(
+					    Packet, ?ERRT_BAD_REQUEST(Lang, Txt)),
 				    ejabberd_router:route(To, From, Err);
 				XFields ->
 				    handle_authorization_response(Host, From, To, Packet, XFields)
@@ -1284,7 +1291,16 @@ iq_pubsub(Host, ServerHost, From, IQType, SubEl, Lang, Access, Plugins) ->
 			[#xmlel{name = <<"item">>, attrs = ItemAttrs,
 					children = Payload}] ->
 			    ItemId = fxml:get_attr_s(<<"id">>, ItemAttrs),
-			    publish_item(Host, ServerHost, Node, From, ItemId, Payload, Access);
+			    PubOpts = case [C || #xmlel{name = <<"publish-options">>,
+							children = [C]} <- Rest] of
+				[XEl] ->
+				    case jlib:parse_xdata_submit(XEl) of
+				      invalid -> [];
+				      Form -> Form
+				    end;
+				_ -> []
+			    end,
+			    publish_item(Host, ServerHost, Node, From, ItemId, Payload, PubOpts, Access);
 			[] ->
 			    {error,
 				extended_error(?ERR_BAD_REQUEST, <<"item-required">>)};
@@ -1418,13 +1434,14 @@ adhoc_request(Host, _ServerHost, Owner,
     send_pending_node_form(Host, Owner, Lang, Plugins);
 adhoc_request(Host, _ServerHost, Owner,
 	    #adhoc_request{node = ?NS_PUBSUB_GET_PENDING,
-		action = <<"execute">>, xdata = XData},
+		action = <<"execute">>, xdata = XData, lang = Lang},
 	    _Access, _Plugins) ->
     ParseOptions = case XData of
 	#xmlel{name = <<"x">>} = XEl ->
 	    case jlib:parse_xdata_submit(XEl) of
 		invalid ->
-		    {error, ?ERR_BAD_REQUEST};
+		    Txt = <<"Incorrect data form">>,
+		    {error, ?ERRT_BAD_REQUEST(Lang, Txt)};
 		XData2 ->
 		    case set_xoption(Host, XData2, []) of
 			NewOpts when is_list(NewOpts) -> {result, NewOpts};
@@ -1432,8 +1449,8 @@ adhoc_request(Host, _ServerHost, Owner,
 		    end
 	    end;
 	_ ->
-	    ?INFO_MSG("Bad XForm: ~p", [XData]),
-	    {error, ?ERR_BAD_REQUEST}
+	    Txt = <<"No data form found">>,
+	    {error, ?ERRT_BAD_REQUEST(Lang, Txt)}
     end,
     case ParseOptions of
 	{result, XForm} ->
@@ -1463,7 +1480,9 @@ send_pending_node_form(Host, Owner, _Lang, Plugins) ->
     end,
     case lists:filter(Filter, Plugins) of
 	[] ->
-	    {error, ?ERR_FEATURE_NOT_IMPLEMENTED};
+	    Err = extended_error(?ERR_FEATURE_NOT_IMPLEMENTED,
+				 unsupported, <<"get-pending">>),
+	    {error, Err};
 	Ps ->
 	    XOpts = [#xmlel{name = <<"option">>, attrs = [],
 			children = [#xmlel{name = <<"value">>,
@@ -1504,10 +1523,11 @@ send_pending_auth_events(Host, Node, Owner) ->
 		true ->
 		    case node_call(Host, Type, get_affiliation, [Nidx, Owner]) of
 			{result, owner} -> node_call(Host, Type, get_node_subscriptions, [Nidx]);
-			_ -> {error, ?ERR_FORBIDDEN}
+			_ -> {error, ?ERRT_FORBIDDEN(?MYLANG, <<"You're not an owner">>)}
 		    end;
 		false ->
-		    {error, ?ERR_FEATURE_NOT_IMPLEMENTED}
+		    {error, extended_error(?ERR_FEATURE_NOT_IMPLEMENTED,
+					   unsupported, <<"get-pending">>)}
 	    end
     end,
     case transaction(Host, Node, Action, sync_dirty) of
@@ -1644,6 +1664,7 @@ send_authorization_approval(Host, JID, SNode, Subscription) ->
     ejabberd_router:route(service_jid(Host), JID, Stanza).
 
 handle_authorization_response(Host, From, To, Packet, XFields) ->
+    Lang = fxml:get_tag_attr_s(<<"xml:lang">>, Packet),
     case {lists:keysearch(<<"pubsub#node">>, 1, XFields),
 	    lists:keysearch(<<"pubsub#subscriber_jid">>, 1, XFields),
 	    lists:keysearch(<<"pubsub#allow">>, 1, XFields)}
@@ -1665,7 +1686,7 @@ handle_authorization_response(Host, From, To, Packet, XFields) ->
 			    {result, Subs} = node_call(Host, Type, get_subscriptions, [Nidx, Subscriber]),
 			    update_auth(Host, Node, Type, Nidx, Subscriber, Allow, Subs);
 			false ->
-			    {error, ?ERR_FORBIDDEN}
+			    {error, ?ERRT_FORBIDDEN(Lang, <<"You're not an owner">>)}
 		    end
 	    end,
 	    case transaction(Host, Node, Action, sync_dirty) of
@@ -1680,7 +1701,8 @@ handle_authorization_response(Host, From, To, Packet, XFields) ->
 		    ejabberd_router:route(To, From, Err)
 	    end;
 	_ ->
-	    Err = jlib:make_error_reply(Packet, ?ERR_NOT_ACCEPTABLE),
+	    Txt = <<"Incorrect data form">>,
+	    Err = jlib:make_error_reply(Packet, ?ERRT_NOT_ACCEPTABLE(Lang, Txt)),
 	    ejabberd_router:route(To, From, Err)
     end.
 
@@ -1691,7 +1713,7 @@ update_auth(Host, Node, Type, Nidx, Subscriber, Allow, Subs) ->
 	    end,
 	    Subs),
     case Sub of
-	[{pending, SubId}] ->
+	[{pending, SubId}|_] ->
 	    NewSub = case Allow of
 		true -> subscribed;
 		false -> none
@@ -1700,7 +1722,8 @@ update_auth(Host, Node, Type, Nidx, Subscriber, Allow, Subs) ->
 	    send_authorization_approval(Host, Subscriber, Node, NewSub),
 	    {result, ok};
 	_ ->
-	    {error, ?ERR_UNEXPECTED_REQUEST}
+	    Txt = <<"No pending subscriptions found">>,
+	    {error, ?ERRT_UNEXPECTED_REQUEST(?MYLANG, Txt)}
     end.
 
 -define(XFIELD(Type, Label, Var, Val),
@@ -1830,7 +1853,8 @@ create_node(Host, ServerHost, Node, Owner, GivenType, Access, Configuration) ->
 	[#xmlel{name = <<"x">>} = XEl] ->
 	    case jlib:parse_xdata_submit(XEl) of
 		invalid ->
-		    {error, ?ERR_BAD_REQUEST};
+		    Txt = <<"Incorrect data form">>,
+		    {error, ?ERRT_BAD_REQUEST(?MYLANG, Txt)};
 		XData ->
 		    case set_xoption(Host, XData, node_options(Host, Type)) of
 			NewOpts when is_list(NewOpts) -> {result, NewOpts};
@@ -1839,7 +1863,8 @@ create_node(Host, ServerHost, Node, Owner, GivenType, Access, Configuration) ->
 	    end;
 	_ ->
 	    ?INFO_MSG("Node ~p; bad configuration: ~p", [Node, Configuration]),
-	    {error, ?ERR_BAD_REQUEST}
+	    Txt = <<"No data form found">>,
+	    {error, ?ERRT_BAD_REQUEST(?MYLANG, Txt)}
     end,
     case ParseOptions of
 	{result, NodeOptions} ->
@@ -1876,7 +1901,8 @@ create_node(Host, ServerHost, Node, Owner, GivenType, Access, Configuration) ->
 				    Error
 			    end;
 			_ ->
-			    {error, ?ERR_FORBIDDEN}
+			    Txt1 = <<"You're not allowed to create nodes">>,
+			    {error, ?ERRT_FORBIDDEN(?MYLANG, Txt1)}
 		    end
 	    end,
 	    Reply = [#xmlel{name = <<"pubsub">>,
@@ -1926,7 +1952,7 @@ create_node(Host, ServerHost, Node, Owner, GivenType, Access, Configuration) ->
     | {error, xmlel()}
     ).
 delete_node(_Host, <<>>, _Owner) ->
-    {error, ?ERR_NOT_ALLOWED};
+    {error, ?ERRT_NOT_ALLOWED(?MYLANG, <<"No node specified">>)};
 delete_node(Host, Node, Owner) ->
     Action = fun (#pubsub_node{type = Type, id = Nidx}) ->
 	    case node_call(Host, Type, get_affiliation, [Nidx, Owner]) of
@@ -1938,7 +1964,7 @@ delete_node(Host, Node, Owner) ->
 			Error -> Error
 		    end;
 		_ ->
-		    {error, ?ERR_FORBIDDEN}
+		    {error, ?ERRT_FORBIDDEN(?MYLANG, <<"You're not an owner">>)}
 	    end
     end,
     Reply = [],
@@ -2088,6 +2114,9 @@ subscribe_node(Host, Node, From, JID, Configuration) ->
 	    Type = TNode#pubsub_node.type,
 	    Options = TNode#pubsub_node.options,
 	    send_items(Host, Node, Nidx, Type, Options, Subscriber, last),
+	    ServerHost = serverhost(Host),
+	    ejabberd_hooks:run(pubsub_subscribe_node, ServerHost,
+		[ServerHost, Host, Node, Subscriber, SubId]),
 	    case Result of
 		default -> {result, Reply({subscribed, SubId})};
 		_ -> {result, Result}
@@ -2134,7 +2163,11 @@ unsubscribe_node(Host, Node, From, Subscriber, SubId) ->
 	    node_call(Host, Type, unsubscribe_node, [Nidx, From, Subscriber, SubId])
     end,
     case transaction(Host, Node, Action, sync_dirty) of
-	{result, {_, default}} -> {result, []};
+	{result, {_, default}} ->
+	    ServerHost = serverhost(Host),
+	    ejabberd_hooks:run(pubsub_unsubscribe_node, ServerHost,
+		[ServerHost, Host, Node, Subscriber, SubId]),
+	    {result, []};
 	%      {result, {_, Result}} -> {result, Result};
 	Error -> Error
     end.
@@ -2163,10 +2196,10 @@ unsubscribe_node(Host, Node, From, Subscriber, SubId) ->
     | {error, xmlel()}
     ).
 publish_item(Host, ServerHost, Node, Publisher, ItemId, Payload) ->
-    publish_item(Host, ServerHost, Node, Publisher, ItemId, Payload, all).
-publish_item(Host, ServerHost, Node, Publisher, <<>>, Payload, Access) ->
-    publish_item(Host, ServerHost, Node, Publisher, uniqid(), Payload, Access);
-publish_item(Host, ServerHost, Node, Publisher, ItemId, Payload, Access) ->
+    publish_item(Host, ServerHost, Node, Publisher, ItemId, Payload, [], all).
+publish_item(Host, ServerHost, Node, Publisher, <<>>, Payload, PubOpts, Access) ->
+    publish_item(Host, ServerHost, Node, Publisher, uniqid(), Payload, PubOpts, Access);
+publish_item(Host, ServerHost, Node, Publisher, ItemId, Payload, PubOpts, Access) ->
     Action = fun (#pubsub_node{options = Options, type = Type, id = Nidx}) ->
 	    Features = plugin_features(Host, Type),
 	    PublishFeature = lists:member(<<"publish">>, Features),
@@ -2198,7 +2231,7 @@ publish_item(Host, ServerHost, Node, Publisher, ItemId, Payload, Access) ->
 			extended_error(?ERR_BAD_REQUEST, <<"item-required">>)};
 		true ->
 		    node_call(Host, Type, publish_item,
-			[Nidx, Publisher, PublishModel, MaxItems, ItemId, Payload])
+			[Nidx, Publisher, PublishModel, MaxItems, ItemId, Payload, PubOpts])
 	    end
     end,
     Reply = [#xmlel{name = <<"pubsub">>,
@@ -2247,22 +2280,29 @@ publish_item(Host, ServerHost, Node, Publisher, ItemId, Payload, Access) ->
 	    {result, Reply};
 	{result, {_, Result}} ->
 	    {result, Result};
-	{error, ?ERR_ITEM_NOT_FOUND} ->
-	    Type = select_type(ServerHost, Host, Node),
-	    case lists:member(<<"auto-create">>, plugin_features(Host, Type)) of
+	{error, _} = Error ->
+	    case is_item_not_found(Error) of
 		true ->
-		    case create_node(Host, ServerHost, Node, Publisher, Type, Access, []) of
-			{result,
-				    [#xmlel{name = <<"pubsub">>,
-					    attrs = [{<<"xmlns">>, ?NS_PUBSUB}],
-					    children = [#xmlel{name = <<"create">>,
-						    attrs = [{<<"node">>, NewNode}]}]}]} ->
-			    publish_item(Host, ServerHost, NewNode, Publisher, ItemId, Payload);
-			_ ->
-			    {error, ?ERR_ITEM_NOT_FOUND}
+		    Type = select_type(ServerHost, Host, Node),
+		    case lists:member(<<"auto-create">>, plugin_features(Host, Type)) of
+			true ->
+			    case create_node(Host, ServerHost, Node, Publisher, Type, Access, []) of
+				{result,
+				 [#xmlel{name = <<"pubsub">>,
+					 attrs = [{<<"xmlns">>, ?NS_PUBSUB}],
+					 children = [#xmlel{name = <<"create">>,
+							    attrs = [{<<"node">>, NewNode}]}]}]} ->
+			    publish_item(Host, ServerHost, NewNode, Publisher, ItemId,
+				Payload, PubOpts, Access);
+				_ ->
+				    {error, ?ERR_ITEM_NOT_FOUND}
+			    end;
+			false ->
+			    Txt = <<"Automatic node creation is not enabled">>,
+			    {error, ?ERRT_ITEM_NOT_FOUND(?MYLANG, Txt)}
 		    end;
 		false ->
-		    {error, ?ERR_ITEM_NOT_FOUND}
+		    Error
 	    end;
 	Error ->
 	    Error
@@ -2416,7 +2456,9 @@ get_items(Host, Node, From, SubId, SMaxItems, ItemIds, RSM) ->
 	    end;
 	true ->
 	    case catch jlib:binary_to_integer(SMaxItems) of
-		{'EXIT', _} -> {error, ?ERR_BAD_REQUEST};
+		{'EXIT', _} ->
+		    Txt = <<"Value of 'max_items' should be integer">>,
+		    {error, ?ERRT_BAD_REQUEST(?MYLANG, Txt)};
 		Val -> Val
 	    end
     end,
@@ -2506,7 +2548,7 @@ get_last_item(Host, Type, Nidx, LJID, mnesia) ->
 	{result, {[LastItem|_], _}} -> LastItem;
 	_ -> undefined
     end;
-get_last_item(Host, Type, Nidx, LJID, odbc) ->
+get_last_item(Host, Type, Nidx, LJID, sql) ->
     case node_action(Host, Type, get_last_items, [Nidx, LJID, 1]) of
 	{result, [LastItem]} -> LastItem;
 	_ -> undefined
@@ -2521,7 +2563,7 @@ get_last_items(Host, Type, Nidx, LJID, Number, mnesia) ->
 	{result, {Items, _}} -> lists:sublist(Items, Number);
 	_ -> []
     end;
-get_last_items(Host, Type, Nidx, LJID, Number, odbc) ->
+get_last_items(Host, Type, Nidx, LJID, Number, sql) ->
     case node_action(Host, Type, get_last_items, [Nidx, LJID, Number]) of
 	{result, Items} -> Items;
 	_ -> []
@@ -2639,7 +2681,7 @@ get_affiliations(Host, Node, JID) ->
 		    {error,
 			extended_error(?ERR_FEATURE_NOT_IMPLEMENTED, unsupported, <<"modify-affiliations">>)};
 		Affiliation /= owner ->
-		    {error, ?ERR_FORBIDDEN};
+		    {error, ?ERRT_FORBIDDEN(?MYLANG, <<"You're not an owner">>)};
 		true ->
 		    node_call(Host, Type, get_node_affiliations, [Nidx])
 	    end
@@ -2732,7 +2774,7 @@ set_affiliations(Host, Node, From, EntitiesEls) ->
 				FilteredEntities),
 			    {result, []};
 			_ ->
-			    {error, ?ERR_FORBIDDEN}
+			    {error, ?ERRT_FORBIDDEN(?MYLANG, <<"You're not an owner">>)}
 		    end
 	    end,
 	    case transaction(Host, Node, Action, sync_dirty) of
@@ -2948,7 +2990,7 @@ get_subscriptions(Host, Node, JID) ->
 		    {error,
 			extended_error(?ERR_FEATURE_NOT_IMPLEMENTED, unsupported, <<"manage-subscriptions">>)};
 		Affiliation /= owner ->
-		    {error, ?ERR_FORBIDDEN};
+		    {error, ?ERRT_FORBIDDEN(?MYLANG, <<"You're not an owner">>)};
 		true ->
 		    node_call(Host, Type, get_node_subscriptions, [Nidx])
 	    end
@@ -2991,7 +3033,7 @@ get_subscriptions_for_send_last(Host, PType, mnesia, JID, LJID, BJID) ->
 	|| {Node, Sub, SubId, SubJID} <- Subs,
 	    Sub =:= subscribed, (SubJID == LJID) or (SubJID == BJID),
 	    match_option(Node, send_last_published_item, on_sub_and_presence)];
-get_subscriptions_for_send_last(Host, PType, odbc, JID, LJID, BJID) ->
+get_subscriptions_for_send_last(Host, PType, sql, JID, LJID, BJID) ->
     case catch node_action(Host, PType,
 	    get_entity_subscriptions_for_send_last,
 	    [Host, JID])
@@ -3059,10 +3101,10 @@ set_subscriptions(Host, Node, From, EntitiesEls) ->
 				    [], Entities),
 			    case Result of
 				[] -> {result, []};
-				_ -> {error, ?ERR_NOT_ACCEPTABLE}
+				[{error, E}|_] -> {error, E}
 			    end;
 			_ ->
-			    {error, ?ERR_FORBIDDEN}
+			    {error, ?ERRT_FORBIDDEN(?MYLANG, <<"You're not an owner">>)}
 		    end
 	    end,
 	    case transaction(Host, Node, Action, sync_dirty) of
@@ -3142,11 +3184,9 @@ subscription_to_string(_) -> <<"none">>.
 	Host :: mod_pubsub:host())
     -> jid()
     ).
-service_jid(Host) ->
-    case Host of
-	{U, S, _} -> {jid, U, S, <<>>, U, S, <<>>};
-	_ -> {jid, <<>>, Host, <<>>, <<>>, Host, <<>>}
-    end.
+service_jid(#jid{} = Jid) -> Jid;
+service_jid({U, S, R}) -> jid:make(U, S, R);
+service_jid(Host) -> jid:make(<<>>, Host, <<>>).
 
 %% @spec (LJID, NotifyType, Depth, NodeOptions, SubOptions) -> boolean()
 %%        LJID = jid()
@@ -3495,7 +3535,7 @@ broadcast_stanza(Host, _Node, _Nidx, _Type, NodeOptions, SubsByDepth, NotifyType
 	end, SubIDsByJID).
 
 broadcast_stanza({LUser, LServer, LResource}, Publisher, Node, Nidx, Type, NodeOptions, SubsByDepth, NotifyType, BaseStanza, SHIM) ->
-    broadcast_stanza({LUser, LServer, LResource}, Node, Nidx, Type, NodeOptions, SubsByDepth, NotifyType, BaseStanza, SHIM),
+    broadcast_stanza({LUser, LServer, <<>>}, Node, Nidx, Type, NodeOptions, SubsByDepth, NotifyType, BaseStanza, SHIM),
     %% Handles implicit presence subscriptions
     SenderResource = user_resource(LUser, LServer, LResource),
     case ejabberd_sm:get_session_pid(LUser, LServer, SenderResource) of
@@ -3606,7 +3646,7 @@ get_configure(Host, ServerHost, Node, From, Lang) ->
 						children =
 						get_configure_xfields(Type, Options, Lang, Groups)}]}]}]};
 		_ ->
-		    {error, ?ERR_FORBIDDEN}
+		    {error, ?ERRT_FORBIDDEN(Lang, <<"You're not an owner">>)}
 	    end
     end,
     case transaction(Host, Node, Action, sync_dirty) of
@@ -3659,15 +3699,15 @@ node_plugin_options(Host, Type) ->
 	Result ->
 	    Result
     end.
-filter_node_options(Options) ->
+filter_node_options(Options, BaseOptions) ->
     lists:foldl(fun({Key, Val}, Acc) ->
 		DefaultValue = proplists:get_value(Key, Options, Val),
 		[{Key, DefaultValue}|Acc]
-	end, [], node_flat:options()).
+	end, [], BaseOptions).
 
 node_owners_action(Host, Type, Nidx, []) ->
     case gen_mod:db_type(serverhost(Host), ?MODULE) of
-	odbc ->
+	sql ->
 	    case node_action(Host, Type, get_node_affiliations, [Nidx]) of
 		{result, Affs} -> [LJID || {LJID, Aff} <- Affs, Aff =:= owner];
 		_ -> []
@@ -3680,7 +3720,7 @@ node_owners_action(_Host, _Type, _Nidx, Owners) ->
 
 node_owners_call(Host, Type, Nidx, []) ->
     case gen_mod:db_type(serverhost(Host), ?MODULE) of
-	odbc ->
+	sql ->
 	    case node_call(Host, Type, get_node_affiliations, [Nidx]) of
 		{result, Affs} -> [LJID || {LJID, Aff} <- Affs, Aff =:= owner];
 		_ -> []
@@ -3820,7 +3860,8 @@ set_configure(Host, Node, From, Els, Lang) ->
 				{result, owner} ->
 				    case jlib:parse_xdata_submit(XEl) of
 					invalid ->
-					    {error, ?ERR_BAD_REQUEST};
+					    Txt = <<"Incorrect data form">>,
+					    {error, ?ERRT_BAD_REQUEST(Lang, Txt)};
 					XData ->
 					    OldOpts = case Options of
 						[] -> node_options(Host, Type);
@@ -3832,6 +3873,7 @@ set_configure(Host, Node, From, Els, Lang) ->
 							    set_node,
 							    [N#pubsub_node{options = NewOpts}])
 						    of
+							{result, Nidx} -> {result, ok};
 							ok -> {result, ok};
 							Err -> Err
 						    end;
@@ -3840,7 +3882,8 @@ set_configure(Host, Node, From, Els, Lang) ->
 					    end
 				    end;
 				_ ->
-				    {error, ?ERR_FORBIDDEN}
+				    Txt = <<"You're not an owner">>,
+				    {error, ?ERRT_FORBIDDEN(Lang, Txt)}
 			    end
 		    end,
 		    case transaction(Host, Node, Action, transaction) of
@@ -3854,10 +3897,12 @@ set_configure(Host, Node, From, Els, Lang) ->
 			    Other
 		    end;
 		_ ->
-		    {error, ?ERR_BAD_REQUEST}
+		    Txt = <<"Incorrect data form">>,
+		    {error, ?ERRT_BAD_REQUEST(Lang, Txt)}
 	    end;
 	_ ->
-	    {error, ?ERR_BAD_REQUEST}
+	    Txt = <<"No data form found">>,
+	    {error, ?ERRT_BAD_REQUEST(Lang, Txt)}
     end.
 
 add_opt(Key, Value, Opts) ->
@@ -3872,7 +3917,10 @@ add_opt(Key, Value, Opts) ->
 	_ -> error
     end,
     case BoolVal of
-	error -> {error, ?ERR_NOT_ACCEPTABLE};
+	error ->
+	    Txt = <<"Value of '~s' should be boolean">>,
+	    ErrTxt = iolist_to_binary(io_lib:format(Txt, [Opt])),
+	    {error, ?ERRT_NOT_ACCEPTABLE(?MYLANG, ErrTxt)};
 	_ -> set_xoption(Host, Opts, add_opt(Opt, BoolVal, NewOpts))
     end).
 
@@ -3885,10 +3933,14 @@ add_opt(Key, Value, Opts) ->
 	    if (Max =:= undefined) orelse (IVal =< Max) ->
 		set_xoption(Host, Opts, add_opt(Opt, IVal, NewOpts));
 	       true ->
-		{error, ?ERR_NOT_ACCEPTABLE}
+		Txt = <<"Incorrect value of '~s'">>,
+		ErrTxt = iolist_to_binary(io_lib:format(Txt, [Opt])),
+		{error, ?ERRT_NOT_ACCEPTABLE(?MYLANG, ErrTxt)}
 	    end;
 	_ ->
-	    {error, ?ERR_NOT_ACCEPTABLE}
+	    Txt = <<"Value of '~s' should be integer">>,
+	    ErrTxt = iolist_to_binary(io_lib:format(Txt, [Opt])),
+	    {error, ?ERRT_NOT_ACCEPTABLE(?MYLANG, ErrTxt)}
     end).
 
 -define(SET_ALIST_XOPT(Opt, Val, Vals),
@@ -3896,7 +3948,9 @@ add_opt(Key, Value, Opts) ->
 	true ->
 	    set_xoption(Host, Opts, add_opt(Opt, jlib:binary_to_atom(Val), NewOpts));
 	false ->
-	    {error, ?ERR_NOT_ACCEPTABLE}
+	    Txt = <<"Incorrect value of '~s'">>,
+	    ErrTxt = iolist_to_binary(io_lib:format(Txt, [Opt])),
+	    {error, ?ERRT_NOT_ACCEPTABLE(?MYLANG, ErrTxt)}
     end).
 
 -define(SET_LIST_XOPT(Opt, Val),
@@ -4032,14 +4086,14 @@ tree(_Host, <<"virtual">>) ->
 tree(Host, Name) ->
     case gen_mod:db_type(serverhost(Host), ?MODULE) of
 	mnesia -> jlib:binary_to_atom(<<"nodetree_", Name/binary>>);
-	odbc -> jlib:binary_to_atom(<<"nodetree_", Name/binary, "_odbc">>);
+	sql -> jlib:binary_to_atom(<<"nodetree_", Name/binary, "_sql">>);
 	_ -> Name
     end.
 
 plugin(Host, Name) ->
     case gen_mod:db_type(serverhost(Host), ?MODULE) of
 	mnesia -> jlib:binary_to_atom(<<"node_", Name/binary>>);
-	odbc -> jlib:binary_to_atom(<<"node_", Name/binary, "_odbc">>);
+	sql -> jlib:binary_to_atom(<<"node_", Name/binary, "_sql">>);
 	_ -> Name
     end.
 
@@ -4053,7 +4107,7 @@ plugins(Host) ->
 subscription_plugin(Host) ->
     case gen_mod:db_type(serverhost(Host), ?MODULE) of
 	mnesia -> pubsub_subscription;
-	odbc -> pubsub_subscription_odbc;
+	sql -> pubsub_subscription_sql;
 	_ -> none
     end.
 
@@ -4139,8 +4193,9 @@ features(Host, Node) when is_binary(Node) ->
 tree_call({_User, Server, _Resource}, Function, Args) ->
     tree_call(Server, Function, Args);
 tree_call(Host, Function, Args) ->
-    ?DEBUG("tree_call ~p ~p ~p", [Host, Function, Args]),
-    catch apply(tree(Host), Function, Args).
+    Tree = tree(Host),
+    ?DEBUG("tree_call apply(~s, ~s, ~p) @ ~s", [Tree, Function, Args, Host]),
+    catch apply(Tree, Function, Args).
 
 tree_action(Host, Function, Args) ->
     ?DEBUG("tree_action ~p ~p ~p", [Host, Function, Args]),
@@ -4149,8 +4204,8 @@ tree_action(Host, Function, Args) ->
     case gen_mod:db_type(ServerHost, ?MODULE) of
 	mnesia ->
 	    catch mnesia:sync_dirty(Fun);
-	odbc ->
-	    case catch ejabberd_odbc:sql_bloc(ServerHost, Fun) of
+	sql ->
+	    case catch ejabberd_sql:sql_bloc(ServerHost, Fun) of
 		{atomic, Result} ->
 		    Result;
 		{aborted, Reason} ->
@@ -4209,7 +4264,7 @@ transaction(Host, Fun, Trans) ->
     ServerHost = serverhost(Host),
     DBType = gen_mod:db_type(ServerHost, ?MODULE),
     Retry = case DBType of
-	odbc -> 2;
+	sql -> 2;
 	_ -> 1
     end,
     transaction_retry(Host, ServerHost, Fun, Trans, DBType, Retry).
@@ -4220,12 +4275,12 @@ transaction_retry(Host, ServerHost, Fun, Trans, DBType, Count) ->
     Res = case DBType of
 	mnesia ->
 	    catch mnesia:Trans(Fun);
-	odbc ->
+	sql ->
 	    SqlFun = case Trans of
 		transaction -> sql_transaction;
 		_ -> sql_bloc
 	    end,
-	    catch ejabberd_odbc:SqlFun(ServerHost, Fun);
+	    catch ejabberd_sql:SqlFun(ServerHost, Fun);
 	_ ->
 	    {unsupported, DBType}
     end,
@@ -4266,6 +4321,13 @@ extended_error(Error, unsupported, Feature) ->
 extended_error(#xmlel{name = Error, attrs = Attrs, children = SubEls}, Ext, ExtAttrs) ->
     #xmlel{name = Error, attrs = Attrs,
 	children = lists:reverse([#xmlel{name = Ext, attrs = ExtAttrs} | SubEls])}.
+
+is_item_not_found({error, ErrEl}) ->
+    case fxml:get_subtag_with_xmlns(
+	   ErrEl, <<"item-not-found">>, ?NS_STANZAS) of
+	#xmlel{} -> true;
+	_ -> false
+    end.
 
 string_to_ljid(JID) ->
     case jid:from_string(JID) of
@@ -4426,7 +4488,7 @@ purge_offline(Host, LJID, Node) ->
 
 mod_opt_type(access_createnode) ->
     fun (A) when is_atom(A) -> A end;
-mod_opt_type(db_type) -> fun gen_mod:v_db/1;
+mod_opt_type(db_type) -> fun(T) -> ejabberd_config:v_db(?MODULE, T) end;
 mod_opt_type(host) -> fun iolist_to_binary/1;
 mod_opt_type(ignore_pep_from_offline) ->
     fun (A) when is_boolean(A) -> A end;

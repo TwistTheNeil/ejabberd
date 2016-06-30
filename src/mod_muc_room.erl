@@ -252,7 +252,7 @@ normal_state({route, From, <<"">>,
 		IsVoiceApprovement = is_voice_approvement(Els) and
 				       not is_visitor(From, StateData),
 		if IsInvitation ->
-		       case catch check_invitation(From, Els, Lang, StateData)
+		       case catch check_invitation(From, Packet, Lang, StateData)
 			   of
 			 {error, Error} ->
 			     Err = jlib:make_error_reply(Packet, Error),
@@ -266,6 +266,8 @@ normal_state({route, From, <<"">>,
 				     none ->
 					 NSD = set_affiliation(IJID, member,
 							       StateData),
+					 send_affiliation(IJID, member,
+							  StateData),
 					 case
 					   (NSD#state.config)#config.persistent
 					     of
@@ -433,9 +435,11 @@ normal_state({route, From, <<"">>,
 				   process_iq_owner(From, Type, Lang, SubEl, StateData);
 			       ?NS_DISCO_INFO ->
 				   case fxml:get_attr(<<"node">>, Attrs) of
-					  false -> process_iq_disco_info(From, Type, Lang, StateData);
-					  {value, _} -> {error, ?ERR_SERVICE_UNAVAILABLE}
-					end;
+				       false -> process_iq_disco_info(From, Type, Lang, StateData);
+				       {value, _} ->
+					   Txt = <<"Disco info is not available for this node">>,
+					   {error, ?ERRT_SERVICE_UNAVAILABLE(Lang, Txt)}
+				   end;
 			       ?NS_DISCO_ITEMS ->
 				   process_iq_disco_items(From, Type, Lang, StateData);
 			       ?NS_VCARD ->
@@ -817,8 +821,9 @@ handle_info({captcha_failed, From}, normal_state,
 		   of
 		 {ok, {Nick, Packet}} ->
 		     Robots = (?DICT):erase(From, StateData#state.robots),
-		     Err = jlib:make_error_reply(Packet,
-						 ?ERR_NOT_AUTHORIZED),
+		     Txt = <<"The CAPTCHA verification has failed">>,
+		     Err = jlib:make_error_reply(
+			     Packet, ?ERRT_NOT_AUTHORIZED(?MYLANG, Txt)),
 		     ejabberd_router:route % TODO: s/Nick/""/
 				 (jid:replace_resource(StateData#state.jid,
 							    Nick),
@@ -1798,8 +1803,8 @@ add_new_user(From, Nick,
                                10),
     Collision = nick_collision(From, Nick, StateData),
     case {(ServiceAffiliation == owner orelse
-	     (Affiliation == admin orelse Affiliation == owner)
-	       andalso NUsers < MaxAdminUsers
+	     ((Affiliation == admin orelse Affiliation == owner)
+	       andalso NUsers < MaxAdminUsers)
 	       orelse NUsers < MaxUsers)
 	    andalso NConferences < MaxConferences,
 	  Collision,
@@ -1807,6 +1812,22 @@ add_new_user(From, Nick,
 			       StateData#state.host, From, Nick),
 	  get_default_role(Affiliation, StateData)}
 	of
+      {false, _, _, _} when NUsers >= MaxUsers orelse NUsers >= MaxAdminUsers ->
+	  Txt = <<"Too many users in this conference">>,
+	  Err = jlib:make_error_reply(Packet,
+				      ?ERRT_RESOURCE_CONSTRAINT(Lang, Txt)),
+	  ejabberd_router:route % TODO: s/Nick/""/
+		      (jid:replace_resource(StateData#state.jid, Nick),
+		       From, Err),
+	  StateData;
+      {false, _, _, _} when NConferences >= MaxConferences ->
+	  Txt = <<"You have joined too many conferences">>,
+	  Err = jlib:make_error_reply(Packet,
+				      ?ERRT_RESOURCE_CONSTRAINT(Lang, Txt)),
+	  ejabberd_router:route % TODO: s/Nick/""/
+		      (jid:replace_resource(StateData#state.jid, Nick),
+		       From, Err),
+	  StateData;
       {false, _, _, _} ->
 	  Err = jlib:make_error_reply(Packet,
 				      ?ERR_SERVICE_UNAVAILABLE),
@@ -2421,6 +2442,51 @@ send_nick_changing(JID, OldNick, StateData,
 		  end,
 		  (?DICT):to_list(StateData#state.users)).
 
+maybe_send_affiliation(JID, Affiliation, StateData) ->
+    LJID = jid:tolower(JID),
+    IsOccupant = case LJID of
+		   {LUser, LServer, <<"">>} ->
+		       not (?DICT):is_empty(
+			     (?DICT):filter(fun({U, S, _}, _) ->
+						    U == LUser andalso
+						      S == LServer
+					    end, StateData#state.users));
+		   {_LUser, _LServer, _LResource} ->
+		       (?DICT):is_key(LJID, StateData#state.users)
+		 end,
+    case IsOccupant of
+      true ->
+	  ok; % The new affiliation is published via presence.
+      false ->
+	  send_affiliation(LJID, Affiliation, StateData)
+    end.
+
+send_affiliation(LJID, Affiliation, StateData) ->
+    ItemAttrs = [{<<"jid">>, jid:to_string(LJID)},
+		 {<<"affiliation">>, affiliation_to_list(Affiliation)},
+		 {<<"role">>, <<"none">>}],
+    Message = #xmlel{name = <<"message">>,
+		     attrs = [{<<"id">>, randoms:get_string()}],
+		     children =
+			 [#xmlel{name = <<"x">>,
+				 attrs = [{<<"xmlns">>, ?NS_MUC_USER}],
+				 children =
+				     [#xmlel{name = <<"item">>,
+					     attrs = ItemAttrs}]}]},
+    Recipients = case (StateData#state.config)#config.anonymous of
+		   true ->
+		       (?DICT):filter(fun(_, #user{role = moderator}) ->
+					      true;
+					 (_, _) ->
+					      false
+				      end, StateData#state.users);
+		   false ->
+		       StateData#state.users
+		 end,
+    send_multiple(StateData#state.jid,
+		  StateData#state.server_host,
+		  Recipients, Message).
+
 status_els(IsInitialPresence, JID, #user{jid = JID}, StateData) ->
     Status = case IsInitialPresence of
 	       true ->
@@ -2555,14 +2621,18 @@ process_iq_admin(From, set, Lang, SubEl, StateData) ->
     process_admin_items_set(From, Items, Lang, StateData);
 process_iq_admin(From, get, Lang, SubEl, StateData) ->
     case fxml:get_subtag(SubEl, <<"item">>) of
-      false -> {error, ?ERR_BAD_REQUEST};
+      false ->
+	  Txt = <<"No 'item' element found">>,
+	  {error, ?ERRT_BAD_REQUEST(Lang, Txt)};
       Item ->
 	  FAffiliation = get_affiliation(From, StateData),
 	  FRole = get_role(From, StateData),
 	  case fxml:get_tag_attr(<<"role">>, Item) of
 	    false ->
 		case fxml:get_tag_attr(<<"affiliation">>, Item) of
-		  false -> {error, ?ERR_BAD_REQUEST};
+		  false ->
+		      Txt = <<"No 'affiliation' attribute found">>,
+		      {error, ?ERRT_BAD_REQUEST(Lang, Txt)};
 		  {value, StrAffiliation} ->
 		      case catch list_to_affiliation(StrAffiliation) of
 			{'EXIT', _} -> {error, ?ERR_BAD_REQUEST};
@@ -2583,7 +2653,9 @@ process_iq_admin(From, get, Lang, SubEl, StateData) ->
 		end;
 	    {value, StrRole} ->
 		case catch list_to_role(StrRole) of
-		  {'EXIT', _} -> {error, ?ERR_BAD_REQUEST};
+		  {'EXIT', _} ->
+		      Txt = <<"Incorrect value of 'role' attribute">>,
+		      {error, ?ERRT_BAD_REQUEST(Lang, Txt)};
 		  SRole ->
 		      if FRole == moderator ->
 			     Items = items_with_role(SRole, StateData),
@@ -2697,11 +2769,13 @@ process_item_change(E, SD, UJID) ->
                             <<"321">>,
                             none,
                             SD),
+                    maybe_send_affiliation(JID, none, SD),
                     SD1 = set_affiliation(JID, none, SD),
                     set_role(JID, none, SD1);
                 _ ->
                     SD1 = set_affiliation(JID, none, SD),
                     send_update_presence(JID, SD1, SD),
+                    maybe_send_affiliation(JID, none, SD1),
                     SD1
             end;
         {JID, affiliation, outcast, Reason} ->
@@ -2711,6 +2785,7 @@ process_item_change(E, SD, UJID) ->
                     <<"301">>,
                     outcast,
                     SD),
+            maybe_send_affiliation(JID, outcast, SD),
             set_affiliation(JID,
                 outcast,
                 set_role(JID, none, SD),
@@ -2720,11 +2795,13 @@ process_item_change(E, SD, UJID) ->
             SD1 = set_affiliation(JID, A, SD, Reason),
             SD2 = set_role(JID, moderator, SD1),
             send_update_presence(JID, Reason, SD2, SD),
+            maybe_send_affiliation(JID, A, SD2),
             SD2;
         {JID, affiliation, member, Reason} ->
             SD1 = set_affiliation(JID, member, SD, Reason),
             SD2 = set_role(JID, participant, SD1),
             send_update_presence(JID, Reason, SD2, SD),
+            maybe_send_affiliation(JID, member, SD2),
             SD2;
         {JID, role, Role, Reason} ->
             SD1 = set_role(JID, Role, SD),
@@ -2734,6 +2811,7 @@ process_item_change(E, SD, UJID) ->
         {JID, affiliation, A, _Reason} ->
             SD1 = set_affiliation(JID, A, SD),
             send_update_presence(JID, SD1, SD),
+            maybe_send_affiliation(JID, A, SD1),
             SD1
     end
     of
@@ -2780,7 +2858,9 @@ find_changed_items(UJID, UAffiliation, URole,
 			     {error, ?ERRT_NOT_ACCEPTABLE(Lang, ErrText)};
 			 J -> {value, J}
 		       end;
-		   _ -> {error, ?ERR_BAD_REQUEST}
+		   _ ->
+		       Txt1 = <<"No 'nick' attribute found">>,
+		       {error, ?ERRT_BAD_REQUEST(Lang, Txt1)}
 		 end
 	   end,
     case TJID of
@@ -2790,7 +2870,9 @@ find_changed_items(UJID, UAffiliation, URole,
 	  case fxml:get_attr(<<"role">>, Attrs) of
 	    false ->
 		case fxml:get_attr(<<"affiliation">>, Attrs) of
-		  false -> {error, ?ERR_BAD_REQUEST};
+		  false ->
+		      Txt2 = <<"No 'affiliation' attribute found">>,
+		      {error, ?ERRT_BAD_REQUEST(Lang, Txt2)};
 		  {value, StrAffiliation} ->
 		      case catch list_to_affiliation(StrAffiliation) of
 			{'EXIT', _} ->
@@ -2839,7 +2921,9 @@ find_changed_items(UJID, UAffiliation, URole,
 				  find_changed_items(UJID, UAffiliation, URole,
 						     Items, Lang, StateData,
 						     [MoreRes | Res]);
-			      false -> {error, ?ERR_NOT_ALLOWED}
+			      false ->
+				 Txt3 = <<"Changing role/affiliation is not allowed">>,
+				 {error, ?ERRT_NOT_ALLOWED(Lang, Txt3)}
 			    end
 		      end
 		end;
@@ -2885,7 +2969,9 @@ find_changed_items(UJID, UAffiliation, URole,
 			    find_changed_items(UJID, UAffiliation, URole, Items,
 					       Lang, StateData,
 					       [MoreRes | Res]);
-			_ -> {error, ?ERR_NOT_ALLOWED}
+			_ ->
+			   Txt4 = <<"Changing role/affiliation is not allowed">>,
+			   {error, ?ERRT_NOT_ALLOWED(Lang, Txt4)}
 		      end
 		end
 	  end;
@@ -3059,14 +3145,7 @@ send_kickban_presence1(MJID, UJID, Reason, Code, Affiliation,
 		     StateData#state.users),
     SAffiliation = affiliation_to_list(Affiliation),
     BannedJIDString = jid:to_string(RealJID),
-    case MJID /= <<"">> of
-	true ->
-		{ok, #user{nick = ActorNick}} =
-		(?DICT):find(jid:tolower(MJID),
-			     StateData#state.users);
-	false ->
-		ActorNick = <<"">>
-    end,
+    ActorNick = get_actor_nick(MJID, StateData),
     lists:foreach(fun ({_LJID, Info}) ->
 			  JidAttrList = case Info#user.role == moderator orelse
 					       (StateData#state.config)#config.anonymous
@@ -3121,6 +3200,14 @@ send_kickban_presence1(MJID, UJID, Reason, Code, Affiliation,
 		  end,
 		  (?DICT):to_list(StateData#state.users)).
 
+get_actor_nick(<<"">>, _StateData) ->
+    <<"">>;
+get_actor_nick(MJID, StateData) ->
+    case (?DICT):find(jid:tolower(MJID), StateData#state.users) of
+	{ok, #user{nick = ActorNick}} -> ActorNick;
+	_ -> <<"">>
+    end.
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Owner stuff
 
@@ -3143,10 +3230,12 @@ process_iq_owner(From, set, Lang, SubEl, StateData) ->
 				 andalso
 				 is_password_settings_correct(XEl, StateData)
 			  of
-			true -> set_config(XEl, StateData);
+			true -> set_config(XEl, StateData, Lang);
 			false -> {error, ?ERR_NOT_ACCEPTABLE}
 		      end;
-		  _ -> {error, ?ERR_BAD_REQUEST}
+		  _ ->
+		     Txt = <<"Incorrect data form">>,
+		     {error, ?ERRT_BAD_REQUEST(Lang, Txt)}
 		end;
 	    [#xmlel{name = <<"destroy">>} = SubEl1] ->
 		?INFO_MSG("Destroyed MUC room ~s by the owner ~s",
@@ -3170,7 +3259,9 @@ process_iq_owner(From, get, Lang, SubEl, StateData) ->
 	    [] -> get_config(Lang, StateData, From);
 	    [Item] ->
 		case fxml:get_tag_attr(<<"affiliation">>, Item) of
-		  false -> {error, ?ERR_BAD_REQUEST};
+		  false ->
+		      Txt = <<"No 'affiliation' attribute found">>,
+		      {error, ?ERRT_BAD_REQUEST(Lang, Txt)};
 		  {value, StrAffiliation} ->
 		      case catch list_to_affiliation(StrAffiliation) of
 			{'EXIT', _} ->
@@ -3642,10 +3733,10 @@ get_config(Lang, StateData, From) ->
 	     children = Res}],
      StateData}.
 
-set_config(XEl, StateData) ->
+set_config(XEl, StateData, Lang) ->
     XData = jlib:parse_xdata_submit(XEl),
     case XData of
-      invalid -> {error, ?ERR_BAD_REQUEST};
+      invalid -> {error, ?ERRT_BAD_REQUEST(Lang, <<"Incorrect data form">>)};
       _ ->
 	  case set_xoption(XData, StateData#state.config) of
 	    #config{} = Config ->
@@ -3675,14 +3766,20 @@ set_config(XEl, StateData) ->
 	  <<"1">> -> set_xoption(Opts, Config#config{Opt = true});
 	  <<"true">> ->
 	      set_xoption(Opts, Config#config{Opt = true});
-	  _ -> {error, ?ERR_BAD_REQUEST}
+	  _ ->
+	      Txt = <<"Value of '~s' should be boolean">>,
+	      ErrTxt = iolist_to_binary(io_lib:format(Txt, [Opt])),
+	      {error, ?ERRT_BAD_REQUEST(?MYLANG, ErrTxt)}
 	end).
 
 -define(SET_NAT_XOPT(Opt, Val),
 	case catch jlib:binary_to_integer(Val) of
 	  I when is_integer(I), I > 0 ->
 	      set_xoption(Opts, Config#config{Opt = I});
-	  _ -> {error, ?ERR_BAD_REQUEST}
+	  _ ->
+	      Txt = <<"Value of '~s' should be integer">>,
+	      ErrTxt = iolist_to_binary(io_lib:format(Txt, [Opt])),
+	      {error, ?ERRT_BAD_REQUEST(?MYLANG, ErrTxt)}
 	end).
 
 -define(SET_STRING_XOPT(Opt, Val),
@@ -3735,7 +3832,10 @@ set_xoption([{<<"allow_private_messages_from_visitors">>,
       <<"nobody">> ->
 	  ?SET_STRING_XOPT(allow_private_messages_from_visitors,
 			   nobody);
-      _ -> {error, ?ERR_BAD_REQUEST}
+      _ ->
+	  Txt = <<"Value of 'allow_private_messages_from_visitors' "
+		  "should be anyone|moderators|nobody">>,
+	  {error, ?ERRT_BAD_REQUEST(?MYLANG, Txt)}
     end;
 set_xoption([{<<"muc#roomconfig_allowvisitorstatus">>,
 	      [Val]}
@@ -3803,7 +3903,10 @@ set_xoption([{<<"muc#roomconfig_presencebroadcast">>, Vals} | Opts],
                   end
           end, {false, false, false}, Vals),
     case Roles of
-        error -> {error, ?ERR_BAD_REQUEST};
+        error ->
+	    Txt = <<"Value of 'muc#roomconfig_presencebroadcast' should "
+		    "be moderator|participant|visitor">>,
+	    {error, ?ERRT_BAD_REQUEST(?MYLANG, Txt)};
         {M, P, V} ->
             Res =
                 if M -> [moderator]; true -> [] end ++
@@ -3831,7 +3934,10 @@ set_xoption([{<<"muc#roomconfig_whois">>, [Val]}
       <<"anyone">> ->
 	  ?SET_BOOL_XOPT(anonymous,
 			 (iolist_to_binary(integer_to_list(0))));
-      _ -> {error, ?ERR_BAD_REQUEST}
+      _ ->
+	  Txt = <<"Value of 'muc#roomconfig_whois' should be "
+		  "moderators|anyone">>,
+	  {error, ?ERRT_BAD_REQUEST(?MYLANG, Txt)}
     end;
 set_xoption([{<<"muc#roomconfig_maxusers">>, [Val]}
 	     | Opts],
@@ -3854,8 +3960,10 @@ set_xoption([{<<"muc#roomconfig_captcha_whitelist">>,
     ?SET_JIDMULTI_XOPT(captcha_whitelist, JIDs);
 set_xoption([{<<"FORM_TYPE">>, _} | Opts], Config) ->
     set_xoption(Opts, Config);
-set_xoption([_ | _Opts], _Config) ->
-    {error, ?ERR_BAD_REQUEST}.
+set_xoption([{Opt, _Vals} | _Opts], _Config) ->
+    Txt = <<"Unknown option '~s'">>,
+    ErrTxt = iolist_to_binary(io_lib:format(Txt, [Opt])),
+    {error, ?ERRT_BAD_REQUEST(?MYLANG, ErrTxt)}.
 
 change_config(Config, StateData) ->
     send_config_change_info(Config, StateData),
@@ -4128,8 +4236,9 @@ destroy_room(DEl, StateData) ->
 	  false -> ?FEATURE(Fiffalse)
 	end).
 
-process_iq_disco_info(_From, set, _Lang, _StateData) ->
-    {error, ?ERR_NOT_ALLOWED};
+process_iq_disco_info(_From, set, Lang, _StateData) ->
+    Txt = <<"Value 'set' of 'type' attribute is not allowed">>,
+    {error, ?ERRT_NOT_ALLOWED(Lang, Txt)};
 process_iq_disco_info(_From, get, Lang, StateData) ->
     Config = StateData#state.config,
     {result,
@@ -4199,9 +4308,10 @@ iq_disco_info_extras(Lang, StateData) ->
 			 <<"muc#roominfo_occupants">>,
 			 (iolist_to_binary(integer_to_list(Len))))]}].
 
-process_iq_disco_items(_From, set, _Lang, _StateData) ->
-    {error, ?ERR_NOT_ALLOWED};
-process_iq_disco_items(From, get, _Lang, StateData) ->
+process_iq_disco_items(_From, set, Lang, _StateData) ->
+    Txt = <<"Value 'set' of 'type' attribute is not allowed">>,
+    {error, ?ERRT_NOT_ALLOWED(Lang, Txt)};
+process_iq_disco_items(From, get, Lang, StateData) ->
     case (StateData#state.config)#config.public_list of
       true ->
 	  {result, get_mucroom_disco_items(StateData), StateData};
@@ -4209,18 +4319,26 @@ process_iq_disco_items(From, get, _Lang, StateData) ->
 	  case is_occupant_or_admin(From, StateData) of
 	    true ->
 		{result, get_mucroom_disco_items(StateData), StateData};
-	    _ -> {error, ?ERR_FORBIDDEN}
+	    _ ->
+	        Txt = <<"Only occupants or administrators can perform this query">>,
+		{error, ?ERRT_FORBIDDEN(Lang, Txt)}
 	  end
     end.
 
-process_iq_captcha(_From, get, _Lang, _SubEl,
+process_iq_captcha(_From, get, Lang, _SubEl,
 		   _StateData) ->
-    {error, ?ERR_NOT_ALLOWED};
-process_iq_captcha(_From, set, _Lang, SubEl,
+    Txt = <<"Value 'get' of 'type' attribute is not allowed">>,
+    {error, ?ERRT_NOT_ALLOWED(Lang, Txt)};
+process_iq_captcha(_From, set, Lang, SubEl,
 		   StateData) ->
     case ejabberd_captcha:process_reply(SubEl) of
       ok -> {result, [], StateData};
-      _ -> {error, ?ERR_NOT_ACCEPTABLE}
+      {error, malformed} ->
+	    Txt = <<"Incorrect CAPTCHA submit">>,
+	    {error, ?ERRT_BAD_REQUEST(Lang, Txt)};
+      _ ->
+	    Txt = <<"The CAPTCHA verification has failed">>,
+	    {error, ?ERRT_NOT_ALLOWED(Lang, Txt)}
     end.
 
 process_iq_vcard(_From, get, _Lang, _SubEl, StateData) ->
@@ -4442,33 +4560,38 @@ is_invitation(Els) ->
 		end,
 		false, Els).
 
-check_invitation(From, Els, Lang, StateData) ->
+check_invitation(From, Packet, Lang, StateData) ->
     FAffiliation = get_affiliation(From, StateData),
     CanInvite =
 	(StateData#state.config)#config.allow_user_invites
 	  orelse
 	  FAffiliation == admin orelse FAffiliation == owner,
-    InviteEl = case fxml:remove_cdata(Els) of
-		 [#xmlel{name = <<"x">>, children = Els1} = XEl] ->
-		     case fxml:get_tag_attr_s(<<"xmlns">>, XEl) of
-		       ?NS_MUC_USER -> ok;
-		       _ -> throw({error, ?ERR_BAD_REQUEST})
-		     end,
-		     case fxml:remove_cdata(Els1) of
-		       [#xmlel{name = <<"invite">>} = InviteEl1] -> InviteEl1;
-		       _ -> throw({error, ?ERR_BAD_REQUEST})
-		     end;
-		 _ -> throw({error, ?ERR_BAD_REQUEST})
+    InviteEl = case fxml:get_subtag_with_xmlns(Packet, <<"x">>, ?NS_MUC_USER) of
+		   false ->
+		       Txt1 = <<"No 'x' element found">>,
+		       throw({error, ?ERRT_BAD_REQUEST(Lang, Txt1)});
+		   XEl ->
+		       case fxml:get_subtag(XEl, <<"invite">>) of
+			   false ->
+			       Txt2 = <<"No 'invite' element found">>,
+			       throw({error, ?ERRT_BAD_REQUEST(Lang, Txt2)});
+			   InviteEl1 ->
+			       InviteEl1
+		       end
 	       end,
     JID = case
 	    jid:from_string(fxml:get_tag_attr_s(<<"to">>,
 						  InviteEl))
 	      of
-	    error -> throw({error, ?ERR_JID_MALFORMED});
+	    error ->
+		  Txt = <<"Incorrect value of 'to' attribute">>,
+		  throw({error, ?ERRT_JID_MALFORMED(Lang, Txt)});
 	    JID1 -> JID1
 	  end,
     case CanInvite of
-      false -> throw({error, ?ERR_NOT_ALLOWED});
+      false ->
+	  Txt3 = <<"Invitations are not allowed in this conference">>,
+	  throw({error, ?ERRT_NOT_ALLOWED(Lang, Txt3)});
       true ->
 	  Reason = fxml:get_path_s(InviteEl,
 				  [{elem, <<"reason">>}, cdata]),
