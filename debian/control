@@ -19,7 +19,7 @@ Build-Depends: debhelper (>= 9), dh-apparmor, dh-systemd (>= 1.5), libsqlite3-de
  		erlang-p1-pam        (>= 1.0.0),
  		erlang-p1-pgsql      (>= 1.1.0),
  		erlang-p1-sip        (>= 1.0.5),
- 		erlang-p1-sqlite3    (>= 1.1.5),
+ 		erlang-p1-sqlite3    (>= 1.1.5~dfsg0),
  		erlang-p1-stringprep (>= 1.0.3),
  		erlang-p1-stun       (>= 1.0.4),
  		erlang-p1-tls        (>= 1.0.4),
@@ -59,7 +59,7 @@ Suggests: apparmor, apparmor-utils, libunix-syslog-perl, imagemagick | graphicsm
  		erlang-p1-pgsql      (>= 1.1.0),
  		erlang-p1-sip        (>= 1.0.5),
  		erlang-p1-stun       (>= 1.0.4),
- 		erlang-p1-sqlite3    (>= 1.1.5),
+ 		erlang-p1-sqlite3    (>= 1.1.5~dfsg0),
  		erlang-p1-xmlrpc     (>= 1.15.1),
  		erlang-redis-client
 Breaks: ejabberd-contrib (<= 0.2015.08), ejabberd-mod-http-upload
