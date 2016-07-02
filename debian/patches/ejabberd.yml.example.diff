@@ -151,9 +151,9 @@ Index: ejabberd/ejabberd.yml.example
    mod_irc: {}
    mod_http_bind: {}
    ## mod_http_fileserver:
-@@ -595,6 +593,7 @@ modules:
+@@ -597,6 +595,7 @@ modules:
+     access_create: muc_create
      access_persistent: muc_create
-     access_admin: muc_admin
    ## mod_muc_log: {}
 +  mod_muc_admin: {}
    ## mod_multicast: {}

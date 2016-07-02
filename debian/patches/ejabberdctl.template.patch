@@ -18,7 +18,7 @@ Index: ejabberd/ejabberdctl.template
  SCRIPT_DIR=`cd ${0%/*} && pwd`
  ERL={{erl}}
  IEX={{bindir}}/iex
- EPMD={{bindir}}/epmd
+ EPMD={{epmd}}
 -INSTALLUSER={{installuser}}
 +INSTALLUSER=ejabberd
  ERL_LIBS={{libdir}}
@@ -47,7 +47,7 @@ Index: ejabberd/ejabberdctl.template
  fi
  if [ -f "$EJABBERDCTL_CONFIG_PATH" ] ; then
      . "$EJABBERDCTL_CONFIG_PATH"
-@@ -99,6 +103,7 @@ fi
+@@ -90,6 +94,7 @@ fi
  EJABBERD_LOG_PATH=$LOGS_DIR/ejabberd.log
  DATETIME=`date "+%Y%m%d-%H%M%S"`
  ERL_CRASH_DUMP=$LOGS_DIR/erl_crash_$DATETIME.dump
@@ -55,7 +55,7 @@ Index: ejabberd/ejabberdctl.template
  ERL_INETRC=$ETC_DIR/inetrc
  
  # define mnesia options
-@@ -357,7 +362,8 @@ help()
+@@ -348,7 +353,8 @@ help()
      echo "Optional parameters when starting an ejabberd node:"
      echo "  --config-dir dir   Config ejabberd:    $ETC_DIR"
      echo "  --config file      Config ejabberd:    $EJABBERD_CONFIG_PATH"
@@ -65,12 +65,3 @@ Index: ejabberd/ejabberdctl.template
      echo "  --logs dir         Directory for logs: $LOGS_DIR"
      echo "  --spool dir        Database spool dir: $SPOOL_DIR"
      echo "  --node nodename    ejabberd node name: $ERLANG_NODE"
-@@ -377,7 +383,7 @@ ctl()
-         JOT=/usr/bin/jot
-         if [ ! -x "$JOT" ] ; then
-             # no flock or jot, simply invoke ctlexec()
--            CTL_CONN="ctl-${ERLANG_NODE}"
-+            CTL_CONN="ctl-$$-${ERLANG_NODE}"
-             ctlexec $CTL_CONN "$@"
-             result=$?
-         else
