@@ -1,3 +1,9 @@
+ejabberd (16.06-3) unstable; urgency=medium
+
+  * Added patch to insert missing commas in sql statements (Closes: #833266)
+
+ -- Philipp Huebner <debalance@debian.org>  Tue, 02 Aug 2016 19:25:51 +0200
+
 ejabberd (16.06-2) unstable; urgency=medium
 
   * Adjusted postinst to correctly set admin user in ejabberd.yml
