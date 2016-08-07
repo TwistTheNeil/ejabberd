@@ -9,7 +9,7 @@ Index: ejabberd/src/ext_mod.erl
 ===================================================================
 --- ejabberd.orig/src/ext_mod.erl
 +++ ejabberd/src/ext_mod.erl
-@@ -509,11 +509,11 @@ compile(_Module, _Spec, DestDir) ->
+@@ -520,11 +520,11 @@ compile(_Module, _Spec, DestDir) ->
      filelib:ensure_dir(filename:join(Ebin, ".")),
      EjabBin = filename:dirname(code:which(ejabberd)),
      EjabInc = filename:join(filename:dirname(EjabBin), "include"),
@@ -24,5 +24,5 @@ Index: ejabberd/src/ext_mod.erl
 +              ++ [verbose, report_errors, report_warnings]
 +              ++ [{d, 'NO_EXT_LIB'}],
      [file:copy(App, Ebin) || App <- filelib:wildcard("src/*.app")],
-     Result = [case compile:file(File, Options) of
-             {ok, _} -> ok;
+ 
+     %% Compile erlang files

@@ -6,7 +6,7 @@ Index: ejabberd/ejabberd.service.template
 ===================================================================
 --- ejabberd.orig/ejabberd.service.template
 +++ ejabberd/ejabberd.service.template
-@@ -1,17 +1,20 @@
+@@ -1,17 +1,19 @@
  [Unit]
 -Description=XMPP Server
 -After=network.target
@@ -31,6 +31,10 @@ Index: ejabberd/ejabberd.service.template
 +Type=forking
 +Restart=on-failure
 +PIDFile=/run/ejabberd/ejabberd.pid
+ # The CAP_DAC_OVERRIDE capability is required for pam authentication to work
+ CapabilityBoundingSet=CAP_DAC_OVERRIDE
+ PrivateTmp=true
+@@ -22,3 +24,4 @@ NoNewPrivileges=true
  
  [Install]
  WantedBy=multi-user.target
