@@ -8,3 +8,5 @@ ejabberd.service.template.patch
 examples.mtr.patch
 ejabberdctl.cfg.example.diff
 ejabberd.yml.example.diff
+src.ejabberd_admin.erl.patch
+src.ejabberd_commands.erl.patch
