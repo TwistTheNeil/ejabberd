@@ -12,6 +12,7 @@
 	/bin/dash					rmix,
 	/bin/date					ix,
 	/bin/grep					ix,
+	/bin/ps						ix,
 	/bin/sed					ix,
 	/bin/sleep					ix,
 
@@ -50,6 +51,7 @@
 
 	/sys/devices/system/cpu**			r,
 	/sys/devices/system/node**			r,
+	/proc/sys/kernel/random/uuid			r,
 
 	/usr/bin/cut					ix,
 	/usr/bin/erl					ix,
