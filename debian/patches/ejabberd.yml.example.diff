@@ -80,10 +80,12 @@ Index: ejabberd/ejabberd.yml.example
      module: ejabberd_http
      request_handlers:
        "/websocket": ejabberd_http_ws
-@@ -178,6 +170,12 @@ listen:
+@@ -177,7 +169,13 @@ listen:
+     web_admin: true
      http_bind: true
      ## register: true
-     captcha: true
+-    captcha: true
++    ## captcha: true
 +    tls: true
 +    certfile: "/etc/ejabberd/ejabberd.pem"
 +
