@@ -1,4 +1,5 @@
 * Update ejabberdctl.8
+* debconf question for admin user: don't allow empty input
 * Test and possibly improve the maintainer-scripts (dpkg-reconfigure, removal/purge)
 
 
