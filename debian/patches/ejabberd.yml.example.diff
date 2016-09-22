@@ -72,7 +72,7 @@ Index: ejabberd/ejabberd.yml.example
      module: ejabberd_s2s_in
    ##
    ## ejabberd_service: Interact with external components (transports, ...)
-@@ -170,6 +161,7 @@ listen:
+@@ -179,6 +170,7 @@ listen:
    ##   access_commands: {}
    - 
      port: 5280
@@ -80,7 +80,7 @@ Index: ejabberd/ejabberd.yml.example
      module: ejabberd_http
      request_handlers:
        "/websocket": ejabberd_http_ws
-@@ -177,7 +169,13 @@ listen:
+@@ -186,7 +178,13 @@ listen:
      web_admin: true
      http_bind: true
      ## register: true
@@ -95,7 +95,7 @@ Index: ejabberd/ejabberd.yml.example
  
  ###.  ==================
  ###'  S2S GLOBAL OPTIONS
-@@ -187,17 +185,17 @@ listen:
+@@ -196,17 +194,17 @@ listen:
  ## Allowed values are: false optional required required_trusted
  ## You must specify a certificate file.
  ##
@@ -117,7 +117,7 @@ Index: ejabberd/ejabberd.yml.example
  ##   - "no_tlsv1"
  
  ##
-@@ -241,7 +239,7 @@ auth_method: internal
+@@ -250,7 +248,7 @@ auth_method: internal
  ##
  ## Store the plain passwords or hashed for SCRAM:
  ## auth_password_format: plain
@@ -126,7 +126,7 @@ Index: ejabberd/ejabberd.yml.example
  ##
  ## Define the FQDN if ejabberd doesn't detect it:
  ## fqdn: "server3.example.com"
-@@ -552,7 +550,7 @@ language: "en"
+@@ -561,7 +559,7 @@ language: "en"
  ##
  ## Full path to a script that generates the image.
  ##
@@ -135,7 +135,7 @@ Index: ejabberd/ejabberd.yml.example
  
  ##
  ## Host for the URL and port where ejabberd listens for CAPTCHA requests.
-@@ -572,7 +570,7 @@ language: "en"
+@@ -581,7 +579,7 @@ language: "en"
  ##
  modules: 
    mod_adhoc: {}
@@ -144,16 +144,16 @@ Index: ejabberd/ejabberd.yml.example
    mod_announce: # recommends mod_adhoc
      access: announce
    mod_blocking: {} # requires mod_privacy
-@@ -581,7 +579,7 @@ modules:
-   mod_client_state: {}
+@@ -591,7 +589,7 @@ modules:
    mod_configure: {} # requires mod_adhoc
+   ##mod_delegation: {} # for xep0356
    mod_disco: {}
 -  ## mod_echo: {}
 +  mod_echo: {}
    mod_irc: {}
    mod_http_bind: {}
    ## mod_http_fileserver:
-@@ -597,6 +595,7 @@ modules:
+@@ -607,6 +605,7 @@ modules:
      access_create: muc_create
      access_persistent: muc_create
    ## mod_muc_log: {}
