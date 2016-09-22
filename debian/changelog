@@ -1,3 +1,14 @@
+ejabberd (16.09-1) unstable; urgency=medium
+
+  * New upstream version 16.09
+  * Refreshed patches for ejabberd 16.09
+  * Updated versions of erlang-* deps
+  * Improved apparmor file
+  * Reverted some upstream changes to systemd unit file (Closes: #836711)
+  * Disabled captcha for web admin in default config
+
+ -- Philipp Huebner <debalance@debian.org>  Thu, 22 Sep 2016 14:59:13 +0200
+
 ejabberd (16.08-1) unstable; urgency=medium
 
   * Imported Upstream version 16.08
