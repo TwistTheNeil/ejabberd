@@ -28,8 +28,8 @@ Index: ejabberd/ejabberd.service.template
 -RemainAfterExit=yes
 -# The CAP_DAC_OVERRIDE capability is required for pam authentication to work
 -CapabilityBoundingSet=CAP_DAC_OVERRIDE
-+ExecStart=/usr/sbin/ejabberdctl start
-+ExecStop=/usr/sbin/ejabberdctl stop
++ExecStart=/bin/sh -c '/usr/sbin/ejabberdctl start && /usr/sbin/ejabberdctl started'
++ExecStop=/bin/sh -c '/usr/sbin/ejabberdctl stop && /usr/sbin/ejabberdctl stopped'
 +Type=forking
 +Restart=on-failure
 +PIDFile=/run/ejabberd/ejabberd.pid
