@@ -1,3 +1,11 @@
+ejabberd (16.09-2) unstable; urgency=medium
+
+  * Complete overhaul of the ejabberdctl.8 manpage
+  * Improved AppArmor profile (Closes: #839136)
+    Thanks Michael Kuhn for reporting!
+
+ -- Philipp Huebner <debalance@debian.org>  Sun, 02 Oct 2016 17:00:40 +0200
+
 ejabberd (16.09-1) unstable; urgency=medium
 
   * New upstream version 16.09
