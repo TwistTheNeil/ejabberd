@@ -6,7 +6,7 @@ Index: ejabberd/ejabberd.service.template
 ===================================================================
 --- ejabberd.orig/ejabberd.service.template
 +++ ejabberd/ejabberd.service.template
-@@ -1,24 +1,24 @@
+@@ -1,24 +1,23 @@
  [Unit]
 -Description=XMPP Server
 -After=network.target
@@ -41,4 +41,3 @@ Index: ejabberd/ejabberd.service.template
  
  [Install]
  WantedBy=multi-user.target
-+Alias=ejabberd.service
