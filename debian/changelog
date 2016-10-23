@@ -1,3 +1,16 @@
+ejabberd (16.09-3) unstable; urgency=medium
+
+  * Added lsb-base (>= 3.0-6) to Depends
+  * Removed self-referencing Alias from ejabberd.service.template.patch
+    (LP: #1617220)
+  * Removed incompatible graphicsmagick-imagemagick-compat alternative from
+    Suggests (LP: #788575)
+  * Added erlang-jiffy to Depends, it's required by mod_http_api
+  * Added yamllint to Suggests
+  * Added ImageMagick to AppArmor profile
+
+ -- Philipp Huebner <debalance@debian.org>  Sun, 23 Oct 2016 20:24:51 +0200
+
 ejabberd (16.09-2) unstable; urgency=medium
 
   * Complete overhaul of the ejabberdctl.8 manpage
