@@ -72,6 +72,8 @@
 	/usr/lib/erlang/lib/**.so			rm,
 	/usr/lib/erlang/p1_pam/bin/epam			px -> /usr/sbin/ejabberdctl//su,
 
+	/usr/lib/x86_64-linux-gnu/ImageMagick-*/**	ix,
+
 	/usr/sbin/ejabberdctl				r,
 
 	/var/backups/					rw,
