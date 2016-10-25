@@ -44,8 +44,9 @@
 	}
 
 
-	/etc/ejabberd**					r,
 	/etc/default/ejabberd				r,
+	/etc/ejabberd**					r,
+	/etc/ImageMagick**				r,
 
 	/run/ejabberd**					rw,
 
@@ -75,6 +76,8 @@
 	/usr/lib/x86_64-linux-gnu/ImageMagick-*/**	ix,
 
 	/usr/sbin/ejabberdctl				r,
+
+	/usr/share/ImageMagick-*/**			rix,
 
 	/var/backups/					rw,
 	/var/backups/ejabberd**				rwlk,
