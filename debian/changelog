@@ -1,3 +1,12 @@
+ejabberd (16.09-4) unstable; urgency=medium
+
+  * Added missing ImageMagick paths to apparmor profile
+  * Enabled versioning in mod_roster by default (Closes: #851212)
+  * Extended README.Debian with information regarding pam + systemd
+    (Closes: #854178)
+
+ -- Philipp Huebner <debalance@debian.org>  Sun, 05 Feb 2017 13:19:29 +0100
+
 ejabberd (16.09-3) unstable; urgency=medium
 
   * Added lsb-base (>= 3.0-6) to Depends
