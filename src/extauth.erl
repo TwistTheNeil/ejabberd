@@ -5,7 +5,7 @@
 %%% Created : 30 Jul 2004 by Leif Johansson <leifj@it.su.se>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2016   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -102,8 +102,7 @@ call_port(Server, Msg) ->
     receive {eauth, Result} -> Result end.
 
 random_instance(MaxNum) ->
-    random:seed(p1_time_compat:timestamp()),
-    random:uniform(MaxNum) - 1.
+    randoms:uniform(MaxNum) - 1.
 
 get_instances(Server) ->
     ejabberd_config:get_option(

@@ -5,7 +5,7 @@
 %%% Created :  8 Mar 2003 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2016   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -25,23 +25,20 @@
 
 -module(cyrsasl).
 
--behaviour(ejabberd_config).
-
 -author('alexey@process-one.net').
+-behaviour(gen_server).
 
--export([start/0, register_mechanism/3, listmech/1,
+-export([start_link/0, register_mechanism/3, listmech/1,
 	 server_new/7, server_start/3, server_step/2,
-	 opt_type/1]).
+	 get_mech/1, format_error/2]).
+%% gen_server callbacks
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2,
+	 terminate/2, code_change/3]).
 
 -include("ejabberd.hrl").
 -include("logger.hrl").
 
-%%
--export_type([
-    mechanism/0,
-    mechanisms/0,
-    sasl_mechanism/0
-]).
+-record(state, {}).
 
 -record(sasl_mechanism,
         {mechanism = <<"">>    :: mechanism() | '$1',
@@ -51,12 +48,22 @@
 -type(mechanism() :: binary()).
 -type(mechanisms() :: [mechanism(),...]).
 -type(password_type() :: plain | digest | scram).
--type(props() :: [{username, binary()} |
-                  {authzid, binary()} |
-                  {auth_module, atom()}]).
+-type sasl_property() :: {username, binary()} |
+			 {authzid, binary()} |
+			 {mechanism, binary()} |
+			 {auth_module, atom()}.
+-type sasl_return() :: {ok, [sasl_property()]} |
+		       {ok, [sasl_property()], binary()} |
+		       {continue, binary(), sasl_state()} |
+		       {error, atom(), binary()}.
 
 -type(sasl_mechanism() :: #sasl_mechanism{}).
-
+-type error_reason() :: cyrsasl_digest:error_reason() |
+			cyrsasl_oauth:error_reason() |
+			cyrsasl_plain:error_reason() |
+			cyrsasl_scram:error_reason() |
+			unsupported_mechanism | nodeprep_failed |
+			empty_username | aborted.
 -record(sasl_state,
 {
     service,
@@ -65,18 +72,23 @@
     get_password,
     check_password,
     check_password_digest,
+    mech_name = <<"">>,
     mech_mod,
     mech_state
 }).
+-type sasl_state() :: #sasl_state{}.
+-export_type([mechanism/0, mechanisms/0, sasl_mechanism/0, error_reason/0,
+	      sasl_state/0, sasl_return/0, sasl_property/0]).
 
+-callback start(list()) -> any().
+-callback stop() -> any().
 -callback mech_new(binary(), fun(), fun(), fun()) -> any().
--callback mech_step(any(), binary()) -> {ok, props()} |
-                                        {ok, props(), binary()} |
-                                        {continue, binary(), any()} |
-                                        {error, binary()} |
-                                        {error, binary(), binary()}.
+-callback mech_step(any(), binary()) -> sasl_return().
 
-start() ->
+start_link() ->
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+init([]) ->
     ets:new(sasl_mechanism,
 	    [named_table, public,
 	     {keypos, #sasl_mechanism.mechanism}]),
@@ -85,59 +97,67 @@ start() ->
     cyrsasl_scram:start([]),
     cyrsasl_anonymous:start([]),
     cyrsasl_oauth:start([]),
-    ok.
+    {ok, #state{}}.
 
-%%
+handle_call(_Request, _From, State) ->
+    Reply = ok,
+    {reply, Reply, State}.
+
+handle_cast(_Msg, State) ->
+    {noreply, State}.
+
+handle_info(_Info, State) ->
+    {noreply, State}.
+
+terminate(_Reason, _State) ->
+    cyrsasl_plain:stop(),
+    cyrsasl_digest:stop(),
+    cyrsasl_scram:stop(),
+    cyrsasl_anonymous:stop(),
+    cyrsasl_oauth:stop().
+
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
+
+-spec format_error(mechanism() | sasl_state(), error_reason()) -> {atom(), binary()}.
+format_error(_, unsupported_mechanism) ->
+    {'invalid-mechanism', <<"Unsupported mechanism">>};
+format_error(_, nodeprep_failed) ->
+    {'bad-protocol', <<"Nodeprep failed">>};
+format_error(_, empty_username) ->
+    {'bad-protocol', <<"Empty username">>};
+format_error(_, aborted) ->
+    {'aborted', <<"Aborted">>};
+format_error(#sasl_state{mech_mod = Mod}, Reason) ->
+    Mod:format_error(Reason);
+format_error(Mech, Reason) ->
+    case ets:lookup(sasl_mechanism, Mech) of
+	[#sasl_mechanism{module = Mod}] ->
+	    Mod:format_error(Reason);
+	[] ->
+	    {'invalid-mechanism', <<"Unsupported mechanism">>}
+    end.
+
 -spec register_mechanism(Mechanim :: mechanism(), Module :: module(),
 			 PasswordType :: password_type()) -> any().
 
 register_mechanism(Mechanism, Module, PasswordType) ->
-    case is_disabled(Mechanism) of
-      false ->
 	  ets:insert(sasl_mechanism,
 		     #sasl_mechanism{mechanism = Mechanism, module = Module,
-				     password_type = PasswordType});
-      true ->
-	  ?DEBUG("SASL mechanism ~p is disabled", [Mechanism]),
-	  true
-    end.
-
-%%% TODO: use callbacks
-%%-include("ejabberd.hrl").
-%%-include("jlib.hrl").
-%%check_authzid(_State, Props) ->
-%%    AuthzId = fxml:get_attr_s(authzid, Props),
-%%    case jid:from_string(AuthzId) of
-%%	error ->
-%%	    {error, "invalid-authzid"};
-%%	JID ->
-%%	    LUser = jid:nodeprep(fxml:get_attr_s(username, Props)),
-%%	    {U, S, R} = jid:tolower(JID),
-%%	    case R of
-%%		"" ->
-%%		    {error, "invalid-authzid"};
-%%		_ ->
-%%		    case {LUser, ?MYNAME} of
-%%			{U, S} ->
-%%			    ok;
-%%			_ ->
-%%			    {error, "invalid-authzid"}
-%%		    end
-%%	    end
-%%    end.
+			       password_type = PasswordType}).
 
 check_credentials(_State, Props) ->
     User = proplists:get_value(authzid, Props, <<>>),
     case jid:nodeprep(User) of
-      error -> {error, <<"not-authorized">>};
-      <<"">> -> {error, <<"not-authorized">>};
+      error -> {error, nodeprep_failed};
+      <<"">> -> {error, empty_username};
       _LUser -> ok
     end.
 
 -spec listmech(Host ::binary()) -> Mechanisms::mechanisms().
 
 listmech(Host) ->
-    Mechs = ets:select(sasl_mechanism,
+    ets:select(sasl_mechanism,
 		       [{#sasl_mechanism{mechanism = '$1',
 					 password_type = '$2', _ = '_'},
 			 case catch ejabberd_auth:store_type(Host) of
@@ -149,9 +169,10 @@ listmech(Host) ->
 			       [];
 			   _Else -> []
 			 end,
-			 ['$1']}]),
-    filter_anonymous(Host, Mechs).
+		 ['$1']}]).
 
+-spec server_new(binary(), binary(), binary(), term(),
+		 fun(), fun(), fun()) -> sasl_state().
 server_new(Service, ServerFQDN, UserRealm, _SecFlags,
 	   GetPassword, CheckPassword, CheckPasswordDigest) ->
     #sasl_state{service = Service, myname = ServerFQDN,
@@ -159,6 +180,7 @@ server_new(Service, ServerFQDN, UserRealm, _SecFlags,
 		check_password = CheckPassword,
 		check_password_digest = CheckPasswordDigest}.
 
+-spec server_start(sasl_state(), mechanism(), binary()) -> sasl_return().
 server_start(State, Mech, ClientIn) ->
     case lists:member(Mech,
 		      listmech(State#sasl_state.myname))
@@ -172,13 +194,15 @@ server_start(State, Mech, ClientIn) ->
 				    State#sasl_state.check_password,
 				    State#sasl_state.check_password_digest),
 		server_step(State#sasl_state{mech_mod = Module,
+					     mech_name = Mech,
 					     mech_state = MechState},
 			    ClientIn);
-	    _ -> {error, <<"no-mechanism">>}
+	    _ -> {error, unsupported_mechanism, <<"">>}
 	  end;
-      false -> {error, <<"no-mechanism">>}
+      false -> {error, unsupported_mechanism, <<"">>}
     end.
 
+-spec server_step(sasl_state(), binary()) -> sasl_return().
 server_step(State, ClientIn) ->
     Module = State#sasl_state.mech_mod,
     MechState = State#sasl_state.mech_state,
@@ -186,47 +210,21 @@ server_step(State, ClientIn) ->
         {ok, Props} ->
             case check_credentials(State, Props) of
                 ok             -> {ok, Props};
-                {error, Error} -> {error, Error}
+                {error, Error} -> {error, Error, <<"">>}
             end;
         {ok, Props, ServerOut} ->
             case check_credentials(State, Props) of
                 ok             -> {ok, Props, ServerOut};
-                {error, Error} -> {error, Error}
+                {error, Error} -> {error, Error, <<"">>}
             end;
         {continue, ServerOut, NewMechState} ->
             {continue, ServerOut, State#sasl_state{mech_state = NewMechState}};
         {error, Error, Username} ->
             {error, Error, Username};
         {error, Error} ->
-            {error, Error}
+            {error, Error, <<"">>}
     end.
 
-%% Remove the anonymous mechanism from the list if not enabled for the given
-%% host
-%%
--spec filter_anonymous(Host :: binary(), Mechs :: mechanisms()) -> mechanisms().
-
-filter_anonymous(Host, Mechs) ->
-    case ejabberd_auth_anonymous:is_sasl_anonymous_enabled(Host) of
-      true  -> Mechs;
-      false -> Mechs -- [<<"ANONYMOUS">>]
-    end.
-
--spec is_disabled(Mechanism :: mechanism()) -> boolean().
-
-is_disabled(Mechanism) ->
-    Disabled = ejabberd_config:get_option(
-		 disable_sasl_mechanisms,
-		 fun(V) when is_list(V) ->
-			 lists:map(fun(M) -> str:to_upper(M) end, V);
-		    (V) ->
-			 [str:to_upper(V)]
-		 end, []),
-    lists:member(Mechanism, Disabled).
-
-opt_type(disable_sasl_mechanisms) ->
-    fun (V) when is_list(V) ->
-	    lists:map(fun (M) -> str:to_upper(M) end, V);
-	(V) -> [str:to_upper(V)]
-    end;
-opt_type(_) -> [disable_sasl_mechanisms].
+-spec get_mech(sasl_state()) -> binary().
+get_mech(#sasl_state{mech_name = Mech}) ->
+    Mech.

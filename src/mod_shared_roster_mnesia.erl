@@ -1,11 +1,27 @@
 %%%-------------------------------------------------------------------
-%%% @author Evgeny Khramtsov <ekhramtsov@process-one.net>
-%%% @copyright (C) 2016, Evgeny Khramtsov
-%%% @doc
-%%%
-%%% @end
+%%% File    : mod_shared_roster_mnesia.erl
+%%% Author  : Evgeny Khramtsov <ekhramtsov@process-one.net>
 %%% Created : 14 Apr 2016 by Evgeny Khramtsov <ekhramtsov@process-one.net>
-%%%-------------------------------------------------------------------
+%%%
+%%%
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
+%%%
+%%% This program is free software; you can redistribute it and/or
+%%% modify it under the terms of the GNU General Public License as
+%%% published by the Free Software Foundation; either version 2 of the
+%%% License, or (at your option) any later version.
+%%%
+%%% This program is distributed in the hope that it will be useful,
+%%% but WITHOUT ANY WARRANTY; without even the implied warranty of
+%%% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+%%% General Public License for more details.
+%%%
+%%% You should have received a copy of the GNU General Public License along
+%%% with this program; if not, write to the Free Software Foundation, Inc.,
+%%% 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+%%%
+%%%----------------------------------------------------------------------
+
 -module(mod_shared_roster_mnesia).
 
 -behaviour(mod_shared_roster).
@@ -15,25 +31,25 @@
 	 delete_group/2, get_group_opts/2, set_group_opts/3,
 	 get_user_groups/2, get_group_explicit_users/2,
 	 get_user_displayed_groups/3, is_user_in_group/3,
-	 add_user_to_group/3, remove_user_from_group/3, import/2]).
+	 add_user_to_group/3, remove_user_from_group/3, import/3]).
 
--include("jlib.hrl").
 -include("mod_roster.hrl").
 -include("mod_shared_roster.hrl").
 -include("logger.hrl").
+-include("xmpp.hrl").
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 init(_Host, _Opts) ->
-    mnesia:create_table(sr_group,
+    ejabberd_mnesia:create(?MODULE, sr_group,
 			[{disc_copies, [node()]},
 			 {attributes, record_info(fields, sr_group)}]),
-    mnesia:create_table(sr_user,
+    ejabberd_mnesia:create(?MODULE, sr_user,
 			[{disc_copies, [node()]}, {type, bag},
-			 {attributes, record_info(fields, sr_user)}]),
-    update_tables(),
-    mnesia:add_table_index(sr_user, group_host).
+			 {attributes, record_info(fields, sr_user)},
+			 {index, [group_host]}]),
+    update_tables().
 
 list_groups(Host) ->
     mnesia:dirty_select(sr_group,
@@ -119,10 +135,14 @@ remove_user_from_group(Host, US, Group) ->
     F = fun () -> mnesia:delete_object(R) end,
     mnesia:transaction(F).
 
-import(_LServer, #sr_group{} = G) ->
+import(LServer, <<"sr_group">>, [Group, SOpts, _TimeStamp]) ->
+    G = #sr_group{group_host = {Group, LServer},
+                  opts = ejabberd_sql:decode_term(SOpts)},
     mnesia:dirty_write(G);
-import(_LServer, #sr_user{} = U) ->
-    mnesia:dirty_write(U).
+import(LServer, <<"sr_user">>, [SJID, Group, _TimeStamp]) ->
+    #jid{luser = U, lserver = S} = jid:decode(SJID),
+    User = #sr_user{us = {U, S}, group_host = {Group, LServer}},
+    mnesia:dirty_write(User).
 
 %%%===================================================================
 %%% Internal functions

@@ -1,12 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @author Alexey Shchepin <alexey@process-one.net>
-%%% @doc
-%%% Interface for Riak database
-%%% @end
+%%% File    : ejabberd_riak.erl
+%%% Author  : Alexey Shchepin <alexey@process-one.net>
+%%% Purpose : Interface for Riak database
 %%% Created : 29 Dec 2011 by Alexey Shchepin <alexey@process-one.net>
-%%% @copyright (C) 2002-2016   ProcessOne
 %%%
-%%% ejabberd, Copyright (C) 2002-2016   ProcessOne
+%%%
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -62,7 +61,7 @@
 %% the first element of the record is assumed as a primary index,
 %% i.e. `i' = element(2, Record).
 
--export_types([index_info/0]).
+-export_type([index_info/0]).
 
 %%%===================================================================
 %%% API
@@ -85,7 +84,7 @@ is_connected() ->
 
 %% @private
 get_proc(I) ->
-    jlib:binary_to_atom(
+    misc:binary_to_atom(
       iolist_to_binary(
 	[atom_to_list(?MODULE), $_, integer_to_list(I)])).
 
@@ -428,7 +427,7 @@ map_key(Obj, _, _) ->
          <<"b_", B/binary>> ->
              B;
          <<"i_", B/binary>> ->
-             list_to_integer(binary_to_list(B));
+             (binary_to_integer(B));
          B ->
              erlang:binary_to_term(B)
      end].
@@ -483,7 +482,7 @@ encode_index_key(Idx, Key) ->
 encode_key(Bin) when is_binary(Bin) ->
     <<"b_", Bin/binary>>;
 encode_key(Int) when is_integer(Int) ->
-    <<"i_", (list_to_binary(integer_to_list(Int)))/binary>>;
+    <<"i_", ((integer_to_binary(Int)))/binary>>;
 encode_key(Term) ->
     erlang:term_to_binary(Term).
 
@@ -519,7 +518,7 @@ log_error(_, _, _) ->
     ok.
 
 make_invalid_object(Val) ->
-    list_to_binary(io_lib:fwrite("Invalid object: ~p", [Val])).
+    (str:format("Invalid object: ~p", [Val])).
 
 get_random_pid() ->
     PoolPid = ejabberd_riak_sup:get_random_pid(),

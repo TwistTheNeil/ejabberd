@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 #
-# ejabberd, Copyright (C) 2002-2016   ProcessOne
+# ejabberd, Copyright (C) 2002-2017   ProcessOne
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -42,14 +42,14 @@ defmodule EjabberdSmMock do
 			fn (user, domain)  -> for s <- get_sessions(user, domain), do: s.resource end)
 
     mock(:ejabberd_sm, :route,
-			fn (_from, to, {:broadcast, {:exit, _reason}})  ->
-				user = jid(to, :user)
-				domain = jid(to, :server)
-				resource = jid(to, :resource)
-				disconnect_resource(user, domain, resource)
-				:ok
-				(_, _, _) -> :ok
-			end)
+      fn (to, {:exit, _reason})  ->
+        user = jid(to, :user)
+        domain = jid(to, :server)
+        resource = jid(to, :resource)
+        disconnect_resource(user, domain, resource)
+        :ok
+        (_, _) -> :ok
+      end)
 
 	end
 

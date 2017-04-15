@@ -5,7 +5,7 @@
 %%% Created : 15 Jan 2003 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2016   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -32,8 +32,7 @@
 -behaviour(gen_mod).
 
 %% API
--export([start_link/2, start/2, stop/1,
-	 do_client_version/3]).
+-export([start/2, stop/1, reload/3, do_client_version/3]).
 
 -export([init/1, handle_call/3, handle_cast/2,
 	 handle_info/2, terminate/2, code_change/3,
@@ -42,35 +41,28 @@
 -include("ejabberd.hrl").
 -include("logger.hrl").
 
--include("jlib.hrl").
+-include("xmpp.hrl").
 
 -record(state, {host = <<"">> :: binary()}).
 
--define(PROCNAME, ejabberd_mod_echo).
-
 %%====================================================================
-%% API
+%% gen_mod API
 %%====================================================================
-%%--------------------------------------------------------------------
-%% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
-%% Description: Starts the server
-%%--------------------------------------------------------------------
-start_link(Host, Opts) ->
-    Proc = gen_mod:get_module_proc(Host, ?PROCNAME),
-    gen_server:start_link({local, Proc}, ?MODULE,
-			  [Host, Opts], []).
-
 start(Host, Opts) ->
-    Proc = gen_mod:get_module_proc(Host, ?PROCNAME),
-    ChildSpec = {Proc, {?MODULE, start_link, [Host, Opts]},
-		 transient, 1000, worker, [?MODULE]},
-    supervisor:start_child(ejabberd_sup, ChildSpec).
+    gen_mod:start_child(?MODULE, Host, Opts).
 
 stop(Host) ->
-    Proc = gen_mod:get_module_proc(Host, ?PROCNAME),
-    gen_server:call(Proc, stop),
-    supervisor:terminate_child(ejabberd_sup, Proc),
-    supervisor:delete_child(ejabberd_sup, Proc).
+    gen_mod:stop_child(?MODULE, Host).
+
+reload(Host, NewOpts, OldOpts) ->
+    Proc = gen_mod:get_module_proc(Host, ?MODULE),
+    gen_server:cast(Proc, {reload, Host, NewOpts, OldOpts}).
+
+depends(_Host, _Opts) ->
+    [].
+
+mod_opt_type(host) -> fun iolist_to_binary/1;
+mod_opt_type(_) -> [host].
 
 %%====================================================================
 %% gen_server callbacks
@@ -84,6 +76,7 @@ stop(Host) ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([Host, Opts]) ->
+    process_flag(trap_exit, true),
     MyHost = gen_mod:get_opt_host(Host, Opts,
 				  <<"echo.@HOST@">>),
     ejabberd_router:register_route(MyHost, Host),
@@ -107,7 +100,21 @@ handle_call(stop, _From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
-handle_cast(_Msg, State) -> {noreply, State}.
+handle_cast({reload, Host, NewOpts, OldOpts}, State) ->
+    NewMyHost = gen_mod:get_opt_host(Host, NewOpts,
+				     <<"echo.@HOST@">>),
+    OldMyHost = gen_mod:get_opt_host(Host, OldOpts,
+				     <<"echo.@HOST@">>),
+    if NewMyHost /= OldMyHost ->
+	    ejabberd_router:register_route(NewMyHost, Host),
+	    ejabberd_router:unregister_route(OldMyHost);
+       true ->
+	    ok
+    end,
+    {noreply, State#state{host = NewMyHost}};
+handle_cast(Msg, State) ->
+    ?WARNING_MSG("unexpected cast: ~p", [Msg]),
+    {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% Function: handle_info(Info, State) -> {noreply, State} |
@@ -115,17 +122,20 @@ handle_cast(_Msg, State) -> {noreply, State}.
 %%                                       {stop, Reason, State}
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
-handle_info({route, From, To, Packet}, State) ->
+handle_info({route, Packet}, State) ->
+    From = xmpp:get_from(Packet),
+    To = xmpp:get_to(Packet),
     Packet2 = case From#jid.user of
 		<<"">> ->
-		    Lang = fxml:get_tag_attr_s(<<"xml:lang">>, Packet),
+		    Lang = xmpp:get_lang(Packet),
 		    Txt = <<"User part of JID in 'from' is empty">>,
-		    jlib:make_error_reply(
-		      Packet, ?ERRT_BAD_REQUEST(Lang, Txt));
-		_ -> Packet
+		    xmpp:make_error(
+		      Packet, xmpp:err_bad_request(Txt, Lang));
+		_ ->
+		    xmpp:set_from_to(Packet, To, From)
 	      end,
     do_client_version(disabled, To, From),
-    ejabberd_router:route(To, From, Packet2),
+    ejabberd_router:route(Packet2),
     {noreply, State};
 handle_info(_Info, State) -> {noreply, State}.
 
@@ -168,40 +178,25 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 %% using exactly the same JID. We add a (mostly) random resource to
 %% try to guarantee that the received response matches the request sent.
 %% Finally, the received response is printed in the ejabberd log file.
+
+%% THIS IS **NOT** HOW TO WRITE ejabberd CODE. THIS CODE IS RETARDED.
+
 do_client_version(disabled, _From, _To) -> ok;
 do_client_version(enabled, From, To) ->
-    ToS = jid:to_string(To),
-    Random_resource =
-	iolist_to_binary(integer_to_list(random:uniform(100000))),
+    Random_resource = randoms:get_string(),
     From2 = From#jid{resource = Random_resource,
 		     lresource = Random_resource},
-    Packet = #xmlel{name = <<"iq">>,
-		    attrs = [{<<"to">>, ToS}, {<<"type">>, <<"get">>}],
-		    children =
-			[#xmlel{name = <<"query">>,
-				attrs = [{<<"xmlns">>, ?NS_VERSION}],
-				children = []}]},
-    ejabberd_router:route(From2, To, Packet),
-    Els = receive
-	    {route, To, From2, IQ} ->
-		#xmlel{name = <<"query">>, children = List} =
-		    fxml:get_subtag(IQ, <<"query">>),
-		List
-	    after 5000 -> % Timeout in miliseconds: 5 seconds
-		      []
-	  end,
-    Values = [{Name, Value}
-	      || #xmlel{name = Name, attrs = [],
-			children = [{xmlcdata, Value}]}
-		     <- Els],
-    Values_string1 = [io_lib:format("~n~s: ~p", [N, V])
-		      || {N, V} <- Values],
-    Values_string2 = iolist_to_binary(Values_string1),
-    ?INFO_MSG("Information of the client: ~s~s",
-	      [ToS, Values_string2]).
-
-depends(_Host, _Opts) ->
-    [].
-
-mod_opt_type(host) -> fun iolist_to_binary/1;
-mod_opt_type(_) -> [host].
+    ID = randoms:get_string(),
+    Packet = #iq{from = From2, to = To, type = get,
+		 id = randoms:get_string(),
+		 sub_els = [#version{}]},
+    ejabberd_router:route(Packet),
+    receive
+	{route,
+	 #iq{to = To, from = From2,
+	     id = ID, type = result, sub_els = [#version{} = V]}} ->
+	    ?INFO_MSG("Version of the client ~s:~n~s",
+		      [jid:encode(To), xmpp:pp(V)])
+    after 5000 -> % Timeout in miliseconds: 5 seconds
+	    []
+    end.

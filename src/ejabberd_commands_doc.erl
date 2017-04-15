@@ -5,7 +5,7 @@
 %%% Created : 20 May 2008 by Badlop <badlop@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2015   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -41,7 +41,7 @@
 -define(SPAN(N, V), ?TAG_R(span, ??N, V)).
 
 -define(STR(A), ?SPAN(str,[<<"\"">>, A, <<"\"">>])).
--define(NUM(A), ?SPAN(num,jlib:integer_to_binary(A))).
+-define(NUM(A), ?SPAN(num,integer_to_binary(A))).
 -define(FIELD(A), ?SPAN(field,A)).
 -define(ID(A), ?SPAN(id,A)).
 -define(OP(A), ?SPAN(op,A)).
@@ -171,7 +171,7 @@ xml_gen({Name, integer}, Int, Indent, HTMLOutput) ->
     [?XML(member, Indent,
          [?XML_L(name, Indent, 1, ?ID_A(Name)),
           ?XML(value, Indent, 1,
-               [?XML_L(integer, Indent, 2, ?ID(jlib:integer_to_binary(Int)))])])];
+               [?XML_L(integer, Indent, 2, ?ID(integer_to_binary(Int)))])])];
 xml_gen({Name, string}, Str, Indent, HTMLOutput) ->
     [?XML(member, Indent,
          [?XML_L(name, Indent, 1, ?ID_A(Name)),
@@ -403,12 +403,19 @@ generate_html_output(File, RegExp, Languages) ->
     Cmds3 = lists:sort(fun(#ejabberd_commands{name=N1}, #ejabberd_commands{name=N2}) ->
                                N1 =< N2
                        end, Cmds2),
+    Cmds4 = [maybe_add_policy_arguments(Cmd) || Cmd <- Cmds3],
     Langs = binary:split(Languages, <<",">>, [global]),
-    Out = lists:map(fun(C) -> gen_doc(C, true, Langs) end, Cmds3),
+    Out = lists:map(fun(C) -> gen_doc(C, true, Langs) end, Cmds4),
     {ok, Fh} = file:open(File, [write]),
     io:format(Fh, "~s", [[html_pre(), Out, html_post()]]),
     file:close(Fh),
     ok.
+
+maybe_add_policy_arguments(#ejabberd_commands{args=Args1, policy=user}=Cmd) ->
+    Args2 = [{user, binary}, {server, binary} | Args1],
+    Cmd#ejabberd_commands{args = Args2};
+maybe_add_policy_arguments(Cmd) ->
+    Cmd.
 
 generate_md_output(File, RegExp, Languages) ->
     Cmds = find_commands_definitions(),

@@ -5,7 +5,7 @@
 %%% Created : 20 Jul 2016 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2016   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -34,7 +34,7 @@
 -include("ejabberd_oauth.hrl").
 
 init() ->
-    mnesia:create_table(oauth_token,
+    ejabberd_mnesia:create(?MODULE, oauth_token,
                         [{disc_copies, [node()]},
                          {attributes,
                           record_info(fields, oauth_token)}]),

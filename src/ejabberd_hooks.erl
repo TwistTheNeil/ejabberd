@@ -5,7 +5,7 @@
 %%% Created :  8 Aug 2004 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2016   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -189,7 +189,7 @@ run_fold(Hook, Host, Val, Args) ->
 %%          {stop, Reason}
 %%----------------------------------------------------------------------
 init([]) ->
-    ets:new(hooks, [named_table]),
+    ets:new(hooks, [named_table, {read_concurrency, true}]),
     {ok, #state{}}.
 
 %%----------------------------------------------------------------------
@@ -326,10 +326,9 @@ run1([{_Seq, Node, Module, Function} | Ls], Hook, Args) ->
 	    run1(Ls, Hook, Args)
     end;
 run1([{_Seq, Module, Function} | Ls], Hook, Args) ->
-    Res = safe_apply(Module, Function, Args),
+    Res = safe_apply(Hook, Module, Function, Args),
     case Res of
-	{'EXIT', Reason} ->
-	    ?ERROR_MSG("~p~nrunning hook: ~p", [Reason, {Hook, Args}]),
+	'EXIT' ->
 	    run1(Ls, Hook, Args);
 	stop ->
 	    ok;
@@ -362,10 +361,9 @@ run_fold1([{_Seq, Node, Module, Function} | Ls], Hook, Val, Args) ->
 	    run_fold1(Ls, Hook, NewVal, Args)
     end;
 run_fold1([{_Seq, Module, Function} | Ls], Hook, Val, Args) ->
-    Res = safe_apply(Module, Function, [Val | Args]),
+    Res = safe_apply(Hook, Module, Function, [Val | Args]),
     case Res of
-	{'EXIT', Reason} ->
-	    ?ERROR_MSG("~p~nrunning hook: ~p", [Reason, {Hook, Args}]),
+	'EXIT' ->
 	    run_fold1(Ls, Hook, Val, Args);
 	stop ->
 	    stopped;
@@ -375,9 +373,20 @@ run_fold1([{_Seq, Module, Function} | Ls], Hook, Val, Args) ->
 	    run_fold1(Ls, Hook, NewVal, Args)
     end.
 
-safe_apply(Module, Function, Args) ->
-    if is_function(Function) ->
-            catch apply(Function, Args);
+safe_apply(Hook, Module, Function, Args) ->
+    try if is_function(Function) ->
+		apply(Function, Args);
        true ->
-            catch apply(Module, Function, Args)
+		apply(Module, Function, Args)
+	end
+    catch E:R when E /= exit; R /= normal ->
+	    ?ERROR_MSG("Hook ~p crashed when running ~p:~p/~p:~n"
+		       "** Reason = ~p~n"
+		       "** Arguments = ~p",
+		       [Hook, Module, Function, length(Args),
+			{E, R, get_stacktrace()}, Args]),
+	    'EXIT'
     end.
+
+get_stacktrace() ->
+    [{Mod, Fun, Loc, Args} || {Mod, Fun, Args, Loc} <- erlang:get_stacktrace()].

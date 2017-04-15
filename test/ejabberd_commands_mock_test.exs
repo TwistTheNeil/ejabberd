@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 #
-# ejabberd, Copyright (C) 2002-2016   ProcessOne
+# ejabberd, Copyright (C) 2002-2017   ProcessOne
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -42,24 +42,28 @@ defmodule EjabberdCommandsMockTest do
 	Record.defrecord :ejabberd_commands, Record.extract(:ejabberd_commands,	from_lib: "ejabberd/include/ejabberd_commands.hrl")
 
 	setup_all do
+        :ok = :ejabberd.start_app(:lager)
 		try do
 			:stringprep.start
 		rescue
 			_ -> :ok
 		end
 		:mnesia.start
-    :ok = :jid.start
-    :ok = :ejabberd_config.start(["domain1", "domain2"], [])
-    :ok = :acl.start
+        {:ok, _} = :jid.start
+        :ejabberd_hooks.start_link
+        :ok = :ejabberd_config.start(["domain1", "domain2"], [])
+        {:ok, _} = :ejabberd_access_permissions.start_link()
+        {:ok, _} = :acl.start_link
 		EjabberdOauthMock.init
-    on_exit fn -> :meck.unload end
+        on_exit fn -> :meck.unload end
 	end
 
 	setup do
 		:meck.unload
 		:meck.new(@module, [:non_strict])
-    :mnesia.delete_table(:ejabberd_commands)
-		:ejabberd_commands.init
+		:mnesia.delete_table(:ejabberd_commands)
+		:ejabberd_commands.start_link
+		:ok
 	end
 
 	test "API command can be registered, listed and unregistered" do

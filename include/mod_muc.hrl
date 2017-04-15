@@ -1,7 +1,6 @@
 %%%----------------------------------------------------------------------
-%%% File    : mod_muc.hrl
 %%%
-%%% ejabberd, Copyright (C) 2002-2016   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -23,11 +22,15 @@
                                                    {'_', binary()},
                    opts = [] :: list() | '_'}).
 
--record(muc_online_room,
-        {name_host = {<<"">>, <<"">>} :: {binary(), binary()} | '$1' |
-                                         {'_', binary()} | '_',
-         pid = self() :: pid() | '$2' | '_' | '$1'}).
-
 -record(muc_registered,
         {us_host = {{<<"">>, <<"">>}, <<"">>} :: {{binary(), binary()}, binary()} | '$1',
          nick = <<"">> :: binary()}).
+
+-record(muc_online_room,
+        {name_host :: {binary(), binary()} | '$1' | {'_', binary()} | '_',
+         pid :: pid() | '$2' | '_' | '$1'}).
+
+-record(muc_online_users, {us :: {binary(), binary()},
+                           resource :: binary() | '_',
+                           room :: binary() | '_' | '$1',
+                           host :: binary() | '_' | '$2'}).

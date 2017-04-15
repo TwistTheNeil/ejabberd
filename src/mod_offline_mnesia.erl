@@ -1,11 +1,27 @@
 %%%-------------------------------------------------------------------
-%%% @author Evgeny Khramtsov <ekhramtsov@process-one.net>
-%%% @copyright (C) 2016, Evgeny Khramtsov
-%%% @doc
-%%%
-%%% @end
+%%% File    : mod_offline_mnesia.erl
+%%% Author  : Evgeny Khramtsov <ekhramtsov@process-one.net>
 %%% Created : 15 Apr 2016 by Evgeny Khramtsov <ekhramtsov@process-one.net>
-%%%-------------------------------------------------------------------
+%%%
+%%%
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
+%%%
+%%% This program is free software; you can redistribute it and/or
+%%% modify it under the terms of the GNU General Public License as
+%%% published by the Free Software Foundation; either version 2 of the
+%%% License, or (at your option) any later version.
+%%%
+%%% This program is distributed in the hope that it will be useful,
+%%% but WITHOUT ANY WARRANTY; without even the implied warranty of
+%%% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+%%% General Public License for more details.
+%%%
+%%% You should have received a copy of the GNU General Public License along
+%%% with this program; if not, write to the Free Software Foundation, Inc.,
+%%% 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+%%%
+%%%----------------------------------------------------------------------
+
 -module(mod_offline_mnesia).
 
 -behaviour(mod_offline).
@@ -13,9 +29,9 @@
 -export([init/2, store_messages/5, pop_messages/2, remove_expired_messages/1,
 	 remove_old_messages/2, remove_user/2, read_message_headers/2,
 	 read_message/3, remove_message/3, read_all_messages/2,
-	 remove_all_messages/2, count_messages/2, import/2]).
+	 remove_all_messages/2, count_messages/2, import/1]).
 
--include("jlib.hrl").
+-include("xmpp.hrl").
 -include("mod_offline.hrl").
 -include("logger.hrl").
 
@@ -25,7 +41,7 @@
 %%% API
 %%%===================================================================
 init(_Host, _Opts) ->
-    mnesia:create_table(offline_msg,
+    ejabberd_mnesia:create(?MODULE, offline_msg,
 			[{disc_only_copies, [node()]}, {type, bag},
 			 {attributes, record_info(fields, offline_msg)}]),
     update_table().
@@ -42,7 +58,11 @@ store_messages(_Host, US, Msgs, Len, MaxOfflineMsgs) ->
 				mnesia:write_lock_table(offline_msg);
 			   true -> ok
 			end,
-			lists:foreach(fun (M) -> mnesia:write(M) end, Msgs)
+			lists:foreach(
+			  fun(#offline_msg{packet = Pkt} = M) ->
+				  El = xmpp:encode(Pkt),
+				  mnesia:write(M#offline_msg{packet = El})
+			  end, Msgs)
 		end
 	end,
     mnesia:transaction(F).
@@ -107,9 +127,7 @@ read_message_headers(LUser, LServer) ->
 	     fun(#offline_msg{from = From, to = To, packet = Pkt,
 			      timestamp = TS}) ->
 		     Seq = now_to_integer(TS),
-		     NewPkt = jlib:add_delay_info(Pkt, LServer, TS,
-						  <<"Offline Storage">>),
-		     {Seq, From, To, NewPkt}
+		     {Seq, From, To, TS, Pkt}
 	     end, Msgs),
     lists:keysort(1, Hdrs).
 
@@ -127,12 +145,16 @@ read_message(LUser, LServer, I) ->
 remove_message(LUser, LServer, I) ->
     US = {LUser, LServer},
     TS = integer_to_now(I),
-    Msgs = mnesia:dirty_match_object(
-	     offline_msg, #offline_msg{us = US, timestamp = TS, _ = '_'}),
-    lists:foreach(
-      fun(Msg) ->
-	      mnesia:dirty_delete_object(Msg)
-      end, Msgs).
+    case mnesia:dirty_match_object(
+	   offline_msg, #offline_msg{us = US, timestamp = TS, _ = '_'}) of
+	[] ->
+	    {error, notfound};
+	Msgs ->
+	    lists:foreach(
+	      fun(Msg) ->
+		      mnesia:dirty_delete_object(Msg)
+	      end, Msgs)
+    end.
 
 read_all_messages(LUser, LServer) ->
     US = {LUser, LServer},
@@ -158,7 +180,7 @@ count_messages(LUser, LServer) ->
 	_ -> 0
     end.
 
-import(_LServer, #offline_msg{} = Msg) ->
+import(#offline_msg{} = Msg) ->
     mnesia:dirty_write(Msg).
 
 %%%===================================================================

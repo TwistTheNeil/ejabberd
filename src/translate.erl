@@ -5,7 +5,7 @@
 %%% Created :  6 Jan 2003 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2016   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -27,13 +27,23 @@
 
 -author('alexey@process-one.net').
 
--export([start/0, load_dir/1, load_file/2,
-	 translate/2]).
+-behaviour(gen_server).
+
+-export([start_link/0, load_dir/1, load_file/2, translate/2]).
+%% gen_server callbacks
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2,
+	 terminate/2, code_change/3]).
 
 -include("ejabberd.hrl").
 -include("logger.hrl").
 
-start() ->
+-record(state, {}).
+
+start_link() ->
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+init([]) ->
+    process_flag(trap_exit, true),
     ets:new(translations, [named_table, public]),
     Dir = case os:getenv("EJABBERD_MSGS_PATH") of
 	    false ->
@@ -44,7 +54,24 @@ start() ->
 	    Path -> Path
 	  end,
     load_dir(iolist_to_binary(Dir)),
-    ok.
+    xmpp:set_tr_callback({?MODULE, translate}),
+    {ok, #state{}}.
+
+handle_call(_Request, _From, State) ->
+    Reply = ok,
+    {reply, Reply, State}.
+
+handle_cast(_Msg, State) ->
+    {noreply, State}.
+
+handle_info(_Info, State) ->
+    {noreply, State}.
+
+terminate(_Reason, _State) ->
+    xmpp:set_tr_callback(undefined).
+
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
 
 -spec load_dir(binary()) -> ok.
 

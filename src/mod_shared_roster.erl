@@ -5,7 +5,7 @@
 %%% Created :  5 Mar 2005 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2016   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -29,11 +29,11 @@
 
 -behaviour(gen_mod).
 
--export([start/2, stop/1, item_to_xml/1, export/1,
-	 import/1, webadmin_menu/3, webadmin_page/3,
-	 get_user_roster/2, get_subscription_lists/3,
-	 get_jid_info/4, import/3, process_item/2,
-	 in_subscription/6, out_subscription/4, user_available/1,
+-export([start/2, stop/1, reload/3, export/1,
+	 import_info/0, webadmin_menu/3, webadmin_page/3,
+	 get_user_roster/2, c2s_session_opened/1,
+	 get_jid_info/4, import/5, process_item/2, import_start/2,
+	 in_subscription/6, out_subscription/4, c2s_self_presence/1,
 	 unset_presence/4, register_user/2, remove_user/2,
 	 list_groups/1, create_group/2, create_group/3,
 	 delete_group/2, get_group_opts/2, set_group_opts/3,
@@ -44,7 +44,7 @@
 -include("ejabberd.hrl").
 -include("logger.hrl").
 
--include("jlib.hrl").
+-include("xmpp.hrl").
 
 -include("mod_roster.hrl").
 
@@ -54,9 +54,11 @@
 
 -include("mod_shared_roster.hrl").
 
+-define(SETS, gb_sets).
+
 -type group_options() :: [{atom(), any()}].
 -callback init(binary(), gen_mod:opts()) -> any().
--callback import(binary(), #sr_user{} | #sr_group{}) -> ok | pass.
+-callback import(binary(), binary(), [binary()]) -> ok.
 -callback list_groups(binary()) -> [binary()].
 -callback groups_with_opts(binary()) -> [{binary(), group_options()}].
 -callback create_group(binary(), binary(), group_options()) -> {atomic, any()}.
@@ -68,7 +70,7 @@
 -callback get_user_displayed_groups(binary(), binary(), group_options()) ->
     [{binary(), group_options()}].
 -callback is_user_in_group({binary(), binary()}, binary(), binary()) -> boolean().
--callback add_user_to_group(binary(), {binary(), binary()}, binary()) -> {atomic, any()}.
+-callback add_user_to_group(binary(), {binary(), binary()}, binary()) -> any().
 -callback remove_user_from_group(binary(), {binary(), binary()}, binary()) -> {atomic, any()}.
 
 start(Host, Opts) ->
@@ -84,20 +86,18 @@ start(Host, Opts) ->
 		       ?MODULE, in_subscription, 30),
     ejabberd_hooks:add(roster_out_subscription, Host,
 		       ?MODULE, out_subscription, 30),
-    ejabberd_hooks:add(roster_get_subscription_lists, Host,
-		       ?MODULE, get_subscription_lists, 70),
+    ejabberd_hooks:add(c2s_session_opened, Host,
+		       ?MODULE, c2s_session_opened, 70),
     ejabberd_hooks:add(roster_get_jid_info, Host, ?MODULE,
 		       get_jid_info, 70),
     ejabberd_hooks:add(roster_process_item, Host, ?MODULE,
 		       process_item, 50),
-    ejabberd_hooks:add(user_available_hook, Host, ?MODULE,
-		       user_available, 50),
+    ejabberd_hooks:add(c2s_self_presence, Host, ?MODULE,
+		       c2s_self_presence, 50),
     ejabberd_hooks:add(unset_presence_hook, Host, ?MODULE,
 		       unset_presence, 50),
     ejabberd_hooks:add(register_user, Host, ?MODULE,
 		       register_user, 50),
-    ejabberd_hooks:add(anonymous_purge_hook, Host, ?MODULE,
-		       remove_user, 50),
     ejabberd_hooks:add(remove_user, Host, ?MODULE,
 		       remove_user, 50).
 
@@ -112,29 +112,36 @@ stop(Host) ->
 			  ?MODULE, in_subscription, 30),
     ejabberd_hooks:delete(roster_out_subscription, Host,
 			  ?MODULE, out_subscription, 30),
-    ejabberd_hooks:delete(roster_get_subscription_lists,
-			  Host, ?MODULE, get_subscription_lists, 70),
+    ejabberd_hooks:delete(c2s_session_opened,
+			  Host, ?MODULE, c2s_session_opened, 70),
     ejabberd_hooks:delete(roster_get_jid_info, Host,
 			  ?MODULE, get_jid_info, 70),
     ejabberd_hooks:delete(roster_process_item, Host,
 			  ?MODULE, process_item, 50),
-    ejabberd_hooks:delete(user_available_hook, Host,
-			  ?MODULE, user_available, 50),
+    ejabberd_hooks:delete(c2s_self_presence, Host,
+			  ?MODULE, c2s_self_presence, 50),
     ejabberd_hooks:delete(unset_presence_hook, Host,
 			  ?MODULE, unset_presence, 50),
     ejabberd_hooks:delete(register_user, Host, ?MODULE,
 			  register_user, 50),
-    ejabberd_hooks:delete(anonymous_purge_hook, Host,
-			  ?MODULE, remove_user, 50),
     ejabberd_hooks:delete(remove_user, Host, ?MODULE,
 			  remove_user,
 			  50).
-    %%ejabberd_hooks:delete(remove_user, Host,
-    %%    		  ?MODULE, remove_user, 50),
+
+reload(Host, NewOpts, OldOpts) ->
+    NewMod = gen_mod:db_mod(Host, NewOpts, ?MODULE),
+    OldMod = gen_mod:db_mod(Host, OldOpts, ?MODULE),
+    if NewMod /= OldMod ->
+	    NewMod:init(Host, NewOpts);
+       true ->
+	    ok
+    end,
+    ok.
 
 depends(_Host, _Opts) ->
     [].
 
+-spec get_user_roster([#roster{}], {binary(), binary()}) -> [#roster{}].
 get_user_roster(Items, US) ->
     {U, S} = US,
     DisplayedGroups = get_user_displayed_groups(US),
@@ -159,10 +166,12 @@ get_user_roster(Items, US) ->
 						      case dict:find(US1,
 								     SRUsers1)
 							  of
-							{ok, _GroupNames} ->
+							{ok, GroupNames} ->
 							    {Item#roster{subscription
 									     =
 									     both,
+									 groups =
+									     Item#roster.groups ++ GroupNames,
 									 ask =
 									     none},
 							     dict:erase(US1,
@@ -172,56 +181,37 @@ get_user_roster(Items, US) ->
 						      end
 					      end,
 					      SRUsers, Items),
-    ModVcard = get_vcard_module(S),
     SRItems = [#roster{usj = {U, S, {U1, S1, <<"">>}},
 		       us = US, jid = {U1, S1, <<"">>},
-		       name = get_rosteritem_name(ModVcard, U1, S1),
+		       name = get_rosteritem_name(U1, S1),
 		       subscription = both, ask = none, groups = GroupNames}
 	       || {{U1, S1}, GroupNames} <- dict:to_list(SRUsersRest)],
     SRItems ++ NewItems1.
 
-get_vcard_module(Server) ->
-    Modules = gen_mod:loaded_modules(Server),
-    [M
-     || M <- Modules,
-	(M == mod_vcard) or (M == mod_vcard_ldap)].
-
-get_rosteritem_name([], _, _) -> <<"">>;
-get_rosteritem_name([ModVcard], U, S) ->
-    From = jid:make(<<"">>, S, jlib:atom_to_binary(?MODULE)),
-    To = jid:make(U, S, <<"">>),
-    case lists:member(To#jid.lserver, ?MYHOSTS) of
+get_rosteritem_name(U, S) ->
+    case gen_mod:is_loaded(S, mod_vcard) of
         true ->
-            IQ = {iq, <<"">>, get, <<"vcard-temp">>, <<"">>,
-                  #xmlel{name = <<"vCard">>,
-                         attrs = [{<<"xmlns">>, <<"vcard-temp">>}],
-                         children = []}},
-            IQ_Vcard = ModVcard:process_sm_iq(From, To, IQ),
-            case catch get_rosteritem_name_vcard(IQ_Vcard#iq.sub_el) of
-                {'EXIT', Err} ->
-                    ?ERROR_MSG("Error found when trying to get the "
-                               "vCard of ~s@~s in ~p:~n ~p",
-                               [U, S, ModVcard, Err]),
-                    <<"">>;
-                NickName ->
-                    NickName
-            end;
+	    SubEls = mod_vcard:get_vcard(U, S),
+	    get_rosteritem_name_vcard(SubEls);
         false ->
             <<"">>
     end.
 
-get_rosteritem_name_vcard([]) -> <<"">>;
-get_rosteritem_name_vcard([Vcard]) ->
+-spec get_rosteritem_name_vcard([xmlel()]) -> binary().
+get_rosteritem_name_vcard([Vcard|_]) ->
     case fxml:get_path_s(Vcard,
 			[{elem, <<"NICKNAME">>}, cdata])
 	of
       <<"">> ->
 	  fxml:get_path_s(Vcard, [{elem, <<"FN">>}, cdata]);
       Nickname -> Nickname
-    end.
+    end;
+get_rosteritem_name_vcard(_) ->
+    <<"">>.
 
 %% This function rewrites the roster entries when moving or renaming
 %% them in the user contact list.
+-spec process_item(#roster{}, binary()) -> #roster{}.
 process_item(RosterItem, Host) ->
     USFrom = {UserFrom, ServerFrom} = RosterItem#roster.us,
     {UserTo, ServerTo, ResourceTo} = RosterItem#roster.jid,
@@ -252,12 +242,10 @@ process_item(RosterItem, Host) ->
 	    %% existing roster groups.
 	    [] ->
 		mod_roster:out_subscription(UserTo, ServerTo,
-					    jid:make(UserFrom, ServerFrom,
-							  <<"">>),
+					    jid:make(UserFrom, ServerFrom),
 					    unsubscribe),
-		mod_roster:in_subscription(aaaa, UserFrom, ServerFrom,
-					   jid:make(UserTo, ServerTo,
-							 <<"">>),
+		mod_roster:in_subscription(false, UserFrom, ServerFrom,
+					   jid:make(UserTo, ServerTo),
 					   unsubscribe, <<"">>),
 		RosterItem#roster{subscription = both, ask = none};
 	    %% If so, it means the user wants to add that contact
@@ -281,53 +269,56 @@ set_new_rosteritems(UserFrom, ServerFrom, UserTo,
     RIFrom = build_roster_record(UserFrom, ServerFrom,
 				 UserTo, ServerTo, NameTo, GroupsFrom),
     set_item(UserFrom, ServerFrom, ResourceTo, RIFrom),
-    JIDTo = jid:make(UserTo, ServerTo, <<"">>),
-    JIDFrom = jid:make(UserFrom, ServerFrom, <<"">>),
+    JIDTo = jid:make(UserTo, ServerTo),
+    JIDFrom = jid:make(UserFrom, ServerFrom),
     RITo = build_roster_record(UserTo, ServerTo, UserFrom,
 			       ServerFrom, UserFrom, []),
     set_item(UserTo, ServerTo, <<"">>, RITo),
     mod_roster:out_subscription(UserFrom, ServerFrom, JIDTo,
 				subscribe),
-    mod_roster:in_subscription(aaa, UserTo, ServerTo,
+    mod_roster:in_subscription(false, UserTo, ServerTo,
 			       JIDFrom, subscribe, <<"">>),
     mod_roster:out_subscription(UserTo, ServerTo, JIDFrom,
 				subscribed),
-    mod_roster:in_subscription(aaa, UserFrom, ServerFrom,
+    mod_roster:in_subscription(false, UserFrom, ServerFrom,
 			       JIDTo, subscribed, <<"">>),
     mod_roster:out_subscription(UserTo, ServerTo, JIDFrom,
 				subscribe),
-    mod_roster:in_subscription(aaa, UserFrom, ServerFrom,
+    mod_roster:in_subscription(false, UserFrom, ServerFrom,
 			       JIDTo, subscribe, <<"">>),
     mod_roster:out_subscription(UserFrom, ServerFrom, JIDTo,
 				subscribed),
-    mod_roster:in_subscription(aaa, UserTo, ServerTo,
+    mod_roster:in_subscription(false, UserTo, ServerTo,
 			       JIDFrom, subscribed, <<"">>),
     RIFrom.
 
 set_item(User, Server, Resource, Item) ->
-    ResIQ = #iq{type = set, xmlns = ?NS_ROSTER,
-		id = <<"push", (randoms:get_string())/binary>>,
-		sub_el =
-		    [#xmlel{name = <<"query">>,
-			    attrs = [{<<"xmlns">>, ?NS_ROSTER}],
-			    children = [mod_roster:item_to_xml(Item)]}]},
-    ejabberd_router:route(jid:make(User, Server,
-					Resource),
-			  jid:make(<<"">>, Server, <<"">>),
-			  jlib:iq_to_xml(ResIQ)).
+    ResIQ = #iq{from = jid:make(User, Server, Resource),
+		to = jid:make(Server),
+		type = set, id = <<"push", (randoms:get_string())/binary>>,
+		sub_els = [#roster_query{
+			      items = [mod_roster:encode_item(Item)]}]},
+    ejabberd_router:route(ResIQ).
 
-get_subscription_lists({F, T}, User, Server) ->
-    LUser = jid:nodeprep(User),
-    LServer = jid:nameprep(Server),
+c2s_session_opened(#{jid := #jid{luser = LUser, lserver = LServer},
+		     pres_f := PresF, pres_t := PresT} = State) ->
     US = {LUser, LServer},
     DisplayedGroups = get_user_displayed_groups(US),
-    SRUsers = lists:usort(lists:flatmap(fun (Group) ->
+    SRUsers = lists:flatmap(fun(Group) ->
 						get_group_users(LServer, Group)
 					end,
-					DisplayedGroups)),
-    SRJIDs = [{U1, S1, <<"">>} || {U1, S1} <- SRUsers],
-    {lists:usort(SRJIDs ++ F), lists:usort(SRJIDs ++ T)}.
+			    DisplayedGroups),
+    PresBoth = lists:foldl(
+		 fun({U, S, _}, Acc) ->
+			 ?SETS:add_element({U, S, <<"">>}, Acc);
+		    ({U, S}, Acc) ->
+			 ?SETS:add_element({U, S, <<"">>}, Acc)
+		 end, ?SETS:new(), SRUsers),
+    State#{pres_f => ?SETS:union(PresBoth, PresF),
+	   pres_t => ?SETS:union(PresBoth, PresT)}.
 
+-spec get_jid_info({subscription(), [binary()]}, binary(), binary(), jid())
+      -> {subscription(), [binary()]}.
 get_jid_info({Subscription, Groups}, User, Server,
 	     JID) ->
     LUser = jid:nodeprep(User),
@@ -356,17 +347,23 @@ get_jid_info({Subscription, Groups}, User, Server,
       error -> {Subscription, Groups}
     end.
 
+-spec in_subscription(boolean(), binary(), binary(), jid(),
+		      subscribe | subscribed | unsubscribe | unsubscribed,
+		      binary()) -> boolean().
 in_subscription(Acc, User, Server, JID, Type,
 		_Reason) ->
     process_subscription(in, User, Server, JID, Type, Acc).
 
+-spec out_subscription(
+	binary(), binary(), jid(),
+	subscribed | unsubscribed | subscribe | unsubscribe) -> boolean().
 out_subscription(UserFrom, ServerFrom, JIDTo,
 		 unsubscribed) ->
     #jid{luser = UserTo, lserver = ServerTo} = JIDTo,
-    JIDFrom = jid:make(UserFrom, ServerFrom, <<"">>),
+    JIDFrom = jid:make(UserFrom, ServerFrom),
     mod_roster:out_subscription(UserTo, ServerTo, JIDFrom,
 				unsubscribe),
-    mod_roster:in_subscription(aaaa, UserFrom, ServerFrom,
+    mod_roster:in_subscription(false, UserFrom, ServerFrom,
 			       JIDTo, unsubscribe, <<"">>),
     process_subscription(out, UserFrom, ServerFrom, JIDTo,
 			 unsubscribed, false);
@@ -574,13 +571,13 @@ add_user_to_group(Host, US, Group) ->
     {LUser, LServer} = US,
     case ejabberd_regexp:run(LUser, <<"^@.+@\$">>) of
       match ->
-	  GroupOpts = (?MODULE):get_group_opts(Host, Group),
+	  GroupOpts = mod_shared_roster:get_group_opts(Host, Group),
 	  MoreGroupOpts = case LUser of
 			    <<"@all@">> -> [{all_users, true}];
 			    <<"@online@">> -> [{online_users, true}];
 			    _ -> []
 			  end,
-	  (?MODULE):set_group_opts(Host, Group,
+	  mod_shared_roster:set_group_opts(Host, Group,
 				   GroupOpts ++ MoreGroupOpts);
       nomatch ->
 	  DisplayedToGroups = displayed_to_groups(Group, Host),
@@ -612,7 +609,7 @@ remove_user_from_group(Host, US, Group) ->
     {LUser, LServer} = US,
     case ejabberd_regexp:run(LUser, <<"^@.+@\$">>) of
       match ->
-	  GroupOpts = (?MODULE):get_group_opts(Host, Group),
+	  GroupOpts = mod_shared_roster:get_group_opts(Host, Group),
 	  NewGroupOpts = case LUser of
 			   <<"@all@">> ->
 			       lists:filter(fun (X) -> X /= {all_users, true}
@@ -623,7 +620,7 @@ remove_user_from_group(Host, US, Group) ->
 					    end,
 					    GroupOpts)
 			 end,
-	  (?MODULE):set_group_opts(Host, Group, NewGroupOpts);
+	  mod_shared_roster:set_group_opts(Host, Group, NewGroupOpts);
       nomatch ->
 	  Mod = gen_mod:db_mod(Host, ?MODULE),
 	  Result = Mod:remove_user_from_group(Host, US, Group),
@@ -653,12 +650,15 @@ broadcast_members_to_user(LUser, LServer, Group, Host, Subscription) ->
 	      broadcast_subscription(U, S, {LUser, LServer, <<"">>}, Subscription)
       end, Members).
 
+-spec register_user(binary(), binary()) -> ok.
 register_user(User, Server) ->
     Groups = get_user_groups({User, Server}),
     [push_user_to_displayed(User, Server, Group, Server,
 			    both, displayed_to_groups(Group, Server))
-     || Group <- Groups].
+     || Group <- Groups],
+    ok.
 
+-spec remove_user(binary(), binary()) -> ok.
 remove_user(User, Server) ->
     push_user_to_members(User, Server, remove).
 
@@ -730,16 +730,13 @@ displayed_to_groups(GroupName, LServer) ->
     [Name || {Name, _} <- Gs].
 
 push_item(User, Server, Item) ->
-    Stanza = jlib:iq_to_xml(#iq{type = set,
-				xmlns = ?NS_ROSTER,
-				id = <<"push", (randoms:get_string())/binary>>,
-				sub_el =
-				    [#xmlel{name = <<"query">>,
-					    attrs = [{<<"xmlns">>, ?NS_ROSTER}],
-					    children = [item_to_xml(Item)]}]}),
+    Stanza = #iq{type = set, id = <<"push", (randoms:get_string())/binary>>,
+		 sub_els = [#roster_query{
+			       items = [mod_roster:encode_item(Item)]}]},
     lists:foreach(fun (Resource) ->
 			  JID = jid:make(User, Server, Resource),
-			  ejabberd_router:route(jid:remove_resource(JID), JID, Stanza)
+			  ejabberd_router:route(
+			    xmpp:set_from_to(Stanza, jid:remove_resource(JID), JID))
 		  end,
 		  ejabberd_sm:get_user_resources(User, Server)).
 
@@ -752,43 +749,15 @@ push_roster_item(User, Server, ContactU, ContactS,
 		   groups = [GroupName]},
     push_item(User, Server, Item).
 
-item_to_xml(Item) ->
-    Attrs1 = [{<<"jid">>,
-	       jid:to_string(Item#roster.jid)}],
-    Attrs2 = case Item#roster.name of
-	       <<"">> -> Attrs1;
-	       Name -> [{<<"name">>, Name} | Attrs1]
-	     end,
-    Attrs3 = case Item#roster.subscription of
-	       none -> [{<<"subscription">>, <<"none">>} | Attrs2];
-	       from -> [{<<"subscription">>, <<"from">>} | Attrs2];
-	       to -> [{<<"subscription">>, <<"to">>} | Attrs2];
-	       both -> [{<<"subscription">>, <<"both">>} | Attrs2];
-	       remove -> [{<<"subscription">>, <<"remove">>} | Attrs2]
-	     end,
-    Attrs4 = case ask_to_pending(Item#roster.ask) of
-	       out -> [{<<"ask">>, <<"subscribe">>} | Attrs3];
-	       both -> [{<<"ask">>, <<"subscribe">>} | Attrs3];
-	       _ -> Attrs3
-	     end,
-    SubEls1 = lists:map(fun (G) ->
-				#xmlel{name = <<"group">>, attrs = [],
-				       children = [{xmlcdata, G}]}
-			end,
-			Item#roster.groups),
-    SubEls = SubEls1 ++ Item#roster.xs,
-    #xmlel{name = <<"item">>, attrs = Attrs4,
-	   children = SubEls}.
-
-ask_to_pending(subscribe) -> out;
-ask_to_pending(unsubscribe) -> none;
-ask_to_pending(Ask) -> Ask.
-
-user_available(New) ->
+-spec c2s_self_presence({presence(), ejabberd_c2s:state()})
+      -> {presence(), ejabberd_c2s:state()}.
+c2s_self_presence({_, #{pres_last := _}} = Acc) ->
+    %% This is just a presence update, nothing to do
+    Acc;
+c2s_self_presence({#presence{type = available}, #{jid := New}} = Acc) ->
     LUser = New#jid.luser,
     LServer = New#jid.lserver,
-    Resources = ejabberd_sm:get_user_resources(LUser,
-					       LServer),
+    Resources = ejabberd_sm:get_user_resources(LUser, LServer),
     ?DEBUG("user_available for ~p @ ~p (~p resources)",
 	   [LUser, LServer, length(Resources)]),
     case length(Resources) of
@@ -805,8 +774,12 @@ user_available(New) ->
 			end,
 			UserGroups);
       _ -> ok
-    end.
+    end,
+    Acc;
+c2s_self_presence(Acc) ->
+    Acc.
 
+-spec unset_presence(binary(), binary(), binary(), binary()) -> ok.
 unset_presence(LUser, LServer, Resource, Status) ->
     Resources = ejabberd_sm:get_user_resources(LUser,
 					       LServer),
@@ -850,7 +823,7 @@ webadmin_page(Acc, _, _) -> Acc.
 
 list_shared_roster_groups(Host, Query, Lang) ->
     Res = list_sr_groups_parse_query(Host, Query),
-    SRGroups = (?MODULE):list_groups(Host),
+    SRGroups = mod_shared_roster:list_groups(Host),
     FGroups = (?XAE(<<"table">>, [],
 		    [?XE(<<"tbody">>,
 			 (lists:map(fun (Group) ->
@@ -901,15 +874,15 @@ list_sr_groups_parse_query(Host, Query) ->
 list_sr_groups_parse_addnew(Host, Query) ->
     case lists:keysearch(<<"namenew">>, 1, Query) of
       {value, {_, Group}} when Group /= <<"">> ->
-	  (?MODULE):create_group(Host, Group), ok;
+	  mod_shared_roster:create_group(Host, Group), ok;
       _ -> error
     end.
 
 list_sr_groups_parse_delete(Host, Query) ->
-    SRGroups = (?MODULE):list_groups(Host),
+    SRGroups = mod_shared_roster:list_groups(Host),
     lists:foreach(fun (Group) ->
 			  case lists:member({<<"selected">>, Group}, Query) of
-			    true -> (?MODULE):delete_group(Host, Group);
+			    true -> mod_shared_roster:delete_group(Host, Group);
 			    _ -> ok
 			  end
 		  end,
@@ -919,14 +892,14 @@ list_sr_groups_parse_delete(Host, Query) ->
 shared_roster_group(Host, Group, Query, Lang) ->
     Res = shared_roster_group_parse_query(Host, Group,
 					  Query),
-    GroupOpts = (?MODULE):get_group_opts(Host, Group),
+    GroupOpts = mod_shared_roster:get_group_opts(Host, Group),
     Name = get_opt(GroupOpts, name, <<"">>),
     Description = get_opt(GroupOpts, description, <<"">>),
     AllUsers = get_opt(GroupOpts, all_users, false),
     OnlineUsers = get_opt(GroupOpts, online_users, false),
     DisplayedGroups = get_opt(GroupOpts, displayed_groups,
 			      []),
-    Members = (?MODULE):get_group_explicit_users(Host,
+    Members = mod_shared_roster:get_group_explicit_users(Host,
 						 Group),
     FMembers = iolist_to_binary(
                  [if AllUsers -> <<"@all@\n">>;
@@ -950,21 +923,21 @@ shared_roster_group(Host, Group, Query, Lang) ->
 			     [?XCT(<<"td">>, <<"Description:">>),
 			      ?XE(<<"td">>,
 				  [?TEXTAREA(<<"description">>,
-					     jlib:integer_to_binary(lists:max([3,
+					     integer_to_binary(lists:max([3,
                                                                                DescNL])),
 					     <<"20">>, Description)])]),
 			 ?XE(<<"tr">>,
 			     [?XCT(<<"td">>, <<"Members:">>),
 			      ?XE(<<"td">>,
 				  [?TEXTAREA(<<"members">>,
-					     jlib:integer_to_binary(lists:max([3,
-                                                                               byte_size(FMembers)])),
+					     integer_to_binary(lists:max([3,
+                                                                               length(Members)+3])),
 					     <<"20">>, FMembers)])]),
 			 ?XE(<<"tr">>,
 			     [?XCT(<<"td">>, <<"Displayed Groups:">>),
 			      ?XE(<<"td">>,
 				  [?TEXTAREA(<<"dispgroups">>,
-					     jlib:integer_to_binary(lists:max([3,											        length(FDisplayedGroups)])),
+					     integer_to_binary(lists:max([3,											        length(FDisplayedGroups)])),
 					     <<"20">>,
 					     list_to_binary(FDisplayedGroups))])])])])),
     (?H1GL((?T(<<"Shared Roster Groups">>)),
@@ -1003,7 +976,7 @@ shared_roster_group_parse_query(Host, Group, Query) ->
 	  DispGroupsOpt = if DispGroups == [] -> [];
 			     true -> [{displayed_groups, DispGroups}]
 			  end,
-	  OldMembers = (?MODULE):get_group_explicit_users(Host,
+	  OldMembers = mod_shared_roster:get_group_explicit_users(Host,
 							  Group),
 	  SJIDs = str:tokens(SMembers, <<", \r\n">>),
 	  NewMembers = lists:foldl(fun (_SJID, error) -> error;
@@ -1012,15 +985,13 @@ shared_roster_group_parse_query(Host, Group, Query) ->
 					     <<"@all@">> -> USs;
 					     <<"@online@">> -> USs;
 					     _ ->
-						 case jid:from_string(SJID)
-						     of
-						   JID
-						       when is_record(JID,
-								      jid) ->
+						 try jid:decode(SJID) of
+						     JID ->
 						       [{JID#jid.luser,
 							 JID#jid.lserver}
-							| USs];
-						   error -> error
+							| USs]
+						 catch _:{bad_jid, _} ->
+							 error
 						 end
 					   end
 				   end,
@@ -1040,7 +1011,7 @@ shared_roster_group_parse_query(Host, Group, Query) ->
 	  RemovedDisplayedGroups = CurrentDisplayedGroups -- DispGroups,
 	  displayed_groups_update(OldMembers, RemovedDisplayedGroups, remove),
 	  displayed_groups_update(OldMembers, AddedDisplayedGroups, both),
-	  (?MODULE):set_group_opts(Host, Group,
+	  mod_shared_roster:set_group_opts(Host, Group,
 				   NameOpt ++
 				     DispGroupsOpt ++
 				       DescriptionOpt ++
@@ -1050,13 +1021,13 @@ shared_roster_group_parse_query(Host, Group, Query) ->
 		 AddedMembers = NewMembers -- OldMembers,
 		 RemovedMembers = OldMembers -- NewMembers,
 		 lists:foreach(fun (US) ->
-				       (?MODULE):remove_user_from_group(Host,
+				       mod_shared_roster:remove_user_from_group(Host,
 									US,
 									Group)
 			       end,
 			       RemovedMembers),
 		 lists:foreach(fun (US) ->
-				       (?MODULE):add_user_to_group(Host, US,
+				       mod_shared_roster:add_user_to_group(Host, US,
 								   Group)
 			       end,
 			       AddedMembers),
@@ -1072,7 +1043,7 @@ get_opt(Opts, Opt, Default) ->
     end.
 
 us_to_list({User, Server}) ->
-    jid:to_string({User, Server, <<"">>}).
+    jid:encode({User, Server, <<"">>}).
 
 split_grouphost(Host, Group) ->
     case str:tokens(Group, <<"@">>) of
@@ -1081,11 +1052,8 @@ split_grouphost(Host, Group) ->
     end.
 
 broadcast_subscription(User, Server, ContactJid, Subscription) ->
-    ejabberd_sm:route(
-		      jid:make(<<"">>, Server, <<"">>),
-		      jid:make(User, Server, <<"">>),
-                      {broadcast, {item, ContactJid,
-				   Subscription}}).
+    ejabberd_sm:route(jid:make(User, Server),
+                      {item, ContactJid, Subscription}).
 
 displayed_groups_update(Members, DisplayedGroups, Subscription) ->
     lists:foreach(fun({U, S}) ->
@@ -1115,13 +1083,16 @@ export(LServer) ->
     Mod = gen_mod:db_mod(LServer, ?MODULE),
     Mod:export(LServer).
 
-import(LServer) ->
-    Mod = gen_mod:db_mod(LServer, ?MODULE),
-    Mod:import(LServer).
+import_info() ->
+    [{<<"sr_group">>, 3}, {<<"sr_user">>, 3}].
 
-import(LServer, DBType, Data) ->
+import_start(LServer, DBType) ->
     Mod = gen_mod:db_mod(DBType, ?MODULE),
-    Mod:import(LServer, Data).
+    Mod:init(LServer, []).
+
+import(LServer, {sql, _}, DBType, Tab, L) ->
+    Mod = gen_mod:db_mod(DBType, ?MODULE),
+    Mod:import(LServer, Tab, L).
 
 mod_opt_type(db_type) -> fun(T) -> ejabberd_config:v_db(?MODULE, T) end;
 mod_opt_type(_) -> [db_type].

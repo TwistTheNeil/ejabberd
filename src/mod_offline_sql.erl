@@ -1,11 +1,27 @@
 %%%-------------------------------------------------------------------
-%%% @author Evgeny Khramtsov <ekhramtsov@process-one.net>
-%%% @copyright (C) 2016, Evgeny Khramtsov
-%%% @doc
-%%%
-%%% @end
+%%% File    : mod_offline_sql.erl
+%%% Author  : Evgeny Khramtsov <ekhramtsov@process-one.net>
 %%% Created : 15 Apr 2016 by Evgeny Khramtsov <ekhramtsov@process-one.net>
-%%%-------------------------------------------------------------------
+%%%
+%%%
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
+%%%
+%%% This program is free software; you can redistribute it and/or
+%%% modify it under the terms of the GNU General Public License as
+%%% published by the Free Software Foundation; either version 2 of the
+%%% License, or (at your option) any later version.
+%%%
+%%% This program is distributed in the hope that it will be useful,
+%%% but WITHOUT ANY WARRANTY; without even the implied warranty of
+%%% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+%%% General Public License for more details.
+%%%
+%%% You should have received a copy of the GNU General Public License along
+%%% with this program; if not, write to the Free Software Foundation, Inc.,
+%%% 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+%%%
+%%%----------------------------------------------------------------------
+
 -module(mod_offline_sql).
 
 -compile([{parse_transform, ejabberd_sql_pt}]).
@@ -15,10 +31,9 @@
 -export([init/2, store_messages/5, pop_messages/2, remove_expired_messages/1,
 	 remove_old_messages/2, remove_user/2, read_message_headers/2,
 	 read_message/3, remove_message/3, read_all_messages/2,
-	 remove_all_messages/2, count_messages/2, import/1, import/2,
-	 export/1]).
+	 remove_all_messages/2, count_messages/2, import/1, export/1]).
 
--include("jlib.hrl").
+-include("xmpp.hrl").
 -include("mod_offline.hrl").
 -include("logger.hrl").
 -include("ejabberd_sql_pt.hrl").
@@ -41,14 +56,14 @@ store_messages(Host, {User, _Server}, Msgs, Len, MaxOfflineMsgs) ->
 			      LUser = (M#offline_msg.to)#jid.luser,
 			      From = M#offline_msg.from,
 			      To = M#offline_msg.to,
-			      Packet =
-				  jlib:replace_from_to(From, To,
-						       M#offline_msg.packet),
-			      NewPacket =
-				  jlib:add_delay_info(Packet, Host,
-						      M#offline_msg.timestamp,
-						      <<"Offline Storage">>),
-			      XML = fxml:element_to_binary(NewPacket),
+			      Packet = xmpp:set_from_to(
+					 M#offline_msg.packet, From, To),
+			      NewPacket = xmpp_util:add_delay_info(
+					    Packet, jid:make(Host),
+					    M#offline_msg.timestamp,
+					    <<"Offline Storage">>),
+			      XML = fxml:element_to_binary(
+				      xmpp:encode(NewPacket)),
                               sql_queries:add_spool_sql(LUser, XML)
 		      end,
 		      Msgs),
@@ -81,7 +96,7 @@ remove_old_messages(Days, LServer) ->
 		 [<<"DELETE FROM spool"
 		   " WHERE created_at < "
 		   "NOW() - INTERVAL '">>,
-		  integer_to_list(Days), <<"';">>]) of
+		  integer_to_list(Days), <<"' DAY;">>]) of
 	{updated, N} ->
 	    ?INFO_MSG("~p message(s) deleted from offline spool", [N]);
 	_Error ->
@@ -103,8 +118,9 @@ read_message_headers(LUser, LServer) ->
 		      case xml_to_offline_msg(XML) of
 			  {ok, #offline_msg{from = From,
 					    to = To,
+					    timestamp = TS,
 					    packet = El}} ->
-			      [{Seq, From, To, El}];
+			      [{Seq, From, To, TS, El}];
 			  _ ->
 			      []
 		      end
@@ -171,44 +187,29 @@ export(_Server) ->
     [{offline_msg,
       fun(Host, #offline_msg{us = {LUser, LServer},
                              timestamp = TimeStamp, from = From, to = To,
-                             packet = Packet})
+                             packet = El})
             when LServer == Host ->
-              Packet1 = jlib:replace_from_to(From, To, Packet),
-              Packet2 = jlib:add_delay_info(Packet1, LServer, TimeStamp,
-                                            <<"Offline Storage">>),
-              XML = fxml:element_to_binary(Packet2),
-              [?SQL("delete from spool where username=%(LUser)s;"),
-               ?SQL("insert into spool(username, xml) values ("
-                    "%(LUser)s, %(XML)s);")];
+	      try xmpp:decode(El, ?NS_CLIENT, [ignore_els]) of
+		  Packet ->
+		      Packet1 = xmpp:set_from_to(Packet, From, To),
+		      Packet2 = xmpp_util:add_delay_info(
+				  Packet1, jid:make(LServer),
+				  TimeStamp, <<"Offline Storage">>),
+		      XML = fxml:element_to_binary(xmpp:encode(Packet2)),
+		      [?SQL("delete from spool where username=%(LUser)s;"),
+		       ?SQL("insert into spool(username, xml) values ("
+			    "%(LUser)s, %(XML)s);")]
+	      catch _:{xmpp_codec, Why} ->
+		      ?ERROR_MSG("failed to decode packet ~p of user ~s@~s: ~s",
+				 [El, LUser, LServer, xmpp:format_error(Why)]),
+		      []
+	      end;
          (_Host, _R) ->
               []
       end}].
 
-import(LServer) ->
-    [{<<"select username, xml from spool;">>,
-      fun([LUser, XML]) ->
-              El = #xmlel{} = fxml_stream:parse_element(XML),
-              From = #jid{} = jid:from_string(
-                                fxml:get_attr_s(<<"from">>, El#xmlel.attrs)),
-              To = #jid{} = jid:from_string(
-                              fxml:get_attr_s(<<"to">>, El#xmlel.attrs)),
-              Stamp = fxml:get_path_s(El, [{elem, <<"delay">>},
-                                          {attr, <<"stamp">>}]),
-              TS = case jlib:datetime_string_to_timestamp(Stamp) of
-                       {_, _, _} = Now ->
-                           Now;
-                       undefined ->
-                           p1_time_compat:timestamp()
-                   end,
-              Expire = mod_offline:find_x_expire(TS, El#xmlel.children),
-              #offline_msg{us = {LUser, LServer},
-                           from = From, to = To,
-			   packet = El,
-                           timestamp = TS, expire = Expire}
-      end}].
-
-import(_, _) ->
-    pass.
+import(_) ->
+    ok.
 
 %%%===================================================================
 %%% Internal functions
@@ -226,19 +227,17 @@ xml_to_offline_msg(XML) ->
 el_to_offline_msg(El) ->
     To_s = fxml:get_tag_attr_s(<<"to">>, El),
     From_s = fxml:get_tag_attr_s(<<"from">>, El),
-    To = jid:from_string(To_s),
-    From = jid:from_string(From_s),
-    if To == error ->
+    try
+	To = jid:decode(To_s),
+	From = jid:decode(From_s),
+	{ok, #offline_msg{us = {To#jid.luser, To#jid.lserver},
+			  from = From,
+			  to = To,
+			  packet = El}}
+    catch _:{bad_jid, To_s} ->
 	    ?ERROR_MSG("failed to get 'to' JID from offline XML ~p", [El]),
 	    {error, bad_jid_to};
-       From == error ->
+	  _:{bad_jid, From_s} ->
 	    ?ERROR_MSG("failed to get 'from' JID from offline XML ~p", [El]),
-	    {error, bad_jid_from};
-       true ->
-	    {ok, #offline_msg{us = {To#jid.luser, To#jid.lserver},
-			      from = From,
-			      to = To,
-			      timestamp = undefined,
-			      expire = undefined,
-			      packet = El}}
+	    {error, bad_jid_from}
     end.

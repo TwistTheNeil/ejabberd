@@ -5,7 +5,7 @@
 %%% Created : 17 Feb 2006 by Mickael Remond <mremond@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2016   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -50,20 +50,9 @@
 
 -include("ejabberd.hrl").
 -include("logger.hrl").
-
--include("jlib.hrl").
-
-%% Create the anonymous table if at least one virtual host has anonymous features enabled
-%% Register to login / logout events
--record(anonymous, {us = {<<"">>, <<"">>} :: {binary(), binary()},
-                    sid = ejabberd_sm:make_sid() :: ejabberd_sm:sid()}).
+-include("jid.hrl").
 
 start(Host) ->
-    %% TODO: Check cluster mode
-    mnesia:create_table(anonymous, [{ram_copies, [node()]},
-				    {type, bag},
-				    {attributes, record_info(fields, anonymous)}]),
-    %% The hooks are needed to add / remove users from the anonymous tables
     ejabberd_hooks:add(sm_register_connection_hook, Host,
 		       ?MODULE, register_connection, 100),
     ejabberd_hooks:add(sm_remove_connection_hook, Host,
@@ -120,54 +109,33 @@ allow_multiple_connections(Host) ->
       fun(V) when is_boolean(V) -> V end,
       false).
 
-%% Check if user exist in the anonymus database
 anonymous_user_exist(User, Server) ->
-    LUser = jid:nodeprep(User),
-    LServer = jid:nameprep(Server),
-    US = {LUser, LServer},
-    case catch mnesia:dirty_read({anonymous, US}) of
-	[] ->
-	    false;
-	[_H|_T] ->
-	    true
-    end.
-
-%% Remove connection from Mnesia tables
-remove_connection(SID, LUser, LServer) ->
-    US = {LUser, LServer},
-    F = fun () -> mnesia:delete_object({anonymous, US, SID})
-	end,
-    mnesia:transaction(F).
+    lists:any(
+      fun({_LResource, Info}) ->
+	      proplists:get_value(auth_module, Info) == ?MODULE
+      end, ejabberd_sm:get_user_info(User, Server)).
 
 %% Register connection
-register_connection(SID,
+-spec register_connection(ejabberd_sm:sid(), jid(), ejabberd_sm:info()) -> ok.
+register_connection(_SID,
 		    #jid{luser = LUser, lserver = LServer}, Info) ->
-    AuthModule = proplists:get_value(auth_module, Info, undefined),
-    case AuthModule == (?MODULE) of
-      true ->
-	  ejabberd_hooks:run(register_user, LServer,
-			     [LUser, LServer]),
-	  US = {LUser, LServer},
-	  mnesia:sync_dirty(fun () ->
-				     mnesia:write(#anonymous{us = US,
-							     sid = SID})
-			     end);
-      false -> ok
+    case proplists:get_value(auth_module, Info) of
+	?MODULE ->
+	    ejabberd_hooks:run(register_user, LServer, [LUser, LServer]);
+	_ ->
+	    ok
     end.
 
 %% Remove an anonymous user from the anonymous users table
-unregister_connection(SID,
-		      #jid{luser = LUser, lserver = LServer}, _) ->
-    purge_hook(anonymous_user_exist(LUser, LServer), LUser,
-	       LServer),
-    remove_connection(SID, LUser, LServer).
-
-%% Launch the hook to purge user data only for anonymous users
-purge_hook(false, _LUser, _LServer) ->
-    ok;
-purge_hook(true, LUser, LServer) ->
-    ejabberd_hooks:run(anonymous_purge_hook, LServer,
-		       [LUser, LServer]).
+-spec unregister_connection(ejabberd_sm:sid(), jid(), ejabberd_sm:info()) -> any().
+unregister_connection(_SID,
+		      #jid{luser = LUser, lserver = LServer}, Info) ->
+    case proplists:get_value(auth_module, Info) of
+	?MODULE ->
+	    ejabberd_hooks:run(remove_user, LServer, [LUser, LServer]);
+	_ ->
+	    ok
+    end.
 
 %% ---------------------------------
 %% Specific anonymous auth functions
@@ -257,8 +225,6 @@ get_password_s(User, Server) ->
             Password
     end.
 
-%% Returns true if the user exists in the DB or if an anonymous user is logged
-%% under the given name
 is_user_exists(User, Server) ->
     anonymous_user_exist(User, Server).
 

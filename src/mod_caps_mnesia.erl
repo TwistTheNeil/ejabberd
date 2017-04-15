@@ -1,16 +1,33 @@
 %%%-------------------------------------------------------------------
-%%% @author Evgeny Khramtsov <ekhramtsov@process-one.net>
-%%% @copyright (C) 2016, Evgeny Khramtsov
-%%% @doc
-%%%
-%%% @end
+%%% File    : mod_caps_mnesia.erl
+%%% Author  : Evgeny Khramtsov <ekhramtsov@process-one.net>
 %%% Created : 13 Apr 2016 by Evgeny Khramtsov <ekhramtsov@process-one.net>
-%%%-------------------------------------------------------------------
+%%%
+%%%
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
+%%%
+%%% This program is free software; you can redistribute it and/or
+%%% modify it under the terms of the GNU General Public License as
+%%% published by the Free Software Foundation; either version 2 of the
+%%% License, or (at your option) any later version.
+%%%
+%%% This program is distributed in the hope that it will be useful,
+%%% but WITHOUT ANY WARRANTY; without even the implied warranty of
+%%% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+%%% General Public License for more details.
+%%%
+%%% You should have received a copy of the GNU General Public License along
+%%% with this program; if not, write to the Free Software Foundation, Inc.,
+%%% 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+%%%
+%%%----------------------------------------------------------------------
+
 -module(mod_caps_mnesia).
+
 -behaviour(mod_caps).
 
 %% API
--export([init/2, caps_read/2, caps_write/3]).
+-export([init/2, caps_read/2, caps_write/3, import/3]).
 
 -include("mod_caps.hrl").
 -include("logger.hrl").
@@ -27,7 +44,7 @@ init(_Host, _Opts) ->
         _ ->
             mnesia:delete_table(caps_features)
     end,
-    mnesia:create_table(caps_features,
+    ejabberd_mnesia:create(?MODULE, caps_features,
                         [{disc_only_copies, [node()]},
                          {local_content, true},
                          {attributes,
@@ -45,6 +62,13 @@ caps_read(_LServer, Node) ->
 caps_write(_LServer, Node, Features) ->
     mnesia:dirty_write(#caps_features{node_pair = Node,
 				      features = Features}).
+
+import(_LServer, NodePair, [I]) when is_integer(I) ->
+    mnesia:dirty_write(
+      #caps_features{node_pair = NodePair, features = I});
+import(_LServer, NodePair, Features) ->
+    mnesia:dirty_write(
+      #caps_features{node_pair = NodePair, features = Features}).
 
 %%%===================================================================
 %%% Internal functions

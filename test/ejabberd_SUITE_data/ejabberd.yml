@@ -20,6 +20,7 @@ host_config:
         db_type: sql
       mod_muc: 
         db_type: sql
+        ram_db_type: sql
       mod_offline: 
         db_type: sql
       mod_privacy: 
@@ -35,7 +36,6 @@ host_config:
           - "flat"
           - "hometree"
           - "pep"
-      mod_mix: []
       mod_roster:
         versioning: true
         store_current_id: true
@@ -46,11 +46,15 @@ host_config:
         db_type: sql
       mod_vcard_xupdate:
         db_type: sql
+      mod_carboncopy:
+        ram_db_type: sql
       mod_adhoc: []
       mod_configure: []
       mod_disco: []
       mod_ping: []
       mod_proxy65: []
+      mod_s2s_dialback: []
+      mod_legacy_auth: []
       mod_register: 
         welcome_message: 
           subject: "Welcome!"
@@ -61,6 +65,7 @@ Welcome to this XMPP server."
       mod_version: []
   "sqlite.localhost": 
     sql_type: sqlite
+    sql_pool_size: 1
     auth_method: sql
     sm_db_type: sql
     modules: 
@@ -74,6 +79,7 @@ Welcome to this XMPP server."
         db_type: sql
       mod_muc: 
         db_type: sql
+        ram_db_type: sql
       mod_offline: 
         db_type: sql
       mod_privacy: 
@@ -89,7 +95,6 @@ Welcome to this XMPP server."
           - "flat"
           - "hometree"
           - "pep"
-      mod_mix: []
       mod_roster:
         versioning: true
         store_current_id: true
@@ -100,11 +105,15 @@ Welcome to this XMPP server."
         db_type: sql
       mod_vcard_xupdate:
         db_type: sql
+      mod_carboncopy:
+        ram_db_type: sql
       mod_adhoc: []
       mod_configure: []
       mod_disco: []
       mod_ping: []
       mod_proxy65: []
+      mod_s2s_dialback: []
+      mod_legacy_auth: []
       mod_register: 
         welcome_message: 
           subject: "Welcome!"
@@ -134,6 +143,7 @@ Welcome to this XMPP server."
         db_type: sql
       mod_muc: 
         db_type: sql
+        ram_db_type: sql
       mod_offline: 
         db_type: sql
       mod_privacy: 
@@ -149,7 +159,6 @@ Welcome to this XMPP server."
           - "flat"
           - "hometree"
           - "pep"
-      mod_mix: []
       mod_roster: 
         versioning: true
         store_current_id: true
@@ -160,11 +169,15 @@ Welcome to this XMPP server."
         db_type: sql
       mod_vcard_xupdate:
         db_type: sql
+      mod_carboncopy:
+        ram_db_type: sql
       mod_adhoc: []
       mod_configure: []
       mod_disco: []
       mod_ping: []
       mod_proxy65: []
+      mod_s2s_dialback: []
+      mod_legacy_auth: []
       mod_register: 
         welcome_message: 
           subject: "Welcome!"
@@ -173,7 +186,8 @@ Welcome to this XMPP server."
       mod_stats: []
       mod_time: []
       mod_version: []
-  "mnesia.localhost": 
+  "mnesia.localhost":
+    queue_type: ram
     auth_method: internal
     modules: 
       mod_announce: 
@@ -200,7 +214,6 @@ Welcome to this XMPP server."
           - "flat"
           - "hometree"
           - "pep"
-      mod_mix: []
       mod_roster: 
         versioning: true
         store_current_id: true
@@ -211,7 +224,8 @@ Welcome to this XMPP server."
         db_type: internal
       mod_vcard_xupdate:
         db_type: internal
-      mod_carboncopy: []
+      mod_carboncopy:
+        ram_db_type: internal
       mod_client_state:
         queue_presence: true
         queue_chat_states: true
@@ -221,6 +235,8 @@ Welcome to this XMPP server."
       mod_disco: []
       mod_ping: []
       mod_proxy65: []
+      mod_s2s_dialback: []
+      mod_legacy_auth: []
       mod_register: 
         welcome_message: 
           subject: "Welcome!"
@@ -229,7 +245,8 @@ Welcome to this XMPP server."
       mod_stats: []
       mod_time: []
       mod_version: []
-  "redis.localhost": 
+  "redis.localhost":
+    queue_type: ram
     auth_method: internal
     sm_db_type: redis
     modules: 
@@ -257,7 +274,6 @@ Welcome to this XMPP server."
           - "flat"
           - "hometree"
           - "pep"
-      mod_mix: []
       mod_roster: 
         versioning: true
         store_current_id: true
@@ -268,7 +284,8 @@ Welcome to this XMPP server."
         db_type: internal
       mod_vcard_xupdate:
         db_type: internal
-      mod_carboncopy: []
+      mod_carboncopy:
+        ram_db_type: redis
       mod_client_state:
         queue_presence: true
         queue_chat_states: true
@@ -278,6 +295,8 @@ Welcome to this XMPP server."
       mod_disco: []
       mod_ping: []
       mod_proxy65: []
+      mod_s2s_dialback: []
+      mod_legacy_auth: []
       mod_register: 
         welcome_message: 
           subject: "Welcome!"
@@ -286,7 +305,8 @@ Welcome to this XMPP server."
       mod_stats: []
       mod_time: []
       mod_version: []
-  "riak.localhost": 
+  "riak.localhost":
+    queue_type: ram
     auth_method: riak
     modules: 
       mod_announce: 
@@ -318,6 +338,8 @@ Welcome to this XMPP server."
       mod_disco: []
       mod_ping: []
       mod_proxy65: []
+      mod_s2s_dialback: []
+      mod_legacy_auth: []
       mod_register: 
         welcome_message: 
           subject: "Welcome!"
@@ -327,8 +349,9 @@ Welcome to this XMPP server."
       mod_time: []
       mod_version: []
   "localhost": 
-    auth_method: internal
-  "ldap.localhost": 
+    auth_method: [internal, anonymous]
+  "ldap.localhost":
+    queue_type: ram
     ldap_servers: 
       - "localhost"
     ldap_rootdn: "cn=admin,dc=localhost"
@@ -337,7 +360,8 @@ Welcome to this XMPP server."
     ldap_base: "ou=users,dc=localhost"
     auth_method: ldap
     modules: 
-      mod_vcard_ldap: []
+      mod_vcard:
+        db_type: ldap
       mod_roster: [] # mod_roster is required by mod_shared_roster
       mod_shared_roster_ldap:
         ldap_auth_check: off
@@ -360,7 +384,8 @@ Welcome to this XMPP server."
       mod_stats: []
       mod_time: []
       mod_version: []
-  "extauth.localhost": 
+  "extauth.localhost":
+    queue_type: ram
     extauth_program: "python extauth.py"
     auth_method: external
 hosts: 
@@ -387,8 +412,7 @@ access:
   local: 
     local: allow
   max_user_offline_messages: 
-    admin: 5000
-    all: 100
+    all: infinity
   max_user_sessions: 
     all: 10
   muc: 
@@ -408,6 +432,7 @@ acl:
     user_regexp: ""
 define_macro: 
   CERTFILE: "cert.pem"
+  CAFILE: "ca.pem"
 language: "en"
 listen: 
   - 
@@ -415,8 +440,10 @@ listen:
     module: ejabberd_c2s
     max_stanza_size: 65536
     certfile: CERTFILE
+    cafile: CAFILE
     zlib: true
     starttls: true
+    tls_verify: true
     shaper: c2s_shaper
     access: c2s
     resume_timeout: 3
@@ -427,23 +454,40 @@ listen:
     port: @@web_port@@
     module: ejabberd_http
     captcha: true
+  - 
+    port: @@component_port@@
+    module: ejabberd_service
+    password: >-
+      @@password@@
 loglevel: @@loglevel@@
 max_fsm_queue: 1000
+queue_type: file
 modules: 
   mod_adhoc: []
   mod_configure: []
   mod_disco: []
   mod_ping: []
   mod_proxy65: []
+  mod_legacy: []
+  mod_muc: []
   mod_register: 
     welcome_message: 
       subject: "Welcome!"
       body: "Hi.
 Welcome to this XMPP server."
   mod_stats: []
+  mod_s2s_dialback: []
+  mod_legacy_auth: []
+  mod_stream_mgmt:
+    max_ack_queue: 10
   mod_time: []
   mod_version: []
 registration_timeout: infinity
+route_subdomains: s2s
+domain_certfile: CERTFILE
+s2s_use_starttls: false
+s2s_cafile: CAFILE
+outgoing_s2s_port: @@s2s_port@@
 shaper: 
   fast: 50000
-  normal: 1000
+  normal: 10000

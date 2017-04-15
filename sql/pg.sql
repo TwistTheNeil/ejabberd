@@ -1,5 +1,5 @@
 --
--- ejabberd, Copyright (C) 2002-2016   ProcessOne
+-- ejabberd, Copyright (C) 2002-2017   ProcessOne
 --
 -- This program is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU General Public License as
@@ -10,7 +10,7 @@
 -- but WITHOUT ANY WARRANTY; without even the implied warranty of
 -- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 -- General Public License for more details.
---                         
+--
 -- You should have received a copy of the GNU General Public License along
 -- with this program; if not, write to the Free Software Foundation, Inc.,
 -- 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
@@ -45,7 +45,7 @@ CREATE TABLE rosterusers (
     ask character(1) NOT NULL,
     askmessage text NOT NULL,
     server character(1) NOT NULL,
-    subscribe text,
+    subscribe text NOT NULL,
     "type" text,
     created_at TIMESTAMP NOT NULL DEFAULT now()
 );
@@ -224,10 +224,10 @@ CREATE TABLE roster_version (
 -- ALTER TABLE rosterusers ALTER COLUMN askmessage SET NOT NULL;
 
 CREATE TABLE pubsub_node (
-  host text,
-  node text,
-  parent text,
-  "type" text,
+  host text NOT NULL,
+  node text NOT NULL,
+  parent text NOT NULL DEFAULT '',
+  "type" text NOT NULL,
   nodeid SERIAL UNIQUE
 );
 CREATE INDEX i_pubsub_node_parent ON pubsub_node USING btree (parent);
@@ -235,22 +235,22 @@ CREATE UNIQUE INDEX i_pubsub_node_tuple ON pubsub_node USING btree (host, node);
 
 CREATE TABLE pubsub_node_option (
   nodeid bigint REFERENCES pubsub_node(nodeid) ON DELETE CASCADE,
-  name text,
-  val text
+  name text NOT NULL,
+  val text NOT NULL
 );
 CREATE INDEX i_pubsub_node_option_nodeid ON pubsub_node_option USING btree (nodeid);
 
 CREATE TABLE pubsub_node_owner (
   nodeid bigint REFERENCES pubsub_node(nodeid) ON DELETE CASCADE,
-  owner text
+  owner text NOT NULL
 );
 CREATE INDEX i_pubsub_node_owner_nodeid ON pubsub_node_owner USING btree (nodeid);
 
 CREATE TABLE pubsub_state (
   nodeid bigint REFERENCES pubsub_node(nodeid) ON DELETE CASCADE,
-  jid text,
+  jid text NOT NULL,
   affiliation character(1),
-  subscriptions text,
+  subscriptions text NOT NULL DEFAULT '',
   stateid SERIAL UNIQUE
 );
 CREATE INDEX i_pubsub_state_jid ON pubsub_state USING btree (jid);
@@ -258,19 +258,19 @@ CREATE UNIQUE INDEX i_pubsub_state_tuple ON pubsub_state USING btree (nodeid, ji
 
 CREATE TABLE pubsub_item (
   nodeid bigint REFERENCES pubsub_node(nodeid) ON DELETE CASCADE,
-  itemid text, 
-  publisher text,
-  creation text,
-  modification text,
-  payload text
+  itemid text NOT NULL,
+  publisher text NOT NULL,
+  creation text NOT NULL,
+  modification text NOT NULL,
+  payload text NOT NULL DEFAULT ''
 );
 CREATE INDEX i_pubsub_item_itemid ON pubsub_item USING btree (itemid);
 CREATE UNIQUE INDEX i_pubsub_item_tuple ON pubsub_item USING btree (nodeid, itemid);
 
 CREATE TABLE pubsub_subscription_opt (
-  subid text,
+  subid text NOT NULL,
   opt_name varchar(32),
-  opt_value text
+  opt_value text NOT NULL
 );
 CREATE UNIQUE INDEX i_pubsub_subscription_opt ON pubsub_subscription_opt USING btree (subid, opt_name);
 
@@ -292,6 +292,27 @@ CREATE TABLE muc_registered (
 
 CREATE INDEX i_muc_registered_nick ON muc_registered USING btree (nick);
 CREATE UNIQUE INDEX i_muc_registered_jid_host ON muc_registered USING btree (jid, host);
+
+CREATE TABLE muc_online_room (
+    name text NOT NULL,
+    host text NOT NULL,
+    node text NOT NULL,
+    pid text NOT NULL
+);
+
+CREATE UNIQUE INDEX i_muc_online_room_name_host ON muc_online_room USING btree (name, host);
+
+CREATE TABLE muc_online_users (
+    username text NOT NULL,
+    server text NOT NULL,
+    resource text NOT NULL,
+    name text NOT NULL,
+    host text NOT NULL,
+    node text NOT NULL
+);
+
+CREATE UNIQUE INDEX i_muc_online_users ON muc_online_users USING btree (username, server, resource, name, host);
+CREATE INDEX i_muc_online_users_us ON muc_online_users USING btree (username, server);
 
 CREATE TABLE irc_custom (
     jid text NOT NULL,
@@ -339,3 +360,44 @@ CREATE TABLE oauth_token (
 );
 
 CREATE UNIQUE INDEX i_oauth_token_token ON oauth_token USING btree (token);
+
+CREATE TABLE route (
+    domain text NOT NULL,
+    server_host text NOT NULL,
+    node text NOT NULL,
+    pid text NOT NULL,
+    local_hint text NOT NULL
+);
+
+CREATE UNIQUE INDEX i_route ON route USING btree (domain, server_host, node, pid);
+CREATE INDEX i_route_domain ON route USING btree (domain);
+
+CREATE TABLE bosh (
+    sid text NOT NULL,
+    node text NOT NULL,
+    pid text NOT NULL
+);
+
+CREATE UNIQUE INDEX i_bosh_sid ON bosh USING btree (sid);
+
+CREATE TABLE carboncopy (
+    username text NOT NULL,
+    resource text NOT NULL,
+    namespace text NOT NULL,
+    node text NOT NULL
+);
+
+CREATE UNIQUE INDEX i_carboncopy_ur ON carboncopy USING btree (username, resource);
+CREATE INDEX i_carboncopy_user ON carboncopy USING btree (username);
+
+CREATE TABLE proxy65 (
+    sid text NOT NULL,
+    pid_t text NOT NULL,
+    pid_i text NOT NULL,
+    node_t text NOT NULL,
+    node_i text NOT NULL,
+    jid_i text NOT NULL
+);
+
+CREATE UNIQUE INDEX i_proxy65_sid ON proxy65 USING btree (sid);
+CREATE INDEX i_proxy65_jid ON proxy65 USING btree (jid_i);

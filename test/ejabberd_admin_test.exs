@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 #
-# ejabberd, Copyright (C) 2002-2015   ProcessOne
+# ejabberd, Copyright (C) 2002-2017   ProcessOne
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -28,6 +28,7 @@ defmodule EjabberdAdminTest do
 		# For some myterious reason, :ejabberd_commands.init mays
 		# sometimes fails if module is not loaded before
 		{:module, :ejabberd_commands} = Code.ensure_loaded(:ejabberd_commands)
+		{:ok, _} = :ejabberd_access_permissions.start_link()
 		:ejabberd_commands.init
 		:ejabberd_admin.start
 		:ok

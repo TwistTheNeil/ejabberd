@@ -1,5 +1,5 @@
 --
--- ejabberd, Copyright (C) 2002-2016   ProcessOne
+-- ejabberd, Copyright (C) 2002-2017   ProcessOne
 --
 -- This program is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU General Public License as
@@ -218,10 +218,10 @@ CREATE TABLE roster_version (
 -- ALTER TABLE rosterusers ALTER COLUMN askmessage SET NOT NULL;
 
 CREATE TABLE pubsub_node (
-  host text,
-  node text,
-  parent text,
-  type text,
+  host text NOT NULL,
+  node text NOT NULL,
+  parent VARCHAR(191) NOT NULL DEFAULT '',
+  type text NOT NULL,
   nodeid bigint auto_increment primary key
 ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE INDEX i_pubsub_node_parent ON pubsub_node(parent(120));
@@ -229,24 +229,24 @@ CREATE UNIQUE INDEX i_pubsub_node_tuple ON pubsub_node(host(20), node(120));
 
 CREATE TABLE pubsub_node_option (
   nodeid bigint,
-  name text,
-  val text
+  name text NOT NULL,
+  val text NOT NULL
 ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE INDEX i_pubsub_node_option_nodeid ON pubsub_node_option(nodeid);
 ALTER TABLE `pubsub_node_option` ADD FOREIGN KEY (`nodeid`) REFERENCES `pubsub_node` (`nodeid`) ON DELETE CASCADE;
 
 CREATE TABLE pubsub_node_owner (
   nodeid bigint,
-  owner text
+  owner text NOT NULL
 ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE INDEX i_pubsub_node_owner_nodeid ON pubsub_node_owner(nodeid);
 ALTER TABLE `pubsub_node_owner` ADD FOREIGN KEY (`nodeid`) REFERENCES `pubsub_node` (`nodeid`) ON DELETE CASCADE;
 
 CREATE TABLE pubsub_state (
   nodeid bigint,
-  jid text,
+  jid text NOT NULL,
   affiliation character(1),
-  subscriptions text,
+  subscriptions VARCHAR(191) NOT NULL DEFAULT '',
   stateid bigint auto_increment primary key
 ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE INDEX i_pubsub_state_jid ON pubsub_state(jid(60));
@@ -255,20 +255,20 @@ ALTER TABLE `pubsub_state` ADD FOREIGN KEY (`nodeid`) REFERENCES `pubsub_node` (
 
 CREATE TABLE pubsub_item (
   nodeid bigint,
-  itemid text,
-  publisher text,
-  creation text,
-  modification text,
-  payload text
+  itemid text NOT NULL,
+  publisher text NOT NULL,
+  creation text NOT NULL,
+  modification text NOT NULL,
+  payload text NOT NULL
 ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE INDEX i_pubsub_item_itemid ON pubsub_item(itemid(36));
 CREATE UNIQUE INDEX i_pubsub_item_tuple ON pubsub_item(nodeid, itemid(36));
 ALTER TABLE `pubsub_item` ADD FOREIGN KEY (`nodeid`) REFERENCES `pubsub_node` (`nodeid`) ON DELETE CASCADE;
 
 CREATE TABLE pubsub_subscription_opt (
-  subid text,
+  subid text NOT NULL,
   opt_name varchar(32),
-  opt_value text
+  opt_value text NOT NULL
 ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE UNIQUE INDEX i_pubsub_subscription_opt ON pubsub_subscription_opt(subid(32), opt_name(32));
 
@@ -290,6 +290,27 @@ CREATE TABLE muc_registered (
 
 CREATE INDEX i_muc_registered_nick USING BTREE ON muc_registered(nick(75));
 CREATE UNIQUE INDEX i_muc_registered_jid_host USING BTREE ON muc_registered(jid(75), host(75));
+
+CREATE TABLE muc_online_room (
+    name text NOT NULL,
+    host text NOT NULL,
+    node text NOT NULL,
+    pid text NOT NULL
+) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+CREATE UNIQUE INDEX i_muc_online_room_name_host USING BTREE ON muc_online_room(name(75), host(75));
+
+CREATE TABLE muc_online_users (
+    username text NOT NULL,
+    server text NOT NULL,
+    resource text NOT NULL,
+    name text NOT NULL,
+    host text NOT NULL,
+    node text NOT NULL
+) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+CREATE UNIQUE INDEX i_muc_online_users USING BTREE ON muc_online_users(username(75), server(75), resource(75), name(75), host(75));
+CREATE INDEX i_muc_online_users_us USING BTREE ON muc_online_users(username(75), server(75));
 
 CREATE TABLE irc_custom (
     jid text NOT NULL,
@@ -335,3 +356,44 @@ CREATE TABLE oauth_token (
     scope text NOT NULL,
     expire bigint NOT NULL
 ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+CREATE TABLE route (
+    domain text NOT NULL,
+    server_host text NOT NULL,
+    node text NOT NULL,
+    pid text NOT NULL,
+    local_hint text NOT NULL
+) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+CREATE UNIQUE INDEX i_route ON route(domain(75), server_host(75), node(75), pid(75));
+CREATE INDEX i_route_domain ON route(domain(75));
+
+CREATE TABLE bosh (
+    sid text NOT NULL,
+    node text NOT NULL,
+    pid text NOT NULL
+) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+CREATE UNIQUE INDEX i_bosh_sid ON bosh(sid(75));
+
+CREATE TABLE carboncopy (
+    username text NOT NULL,
+    resource text NOT NULL,
+    namespace text NOT NULL,
+    node text NOT NULL
+) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+CREATE UNIQUE INDEX i_carboncopy_ur ON carboncopy (username(75), resource(75));
+CREATE INDEX i_carboncopy_user ON carboncopy (username(75));
+
+CREATE TABLE proxy65 (
+    sid text NOT NULL,
+    pid_t text NOT NULL,
+    pid_i text NOT NULL,
+    node_t text NOT NULL,
+    node_i text NOT NULL,
+    jid_i text NOT NULL
+) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+CREATE UNIQUE INDEX i_proxy65_sid ON proxy65 (sid(191));
+CREATE INDEX i_proxy65_jid ON proxy65 (jid_i(191));

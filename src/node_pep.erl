@@ -5,7 +5,7 @@
 %%% Created :  1 Dec 2007 by Christophe Romain <christophe.romain@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2016   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -31,7 +31,6 @@
 -author('christophe.romain@process-one.net').
 
 -include("pubsub.hrl").
--include("jlib.hrl").
 -include("logger.hrl").
 
 -export([init/3, terminate/2, options/0, features/0,
@@ -44,6 +43,7 @@
     get_subscriptions/2, set_subscriptions/4,
     get_pending_nodes/2, get_states/1, get_state/2,
     set_state/1, get_items/7, get_items/3, get_item/7,
+    get_last_items/3,
     get_item/2, set_item/1, get_item_name/3, node_to_path/1,
     path_to_node/1, depends/3]).
 
@@ -228,6 +228,9 @@ get_items(Nidx, From, RSM) ->
 get_items(Nidx, JID, AccessModel, PresenceSubscription, RosterGroup, SubId, RSM) ->
     node_flat:get_items(Nidx, JID, AccessModel,
 	PresenceSubscription, RosterGroup, SubId, RSM).
+
+get_last_items(Nidx, From, Count) ->
+    node_flat:get_last_items(Nidx, From, Count).
 
 get_item(Nidx, ItemId) ->
     node_flat:get_item(Nidx, ItemId).

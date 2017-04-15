@@ -1,18 +1,34 @@
 %%%-------------------------------------------------------------------
-%%% @author Evgeny Khramtsov <ekhramtsov@process-one.net>
-%%% @copyright (C) 2016, Evgeny Khramtsov
-%%% @doc
-%%%
-%%% @end
+%%% File    : prosody2ejabberd.erl
+%%% Author  : Evgeny Khramtsov <ekhramtsov@process-one.net>
 %%% Created : 20 Jan 2016 by Evgeny Khramtsov <ekhramtsov@process-one.net>
-%%%-------------------------------------------------------------------
+%%%
+%%%
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
+%%%
+%%% This program is free software; you can redistribute it and/or
+%%% modify it under the terms of the GNU General Public License as
+%%% published by the Free Software Foundation; either version 2 of the
+%%% License, or (at your option) any later version.
+%%%
+%%% This program is distributed in the hope that it will be useful,
+%%% but WITHOUT ANY WARRANTY; without even the implied warranty of
+%%% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+%%% General Public License for more details.
+%%%
+%%% You should have received a copy of the GNU General Public License along
+%%% with this program; if not, write to the Free Software Foundation, Inc.,
+%%% 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+%%%
+%%%----------------------------------------------------------------------
+
 -module(prosody2ejabberd).
 
 %% API
 -export([from_dir/1]).
 
 -include("ejabberd.hrl").
--include("jlib.hrl").
+-include("xmpp.hrl").
 -include("logger.hrl").
 -include("mod_roster.hrl").
 -include("mod_offline.hrl").
@@ -93,8 +109,25 @@ eval_file(Path) ->
 	    Err
     end.
 
+maybe_get_scram_auth(Data) ->
+    case proplists:get_value(<<"iteration_count">>, Data, no_ic) of
+	IC when is_float(IC) -> %% A float like 4096.0 is read
+	    #scram{
+		storedkey = misc:hex_to_base64(proplists:get_value(<<"stored_key">>, Data, <<"">>)),
+		serverkey = misc:hex_to_base64(proplists:get_value(<<"server_key">>, Data, <<"">>)),
+		salt = misc:hex_to_base64(proplists:get_value(<<"salt">>, Data, <<"">>)),
+		iterationcount = round(IC)
+	    };
+	_ -> <<"">>
+    end.
+
 convert_data(Host, "accounts", User, [Data]) ->
-    Password = proplists:get_value(<<"password">>, Data, <<>>),
+    Password = case proplists:get_value(<<"password">>, Data, no_pass) of
+	no_pass ->
+	    maybe_get_scram_auth(Data);
+	Pass when is_binary(Pass) ->
+	    Pass
+    end,
     case ejabberd_auth:try_register(User, Host, Password) of
 	{atomic, ok} ->
 	    ok;
@@ -139,7 +172,7 @@ convert_data(Host, "vcard", User, [Data]) ->
 	    ok
     end;
 convert_data(_Host, "config", _User, [Data]) ->
-    RoomJID = jid:from_string(proplists:get_value(<<"jid">>, Data, <<"">>)),
+    RoomJID = jid:decode(proplists:get_value(<<"jid">>, Data, <<"">>)),
     Config = proplists:get_value(<<"_data">>, Data, []),
     RoomCfg = convert_room_config(Data),
     case proplists:get_bool(<<"persistent">>, Config) of
@@ -184,14 +217,14 @@ convert_data(_Host, _Type, _User, _Data) ->
 convert_pending_item(LUser, LServer, LuaList) ->
     lists:flatmap(
       fun({S, true}) ->
-	      case jid:from_string(S) of
-		  #jid{} = J ->
+	      try jid:decode(S) of
+		  J ->
 		      LJID = jid:tolower(J),
 		      [#roster{usj = {LUser, LServer, LJID},
 			       us = {LUser, LServer},
 			       jid = LJID,
-			       ask = in}];
-		  error ->
+			       ask = in}]
+	      catch _:{bad_jid, _} ->
 		      []
 	      end;
 	 (_) ->
@@ -199,8 +232,8 @@ convert_pending_item(LUser, LServer, LuaList) ->
       end, LuaList).
 
 convert_roster_item(LUser, LServer, JIDstring, LuaList) ->
-    case jid:from_string(JIDstring) of
-	#jid{} = JID ->
+    try jid:decode(JIDstring) of
+	JID ->
 	    LJID = jid:tolower(JID),
 	    InitR = #roster{usj = {LUser, LServer, LJID},
 			    us = {LUser, LServer},
@@ -214,24 +247,24 @@ convert_roster_item(LUser, LServer, JIDstring, LuaList) ->
 				 end, Val),
 			  R#roster{groups = Gs};
 		     ({<<"subscription">>, Sub}, R) ->
-			  R#roster{subscription = jlib:binary_to_atom(Sub)};
+			  R#roster{subscription = misc:binary_to_atom(Sub)};
 		     ({<<"ask">>, <<"subscribe">>}, R) ->
 			  R#roster{ask = out};
 		     ({<<"name">>, Name}, R) ->
 			  R#roster{name = Name}
 		  end, InitR, LuaList),
-	    [Roster];
-	error ->
+	    [Roster]
+    catch _:{bad_jid, _} ->
 	    []
     end.
 
 convert_room_affiliations(Data) ->
     lists:flatmap(
       fun({J, Aff}) ->
-	      case jid:from_string(J) of
+	      try jid:decode(J) of
 		  #jid{luser = U, lserver = S} ->
-		      [{{U, S, <<>>}, jlib:binary_to_atom(Aff)}];
-		  error ->
+		      [{{U, S, <<>>}, misc:binary_to_atom(Aff)}]
+	      catch _:{bad_jid, _} ->
 		      []
 	      end
       end, proplists:get_value(<<"_affiliations">>, Data, [])).
@@ -245,13 +278,13 @@ convert_room_config(Data) ->
 		   [{password_protected, true},
 		    {password, Password}]
 	   end,
-    Subj = case jid:from_string(
+    Subj = try jid:decode(
 		  proplists:get_value(
 		    <<"subject_from">>, Config, <<"">>)) of
 	       #jid{lresource = Nick} when Nick /= <<"">> ->
 		   [{subject, proplists:get_value(<<"subject">>, Config, <<"">>)},
-		    {subject_author, Nick}];
-	       _ ->
+		    {subject_author, Nick}]
+	   catch _:{bad_jid, _} ->
 		   []
 	   end,
     Anonymous = case proplists:get_value(<<"whois">>, Config, <<"moderators">>) of
@@ -268,7 +301,7 @@ convert_room_config(Data) ->
 convert_privacy_item({_, Item}) ->
     Action = proplists:get_value(<<"action">>, Item, <<"allow">>),
     Order = proplists:get_value(<<"order">>, Item, 0),
-    T = jlib:binary_to_atom(proplists:get_value(<<"type">>, Item, <<"none">>)),
+    T = misc:binary_to_atom(proplists:get_value(<<"type">>, Item, <<"none">>)),
     V = proplists:get_value(<<"value">>, Item, <<"">>),
     MatchIQ = proplists:get_bool(<<"iq">>, Item),
     MatchMsg = proplists:get_bool(<<"message">>, Item),
@@ -283,15 +316,15 @@ convert_privacy_item({_, Item}) ->
     {Type, Value} = try case T of
 			    none -> {T, none};
 			    group -> {T, V};
-			    jid -> {T, jid:tolower(jid:from_string(V))};
-			    subscription -> {T, jlib:binary_to_atom(V)}
+			    jid -> {T, jid:tolower(jid:decode(V))};
+			    subscription -> {T, misc:binary_to_atom(V)}
 			end
 		    catch _:_ ->
 			    {none, none}
 		    end,
     #listitem{type = Type,
 	      value = Value,
-	      action = jlib:binary_to_atom(Action),
+	      action = misc:binary_to_atom(Action),
 	      order = erlang:trunc(Order),
 	      match_all = MatchAll,
 	      match_iq = MatchIQ,
@@ -300,29 +333,32 @@ convert_privacy_item({_, Item}) ->
 	      match_presence_out = MatchPresOut}.
 
 el_to_offline_msg(LUser, LServer, #xmlel{attrs = Attrs} = El) ->
-    case jlib:datetime_string_to_timestamp(
-	   fxml:get_attr_s(<<"stamp">>, Attrs)) of
-	{_, _, _} = TS ->
-	    Attrs1 = lists:filter(
-		       fun(<<"stamp">>) -> false;
-			  (<<"stamp_legacy">>) -> false;
-			  (_) -> true
-		       end, Attrs),
-	    Packet = El#xmlel{attrs = Attrs1},
-	    case {jid:from_string(fxml:get_attr_s(<<"from">>, Attrs)),
-		  jid:from_string(fxml:get_attr_s(<<"to">>, Attrs))} of
-		{#jid{} = From, #jid{} = To} ->
-		    [#offline_msg{
-			us = {LUser, LServer},
-			timestamp = TS,
-			expire = never,
-			from = From,
-			to = To,
-			packet = Packet}];
-		_ ->
-		    []
-	    end;
-	_ ->
+    try
+	TS = xmpp_util:decode_timestamp(
+	       fxml:get_attr_s(<<"stamp">>, Attrs)),
+	Attrs1 = lists:filter(
+		   fun({<<"stamp">>, _}) -> false;
+		      ({<<"stamp_legacy">>, _}) -> false;
+		      (_) -> true
+		   end, Attrs),
+	El1 = El#xmlel{attrs = Attrs1},
+	case xmpp:decode(El1, ?NS_CLIENT, [ignore_els]) of
+	    #message{from = #jid{} = From, to = #jid{} = To} = Packet ->
+		[#offline_msg{
+		    us = {LUser, LServer},
+		    timestamp = TS,
+		    expire = never,
+		    from = From,
+		    to = To,
+		    packet = Packet}];
+	    _ ->
+		[]
+	end
+    catch _:{bad_timestamp, _} ->
+	    [];
+	  _:{bad_jid, _} ->
+	    [];
+	  _:{xmpp_codec, _} ->
 	    []
     end.
 

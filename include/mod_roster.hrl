@@ -1,6 +1,6 @@
 %%%----------------------------------------------------------------------
 %%%
-%%% ejabberd, Copyright (C) 2002-2016   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -20,15 +20,15 @@
 
 -record(roster,
 {
-    usj = {<<>>, <<>>, {<<>>, <<>>, <<>>}} :: {binary(), binary(), ljid()} | '_',
+    usj = {<<>>, <<>>, {<<>>, <<>>, <<>>}} :: {binary(), binary(), jid:ljid()} | '_',
     us = {<<>>, <<>>}                      :: {binary(), binary()} | '_',
-    jid = {<<>>, <<>>, <<>>}               :: ljid(),
+    jid = {<<>>, <<>>, <<>>}               :: jid:ljid(),
     name = <<>>                            :: binary() | '_',
     subscription = none                    :: subscription() | '_',
     ask = none                             :: ask() | '_',
     groups = []                            :: [binary()] | '_',
     askmessage = <<"">>                    :: binary() | '_',
-    xs = []                                :: [xmlel()] | '_'
+    xs = []                                :: [fxml:xmlel()] | '_'
 }).
 
 -record(roster_version,

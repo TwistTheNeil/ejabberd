@@ -5,7 +5,7 @@
 %%% Created : 12 Dec 2004 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2016   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -33,15 +33,15 @@
 
 -behaviour(ejabberd_auth).
 
--export([start/1, set_password/3, check_password/4,
+-export([start/1, stop/1, set_password/3, check_password/4,
 	 check_password/6, try_register/3,
 	 dirty_get_registered_users/0, get_vh_registered_users/1,
-	 get_vh_registered_users/2,
+	 get_vh_registered_users/2, init_db/0,
 	 get_vh_registered_users_number/1,
 	 get_vh_registered_users_number/2, get_password/2,
 	 get_password_s/2, is_user_exists/2, remove_user/2,
-	 remove_user/3, store_type/0, export/1, import/1,
-	 import/3, plain_password_required/0, opt_type/1]).
+	 remove_user/3, store_type/0, export/1, import/2,
+	 plain_password_required/0, opt_type/1]).
 
 -include("ejabberd.hrl").
 -include("logger.hrl").
@@ -59,16 +59,22 @@
 %%% API
 %%%----------------------------------------------------------------------
 start(Host) ->
-    mnesia:create_table(passwd,
-			[{disc_copies, [node()]},
-			 {attributes, record_info(fields, passwd)}]),
-    mnesia:create_table(reg_users_counter,
-			[{ram_copies, [node()]},
-			 {attributes, record_info(fields, reg_users_counter)}]),
+    init_db(),
     update_table(),
     update_reg_users_counter_table(Host),
     maybe_alert_password_scrammed_without_option(),
     ok.
+
+stop(_Host) ->
+    ok.
+
+init_db() ->
+    ejabberd_mnesia:create(?MODULE, passwd,
+			[{disc_copies, [node()]},
+			 {attributes, record_info(fields, passwd)}]),
+    ejabberd_mnesia:create(?MODULE, reg_users_counter,
+			[{ram_copies, [node()]},
+			 {attributes, record_info(fields, reg_users_counter)}]).
 
 update_reg_users_counter_table(Server) ->
     Set = get_vh_registered_users(Server),
@@ -123,7 +129,7 @@ check_password(User, AuthzId, Server, Password, Digest,
 		     true -> (Passwd == Password) and (Password /= <<"">>)
 		  end;
 	      [#passwd{password = Scram}] when is_record(Scram, scram) ->
-		  Passwd = jlib:decode_base64(Scram#scram.storedkey),
+		  Passwd = misc:decode_base64(Scram#scram.storedkey),
 		  DigRes = if Digest /= <<"">> ->
 				   Digest == DigestGen(Passwd);
 			      true -> false
@@ -140,9 +146,12 @@ check_password(User, AuthzId, Server, Password, Digest,
 set_password(User, Server, Password) ->
     LUser = jid:nodeprep(User),
     LServer = jid:nameprep(Server),
+    LPassword = jid:resourceprep(Password),
     US = {LUser, LServer},
     if (LUser == error) or (LServer == error) ->
 	   {error, invalid_jid};
+       LPassword == error ->
+	   {error, invalid_password};
        true ->
 	   F = fun () ->
 		       Password2 = case is_scrammed() and is_binary(Password)
@@ -164,9 +173,12 @@ try_register(User, Server, PasswordList) ->
       iolist_to_binary(PasswordList);
       true -> PasswordList
     end,
+    LPassword = jid:resourceprep(Password),
     US = {LUser, LServer},
     if (LUser == error) or (LServer == error) ->
 	   {error, invalid_jid};
+       (LPassword == error) and not is_record(Password, scram) ->
+	   {error, invalid_password};
        true ->
 	   F = fun () ->
 		       case mnesia:read({passwd, US}) of
@@ -282,9 +294,9 @@ get_password(User, Server) ->
 	  Password;
       [#passwd{password = Scram}]
 	  when is_record(Scram, scram) ->
-	  {jlib:decode_base64(Scram#scram.storedkey),
-	   jlib:decode_base64(Scram#scram.serverkey),
-	   jlib:decode_base64(Scram#scram.salt),
+	  {misc:decode_base64(Scram#scram.storedkey),
+	   misc:decode_base64(Scram#scram.serverkey),
+	   misc:decode_base64(Scram#scram.salt),
 	   Scram#scram.iterationcount};
       _ -> false
     end.
@@ -438,9 +450,21 @@ scram_passwords() ->
     ?INFO_MSG("Converting the stored passwords into "
 	      "SCRAM bits",
 	      []),
-    Fun = fun (#passwd{password = Password} = P) ->
-		  Scram = password_to_scram(Password),
-		  P#passwd{password = Scram}
+    Fun = fun (#passwd{us = {U, S}, password = Password} = P)
+		when is_binary(Password) ->
+		  case jid:resourceprep(Password) of
+		      error ->
+			  ?ERROR_MSG(
+			     "SASLprep failed for "
+			     "password of user ~s@~s",
+			     [U, S]),
+			  P;
+		      _ ->
+			  Scram = password_to_scram(Password),
+			  P#passwd{password = Scram}
+		  end;
+	      (P) ->
+		  P
 	  end,
     Fields = record_info(fields, passwd),
     mnesia:transform_table(passwd, Fun, Fields).
@@ -450,25 +474,30 @@ password_to_scram(Password) ->
 		      ?SCRAM_DEFAULT_ITERATION_COUNT).
 
 password_to_scram(Password, IterationCount) ->
-    Salt = crypto:rand_bytes(?SALT_LENGTH),
+    Salt = randoms:bytes(?SALT_LENGTH),
     SaltedPassword = scram:salted_password(Password, Salt,
 					   IterationCount),
     StoredKey =
 	scram:stored_key(scram:client_key(SaltedPassword)),
     ServerKey = scram:server_key(SaltedPassword),
-    #scram{storedkey = jlib:encode_base64(StoredKey),
-	   serverkey = jlib:encode_base64(ServerKey),
-	   salt = jlib:encode_base64(Salt),
+    #scram{storedkey = misc:encode_base64(StoredKey),
+	   serverkey = misc:encode_base64(ServerKey),
+	   salt = misc:encode_base64(Salt),
 	   iterationcount = IterationCount}.
 
 is_password_scram_valid(Password, Scram) ->
-    IterationCount = Scram#scram.iterationcount,
-    Salt = jlib:decode_base64(Scram#scram.salt),
-    SaltedPassword = scram:salted_password(Password, Salt,
-					   IterationCount),
-    StoredKey =
-	scram:stored_key(scram:client_key(SaltedPassword)),
-    jlib:decode_base64(Scram#scram.storedkey) == StoredKey.
+    case jid:resourceprep(Password) of
+	error ->
+	    false;
+	_ ->
+	    IterationCount = Scram#scram.iterationcount,
+	    Salt = misc:decode_base64(Scram#scram.salt),
+	    SaltedPassword = scram:salted_password(Password, Salt,
+						   IterationCount),
+	    StoredKey =
+		scram:stored_key(scram:client_key(SaltedPassword)),
+	    misc:decode_base64(Scram#scram.storedkey) == StoredKey
+    end.
 
 export(_Server) ->
     [{passwd,
@@ -493,16 +522,9 @@ export(_Server) ->
               []
       end}].
 
-import(LServer) ->
-    [{<<"select username, password from users;">>,
-      fun([LUser, Password]) ->
-              #passwd{us = {LUser, LServer}, password = Password}
-      end}].
-
-import(_LServer, mnesia, #passwd{} = P) ->
-    mnesia:dirty_write(P);
-import(_, _, _) ->
-    pass.
+import(LServer, [LUser, Password, _TimeStamp]) ->
+    mnesia:dirty_write(
+      #passwd{us = {LUser, LServer}, password = Password}).
 
 opt_type(auth_password_format) -> fun (V) -> V end;
 opt_type(_) -> [auth_password_format].

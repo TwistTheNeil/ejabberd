@@ -1,11 +1,27 @@
 %%%-------------------------------------------------------------------
-%%% @author Evgeny Khramtsov <ekhramtsov@process-one.net>
-%%% @copyright (C) 2016, Evgeny Khramtsov
-%%% @doc
-%%%
-%%% @end
+%%% File    : mod_shared_roster_sql.erl
+%%% Author  : Evgeny Khramtsov <ekhramtsov@process-one.net>
 %%% Created : 14 Apr 2016 by Evgeny Khramtsov <ekhramtsov@process-one.net>
-%%%-------------------------------------------------------------------
+%%%
+%%%
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
+%%%
+%%% This program is free software; you can redistribute it and/or
+%%% modify it under the terms of the GNU General Public License as
+%%% published by the Free Software Foundation; either version 2 of the
+%%% License, or (at your option) any later version.
+%%%
+%%% This program is distributed in the hope that it will be useful,
+%%% but WITHOUT ANY WARRANTY; without even the implied warranty of
+%%% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+%%% General Public License for more details.
+%%%
+%%% You should have received a copy of the GNU General Public License along
+%%% with this program; if not, write to the Free Software Foundation, Inc.,
+%%% 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+%%%
+%%%----------------------------------------------------------------------
+
 -module(mod_shared_roster_sql).
 
 -compile([{parse_transform, ejabberd_sql_pt}]).
@@ -17,10 +33,10 @@
 	 delete_group/2, get_group_opts/2, set_group_opts/3,
 	 get_user_groups/2, get_group_explicit_users/2,
 	 get_user_displayed_groups/3, is_user_in_group/3,
-	 add_user_to_group/3, remove_user_from_group/3, import/1,
-	 import/2, export/1]).
+	 add_user_to_group/3, remove_user_from_group/3, import/3,
+	 export/1]).
 
--include("jlib.hrl").
+-include("jid.hrl").
 -include("mod_roster.hrl").
 -include("mod_shared_roster.hrl").
 -include("ejabberd_sql_pt.hrl").
@@ -51,7 +67,7 @@ groups_with_opts(Host) ->
     end.
 
 create_group(Host, Group, Opts) ->
-    SOpts = jlib:term_to_expr(Opts),
+    SOpts = misc:term_to_expr(Opts),
     F = fun () ->
 		?SQL_UPSERT_T(
                    "sr_group",
@@ -82,7 +98,7 @@ get_group_opts(Host, Group) ->
     end.
 
 set_group_opts(Host, Group, Opts) ->
-    SOpts = jlib:term_to_expr(Opts),
+    SOpts = misc:term_to_expr(Opts),
     F = fun () ->
 		?SQL_UPSERT_T(
                    "sr_group",
@@ -107,7 +123,7 @@ get_group_explicit_users(Host, Group) ->
 	{selected, Rs} ->
 	    lists:map(
 	      fun({JID}) ->
-		      {U, S, _} = jid:tolower(jid:from_string(JID)),
+		      {U, S, _} = jid:tolower(jid:decode(JID)),
 		      {U, S}
 	      end, Rs);
 	_ ->
@@ -156,7 +172,7 @@ export(_Server) ->
     [{sr_group,
       fun(Host, #sr_group{group_host = {Group, LServer}, opts = Opts})
             when LServer == Host ->
-              SOpts = jlib:term_to_expr(Opts),
+              SOpts = misc:term_to_expr(Opts),
               [?SQL("delete from sr_group where name=%(Group)s;"),
                ?SQL("insert into sr_group(name, opts) values ("
                     "%(Group)s, %(SOpts)s);")];
@@ -166,9 +182,7 @@ export(_Server) ->
      {sr_user,
       fun(Host, #sr_user{us = {U, S}, group_host = {Group, LServer}})
             when LServer == Host ->
-              SJID = jid:to_string(
-                       jid:tolower(
-                         jid:make(U, S, <<"">>))),
+              SJID = make_jid_s(U, S),
               [?SQL("select @(jid)s from sr_user where jid=%(SJID)s"
                     " and grp=%(Group)s;"),
                ?SQL("insert into sr_user(jid, grp) values ("
@@ -177,25 +191,13 @@ export(_Server) ->
               []
       end}].
 
-import(LServer) ->
-    [{<<"select name, opts from sr_group;">>,
-      fun([Group, SOpts]) ->
-              #sr_group{group_host = {Group, LServer},
-                        opts = ejabberd_sql:decode_term(SOpts)}
-      end},
-     {<<"select jid, grp from sr_user;">>,
-      fun([SJID, Group]) ->
-              #jid{luser = U, lserver = S} = jid:from_string(SJID),
-              #sr_user{us = {U, S}, group_host = {Group, LServer}}
-      end}].
-
-import(_, _) ->
-    pass.
+import(_, _, _) ->
+    ok.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 make_jid_s(U, S) ->
-    jid:to_string(jid:tolower(jid:make(U, S, <<"">>))).
+    jid:encode(jid:tolower(jid:make(U, S))).
 
 make_jid_s({U, S}) -> make_jid_s(U, S).
