@@ -34,90 +34,104 @@ Index: ejabberd/ejabberd.yml.example
  
  ##
  ## overload protection: If you want to limit the number of messages per second
-@@ -113,14 +100,15 @@ hosts:
- listen: 
-   - 
+@@ -107,14 +94,14 @@ hosts:
+ ###'  LISTENING PORTS
+ 
+ ## Define common macros used by listeners
+-## define_macro:
+-##   'CERTFILE': "/path/to/xmpp.pem"
++define_macro:
++  'CERTFILE': "/etc/ejabberd/ejabberd.pem"
+ ##   'CIPHERS': "ECDH:DH:!3DES:!aNULL:!eNULL:!MEDIUM@STRENGTH"
+-##   'TLSOPTS':
+-##     - "no_sslv3"
+-##     - "no_tlsv1"
+-##     - "cipher_server_preference"
+-##     - "no_compression"
++  'TLSOPTS':
++     - "no_sslv3"
++     - "no_tlsv1"
++     - "cipher_server_preference"
++     - "no_compression"
+ ##   'DHFILE': "/path/to/dhparams.pem" # generated with: openssl dhparam -out dhparams.pem 2048
+ 
+ ##
+@@ -126,29 +113,15 @@ listen:
      port: 5222
-+    ip: "::"
+     ip: "::"
      module: ejabberd_c2s
-     ##
-     ## If TLS is compiled in and you installed a SSL
-     ## certificate, specify the full path to the
-     ## file and uncomment these lines:
-     ##
--    ## certfile: "/path/to/ssl.pem"
+-    ##
+-    ## If TLS is compiled in and you installed a SSL
+-    ## certificate, specify the full path to the
+-    ## file and uncomment these lines:
+-    ##
 -    ## starttls: true
-+    certfile: "/etc/ejabberd/ejabberd.pem"
-+    starttls: true
-     ##
-     ## To enforce TLS encryption for client connections,
-     ## use this instead of the "starttls" option:
-@@ -129,14 +117,17 @@ listen:
-     ##
-     ## Custom OpenSSL options
-     ##
--    ## protocol_options:
--    ##   - "no_sslv3"
-+    protocol_options:
-+      - "no_sslv3"
-     ##   - "no_tlsv1"
+-    ## certfile: 'CERTFILE'
+-    ## protocol_options: 'TLSOPTS'
++    starttls_required: true
++    certfile: 'CERTFILE'
++    protocol_options: 'TLSOPTS'
+     ## dhfile: 'DHFILE'
+     ## ciphers: 'CIPHERS'
+-    ##
+-    ## To enforce TLS encryption for client connections,
+-    ## use this instead of the "starttls" option:
+-    ##
+-    ## starttls_required: true
+-    ##
+-    ## Stream compression
+-    ##
+-    ## zlib: true
+-    ##
      max_stanza_size: 65536
      shaper: c2s_shaper
      access: c2s
-+    zlib: true
 +    resend_on_timeout: if_offline
    - 
      port: 5269
-+    ip: "::"
-     module: ejabberd_s2s_in
-   ##
-   ## ejabberd_service: Interact with external components (transports, ...)
-@@ -179,6 +170,7 @@ listen:
-   ##   access_commands: {}
-   - 
-     port: 5280
-+    ip: "::"
-     module: ejabberd_http
-     request_handlers:
-       "/websocket": ejabberd_http_ws
-@@ -186,7 +178,13 @@ listen:
+     ip: "::"
+@@ -164,7 +137,10 @@ listen:
      web_admin: true
      http_bind: true
      ## register: true
 -    captcha: true
 +    ## captcha: true
 +    tls: true
-+    certfile: "/etc/ejabberd/ejabberd.pem"
-+
-+## Disabling digest-md5 SASL authentication. digest-md5 requires plain-text
-+## password storage (see auth_password_format option).
++    certfile: 'CERTFILE'
++    protocol_options: 'TLSOPTS'
+   ##
+   ## ejabberd_service: Interact with external components (transports, ...)
+   ##
+@@ -224,7 +200,7 @@ listen:
+ 
+ ## Disabling digest-md5 SASL authentication. digest-md5 requires plain-text
+ ## password storage (see auth_password_format option).
+-## disable_sasl_mechanisms: "digest-md5"
 +disable_sasl_mechanisms: "digest-md5"
  
  ###.  ==================
  ###'  S2S GLOBAL OPTIONS
-@@ -196,17 +194,17 @@ listen:
+@@ -234,16 +210,16 @@ listen:
  ## Allowed values are: false optional required required_trusted
  ## You must specify a certificate file.
  ##
--## s2s_use_starttls: optional
-+s2s_use_starttls: optional
+-## s2s_use_starttls: required
++s2s_use_starttls: required
  
  ##
  ## s2s_certfile: Specify a certificate file.
  ##
--## s2s_certfile: "/path/to/ssl.pem"
-+s2s_certfile: "/etc/ejabberd/ejabberd.pem"
+-## s2s_certfile: 'CERTFILE'
++s2s_certfile: 'CERTFILE'
  
  ## Custom OpenSSL options
  ##
--## s2s_protocol_options:
--##   - "no_sslv3"
-+s2s_protocol_options:
-+  - "no_sslv3"
- ##   - "no_tlsv1"
+-## s2s_protocol_options: 'TLSOPTS'
++s2s_protocol_options: 'TLSOPTS'
  
  ##
-@@ -250,7 +248,7 @@ auth_method: internal
+ ## domain_certfile: Specify a different certificate for each served hostname.
+@@ -286,7 +262,7 @@ auth_method: internal
  ##
  ## Store the plain passwords or hashed for SCRAM:
  ## auth_password_format: plain
@@ -126,7 +140,7 @@ Index: ejabberd/ejabberd.yml.example
  ##
  ## Define the FQDN if ejabberd doesn't detect it:
  ## fqdn: "server3.example.com"
-@@ -561,7 +559,7 @@ language: "en"
+@@ -645,7 +621,7 @@ language: "en"
  ##
  ## Full path to a script that generates the image.
  ##
@@ -135,33 +149,15 @@ Index: ejabberd/ejabberd.yml.example
  
  ##
  ## Host for the URL and port where ejabberd listens for CAPTCHA requests.
-@@ -581,7 +579,7 @@ language: "en"
- ##
- modules: 
-   mod_adhoc: {}
--  ## mod_admin_extra: {}
-+  mod_admin_extra: {}
-   mod_announce: # recommends mod_adhoc
-     access: announce
-   mod_blocking: {} # requires mod_privacy
-@@ -591,7 +589,7 @@ modules:
-   mod_configure: {} # requires mod_adhoc
-   ##mod_delegation: {} # for xep0356
-   mod_disco: {}
--  ## mod_echo: {}
-+  mod_echo: {}
-   mod_irc: {}
-   mod_http_bind: {}
-   ## mod_http_fileserver:
-@@ -607,6 +605,7 @@ modules:
-     access_create: muc_create
+@@ -702,6 +678,7 @@ modules:
      access_persistent: muc_create
+   mod_muc_admin: {}
    ## mod_muc_log: {}
 +  mod_muc_admin: {}
    ## mod_multicast: {}
    mod_offline: 
      access_max_user_messages: max_user_offline_messages
-@@ -661,7 +660,8 @@ modules:
+@@ -756,7 +733,8 @@ modules:
      ##
      ##   access_from: deny
      ##   access: register
