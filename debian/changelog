@@ -1,3 +1,9 @@
+ejabberd (17.04-1~exp1) experimental; urgency=medium
+
+  * New upstream version 17.04 (Closes: #856927, #855493)
+
+ -- Philipp Huebner <debalance@debian.org>  Sat, 15 Apr 2017 23:25:36 +0200
+
 ejabberd (16.09-4) unstable; urgency=medium
 
   * Added missing ImageMagick paths to apparmor profile

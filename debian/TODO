@@ -1,1 +1,3 @@
+* add NEWS item regarding extra mod_ lines before upload to unstable
+* need new patch for src/ext_mod.erl
 * the debconf question asking for the admin user shouldn't allow an empty input
