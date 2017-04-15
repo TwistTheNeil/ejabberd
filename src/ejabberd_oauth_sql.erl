@@ -5,7 +5,7 @@
 %%% Created : 27 Jul 2016 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2016   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -36,7 +36,7 @@
 -include("ejabberd_oauth.hrl").
 -include("ejabberd.hrl").
 -include("ejabberd_sql_pt.hrl").
--include("jlib.hrl").
+-include("jid.hrl").
 
 init() ->
     ok.
@@ -44,7 +44,7 @@ init() ->
 store(R) ->
     Token = R#oauth_token.token,
     {User, Server} = R#oauth_token.us,
-    SJID = jid:to_string({User, Server, <<"">>}),
+    SJID = jid:encode({User, Server, <<"">>}),
     Scope = str:join(R#oauth_token.scope, <<" ">>),
     Expire = R#oauth_token.expire,
     ?SQL_UPSERT(
@@ -61,7 +61,7 @@ lookup(Token) ->
            ?SQL("select @(jid)s, @(scope)s, @(expire)d"
                 " from oauth_token where token=%(Token)s")) of
         {selected, [{SJID, Scope, Expire}]} ->
-            JID = jid:from_string(SJID),
+            JID = jid:decode(SJID),
             US = {JID#jid.luser, JID#jid.lserver},
             #oauth_token{token = Token,
                          us = US,

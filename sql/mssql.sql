@@ -1,5 +1,5 @@
 --
--- ejabberd, Copyright (C) 2002-2015   ProcessOne
+-- ejabberd, Copyright (C) 2002-2017   ProcessOne
 --
 -- This program is free software; you can redistribute it and/or
 -- modify it under the terms of the GNU General Public License as
@@ -125,6 +125,30 @@ CREATE TABLE [dbo].[muc_room] (
 CREATE UNIQUE CLUSTERED INDEX [muc_room_name_host] ON [muc_room] (name, host)
 WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON);
 
+CREATE TABLE [dbo].[muc_online_room] (
+        [name] [varchar] (250) NOT NULL,
+	[host] [varchar] (250) NOT NULL,
+	[node] [text] NOT NULL,
+	[pid] [text] NOT NULL
+);
+
+CREATE UNIQUE CLUSTERED INDEX [muc_online_room_name_host] ON [muc_online_room] (name, host)
+WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON);
+
+CREATE TABLE [dbo].[muc_online_users] (
+    [username] [varchar] (250) NOT NULL,
+    [server] [varchar] (250) NOT NULL,
+    [resource] [varchar] (250) NOT NULL,
+    [name] [varchar] (250) NOT NULL,
+    [host] [varchar] (250) NOT NULL,
+    node text NOT NULL
+);
+
+CREATE UNIQUE CLUSTERED INDEX [muc_online_users_i] ON [muc_online_users] (username, server, resource, name, host)
+WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON);
+CREATE UNIQUE CLUSTERED INDEX [muc_online_users_us] ON [muc_online_users] (username, server);
+WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON);
+
 CREATE TABLE [dbo].[privacy_default_list] (
         [username] [varchar] (250) NOT NULL,
         [name] [varchar] (250) NOT NULL,
@@ -182,11 +206,11 @@ WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW
 
 CREATE TABLE [dbo].[pubsub_item] (
         [nodeid] [bigint] NULL,
-        [itemid] [varchar] (255) NULL,
-        [publisher] [text] NULL,
-        [creation] [text] NULL,
-        [modification] [varchar] (255) NULL,
-        [payload] [text] NULL
+        [itemid] [varchar] (255) NOT NULL,
+        [publisher] [text] NOT NULL,
+        [creation] [text] NOT NULL,
+        [modification] [varchar] (255) NOT NULL,
+        [payload] [text] NOT NULL DEFAULT ''
 ) TEXTIMAGE_ON [PRIMARY];
 
 CREATE INDEX [pubsub_item_itemid] ON [pubsub_item] (itemid)
@@ -197,8 +221,8 @@ WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW
 
 CREATE TABLE [dbo].[pubsub_node_option] (
         [nodeid] [bigint] NULL,
-        [name] [text] NULL,
-        [val] [text] NULL
+        [name] [text] NOT NULL,
+        [val] [text] NOT NULL
 ) TEXTIMAGE_ON [PRIMARY];
 
 CREATE CLUSTERED INDEX [pubsub_node_option_nodeid] ON [pubsub_node_option] (nodeid)
@@ -206,7 +230,7 @@ WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW
 
 CREATE TABLE [dbo].[pubsub_node_owner] (
         [nodeid] [bigint] NULL,
-        [owner] [text] NULL
+        [owner] [text] NOT NULL
 ) TEXTIMAGE_ON [PRIMARY];
 
 CREATE CLUSTERED INDEX [pubsub_node_owner_nodeid] ON [pubsub_node_owner] (nodeid)
@@ -214,9 +238,9 @@ WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW
 
 CREATE TABLE [dbo].[pubsub_state] (
         [nodeid] [bigint] NULL,
-        [jid] [varchar] (255) NULL,
-        [affiliation] [char] (1) NULL,
-        [subscriptions] [text] NULL,
+        [jid] [varchar] (255) NOT NULL,
+        [affiliation] [char] (1) NOT NULL,
+        [subscriptions] [text] NOT NULL DEFAULT '',
         [stateid] [bigint] IDENTITY(1,1) NOT NULL,
  CONSTRAINT [pubsub_state_PRIMARY] PRIMARY KEY CLUSTERED 
 (
@@ -231,19 +255,19 @@ CREATE UNIQUE INDEX [pubsub_state_nodeid_jid] ON [pubsub_state] (nodeid, jid)
 WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON);
 
 CREATE TABLE [dbo].[pubsub_subscription_opt] (
-        [subid] [varchar] (255) NULL,
-        [opt_name] [varchar] (32) NULL,
-        [opt_value] [text] NULL
+        [subid] [varchar] (255) NOT NULL,
+        [opt_name] [varchar] (32) NOT NULL,
+        [opt_value] [text] NOT NULL
 ) TEXTIMAGE_ON [PRIMARY];
 
 CREATE UNIQUE CLUSTERED INDEX [pubsub_subscription_opt_subid_opt_name] ON [pubsub_subscription_opt] (subid, opt_name)
 WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON);
 
 CREATE TABLE [dbo].[pubsub_node] (
-        [host] [varchar] (255) NULL,
-        [node] [varchar] (255) NULL,
-        [parent] [varchar] (255) NULL,
-        [type] [text] NULL,
+        [host] [varchar] (255) NOT NULL,
+        [node] [varchar] (255) NOT NULL,
+        [parent] [varchar] (255) NOT NULL DEFAULT '',
+        [type] [text] NOT NULL,
         [nodeid] [bigint] IDENTITY(1,1) NOT NULL,
  CONSTRAINT [pubsub_node_PRIMARY] PRIMARY KEY CLUSTERED 
 (
@@ -490,3 +514,40 @@ CREATE TABLE [dbo].[oauth_token] (
         [token] ASC
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON)
 ) TEXTIMAGE_ON [PRIMARY];
+
+CREATE TABLE [dbo].[route] (
+    [domain] [varchar] (255) NOT NULL,
+    [server_host] [varchar] (255) NOT NULL,
+    [node] [varchar] (255) NOT NULL,
+    [pid] [varchar](100) NOT NULL,
+    [local_hint] [text] NOT NULL
+);
+
+CREATE UNIQUE CLUSTERED INDEX [route_i] ON [route] (domain, server_host, node, pid)
+WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON);
+
+CREATE INDEX [route_domain] ON [route] (domain)
+WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON);
+
+CREATE TABLE [dbo].[bosh] (
+    [sid] [varchar] (255) NOT NULL,
+    [node] [varchar] (255) NOT NULL,
+    [pid] [varchar](100) NOT NULL
+ CONSTRAINT [bosh_PRIMARY] PRIMARY KEY CLUSTERED 
+(
+        [sid] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON)
+) TEXTIMAGE_ON [PRIMARY];
+
+CREATE TABLE [dbo].[carboncopy] (
+    [username] [varchar] (255) NOT NULL,
+    [resource] [varchar] (255) NOT NULL,
+    [namespace] [varchar] (255) NOT NULL,
+    [node] [varchar] (255) NOT NULL
+);
+
+CREATE UNIQUE CLUSTERED INDEX [carboncopy_ur] ON [carboncopy] (username, resource)
+WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON);
+
+CREATE INDEX [carboncopy_user] ON [carboncopy] (username)
+WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON);

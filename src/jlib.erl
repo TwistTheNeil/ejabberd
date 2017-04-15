@@ -5,7 +5,7 @@
 %%% Created : 23 Nov 2002 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2016   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -35,27 +35,34 @@
                            binary_to_integer/1,
                            integer_to_binary/1]}).
 
+%% The following functions are deprected: use functions from aux.erl
+-export([tolower/1, term_to_base64/1, base64_to_term/1,
+	 decode_base64/1, encode_base64/1, ip_to_list/1,
+	 hex_to_bin/1, hex_to_base64/1, expand_keyword/3,
+	 atom_to_binary/1, binary_to_atom/1, tuple_to_binary/1,
+	 l2i/1, i2l/1, i2l/2, expr_to_term/1, term_to_expr/1]).
+
+%% The following functions are used by gen_iq_handler.erl for providing backward
+%% compatibility and must not be used in other parts of the code
+%% Use xmpp:decode() and xmpp:encode() instead
+-export([iq_query_info/1, iq_to_xml/1]).
+
+%% The following functions are deprecated and will be removed soon
+%% Use functions from xmpp.erl and xmpp_util.erl instead
 -export([make_result_iq_reply/1, make_error_reply/3,
 	 make_error_reply/2, make_error_element/2,
 	 make_correct_from_to_attrs/3, replace_from_to_attrs/3,
 	 replace_from_to/3, replace_from_attrs/2, replace_from/2,
-	 remove_attr/2, tolower/1,
-	 get_iq_namespace/1, iq_query_info/1,
+	 remove_attr/2, get_iq_namespace/1,
 	 iq_query_or_response_info/1, is_iq_request_type/1,
-	 iq_to_xml/1, parse_xdata_submit/1,
-	 unwrap_carbon/1, is_standalone_chat_state/1,
+	 parse_xdata_submit/1, unwrap_carbon/1, is_standalone_chat_state/1,
 	 add_delay_info/3, add_delay_info/4,
 	 timestamp_to_legacy/1, timestamp_to_iso_basic/1, timestamp_to_iso/2,
 	 now_to_utc_string/1, now_to_local_string/1,
 	 datetime_string_to_timestamp/1,
-	 term_to_base64/1, base64_to_term/1,
-	 decode_base64/1, encode_base64/1, ip_to_list/1,
 	 rsm_encode/1, rsm_encode/2, rsm_decode/1,
 	 binary_to_integer/1, binary_to_integer/2,
-	 integer_to_binary/1, integer_to_binary/2,
-	 atom_to_binary/1, binary_to_atom/1, tuple_to_binary/1,
-	 l2i/1, i2l/1, i2l/2, queue_drop_while/2,
-	 expr_to_term/1, term_to_expr/1]).
+	 integer_to_binary/1, integer_to_binary/2]).
 
 %% The following functions are deprecated and will be removed soon
 %% Use corresponding functions from jid.erl instead
@@ -74,7 +81,55 @@
 	     {resourceprep, 1},
 	     {jid_tolower, 1},
 	     {jid_remove_resource, 1},
-	     {jid_replace_resource, 2}]).
+	     {jid_replace_resource, 2},
+	     {add_delay_info, 3},
+	     {add_delay_info, 4},
+	     {make_result_iq_reply, 1},
+	     {make_error_reply, 3},
+	     {make_error_reply, 2},
+	     {make_error_element, 2},
+	     {make_correct_from_to_attrs, 3},
+	     {replace_from_to_attrs, 3},
+	     {replace_from_to, 3},
+	     {replace_from_attrs, 2},
+	     {replace_from, 2},
+	     {remove_attr, 2},
+	     {get_iq_namespace, 1},
+	     {iq_query_or_response_info, 1},
+	     {is_iq_request_type, 1},
+	     {parse_xdata_submit, 1},
+	     {unwrap_carbon, 1},
+	     {is_standalone_chat_state, 1},
+	     {timestamp_to_legacy, 1},
+	     {timestamp_to_iso_basic, 1},
+	     {timestamp_to_iso, 2},
+	     {now_to_utc_string, 1},
+	     {now_to_local_string, 1},
+	     {datetime_string_to_timestamp, 1},
+	     {rsm_encode, 1},
+	     {rsm_encode, 2},
+	     {rsm_decode, 1},
+	     {binary_to_integer, 1},
+	     {binary_to_integer, 2},
+	     {integer_to_binary, 1},
+	     {integer_to_binary, 2},
+	     {tolower, 1},
+	     {term_to_base64, 1},
+	     {base64_to_term, 1},
+	     {decode_base64, 1},
+	     {encode_base64, 1},
+	     {ip_to_list, 1},
+	     {hex_to_bin, 1},
+	     {hex_to_base64, 1},
+	     {expand_keyword, 3},
+	     {atom_to_binary, 1},
+	     {binary_to_atom, 1},
+	     {tuple_to_binary, 1},
+	     {l2i, 1},
+	     {i2l, 1},
+	     {i2l, 2},
+	     {expr_to_term, 1},
+	     {term_to_expr, 1}]).
 
 -include("ejabberd.hrl").
 -include("jlib.hrl").
@@ -181,8 +236,8 @@ replace_from_to_attrs(From, To, Attrs) ->
 replace_from_to(From, To,
 		#xmlel{name = Name, attrs = Attrs, children = Els}) ->
     NewAttrs =
-	replace_from_to_attrs(jid:to_string(From),
-			      jid:to_string(To), Attrs),
+	replace_from_to_attrs(jid:encode(From),
+			      jid:encode(To), Attrs),
     #xmlel{name = Name, attrs = NewAttrs, children = Els}.
 
 -spec replace_from_attrs(binary(), [attr()]) -> [attr()].
@@ -195,7 +250,7 @@ replace_from_attrs(From, Attrs) ->
 
 replace_from(From,
 	     #xmlel{name = Name, attrs = Attrs, children = Els}) ->
-    NewAttrs = replace_from_attrs(jid:to_string(From),
+    NewAttrs = replace_from_attrs(jid:encode(From),
 				  Attrs),
     #xmlel{name = Name, attrs = NewAttrs, children = Els}.
 
@@ -224,12 +279,13 @@ split_jid(J) ->
 -spec string_to_jid(binary()) -> jid() | error.
 
 string_to_jid(S) ->
-    jid:from_string(S).
+    try jid:decode(S)
+    catch _:_ -> error end.
 
 -spec jid_to_string(jid() | ljid()) -> binary().
 
 jid_to_string(J) ->
-    jid:to_string(J).
+    jid:encode(J).
 
 -spec is_nodename(binary()) -> boolean().
 
@@ -582,14 +638,14 @@ add_delay_info(El, From, Time) ->
 		     binary()) -> xmlel().
 
 add_delay_info(El, From, Time, Desc) ->
-    DelayTag = create_delay_tag(Time, From, Desc),
+	  DelayTag = create_delay_tag(Time, From, Desc),
     fxml:append_subtags(El, [DelayTag]).
 
 -spec create_delay_tag(erlang:timestamp(), jid() | ljid() | binary(), binary())
 		       -> xmlel() | error.
 
 create_delay_tag(TimeStamp, FromJID, Desc) when is_tuple(FromJID) ->
-    From = jid:to_string(FromJID),
+    From = jid:encode(FromJID),
     Stamp = now_to_utc_string(TimeStamp, 3),
     Children = case Desc of
 		 <<"">> -> [];
@@ -601,7 +657,7 @@ create_delay_tag(TimeStamp, FromJID, Desc) when is_tuple(FromJID) ->
 		{<<"stamp">>, Stamp}],
 	   children = Children};
 create_delay_tag(DateTime, Host, Desc) when is_binary(Host) ->
-    FromJID = jid:make(<<"">>, Host, <<"">>),
+    FromJID = jid:make(Host),
     create_delay_tag(DateTime, FromJID, Desc).
 
 -type tz() :: {binary(), {integer(), integer()}} | {integer(), integer()} | utc.
@@ -640,14 +696,14 @@ timestamp_to_iso({{Year, Month, Day},
 %% http://xmpp.org/extensions/xep-0091.html#time
 timestamp_to_legacy({{Year, Month, Day},
                   {Hour, Minute, Second}}) ->
-    iolist_to_binary(io_lib:format("~4..0B~2..0B~2..0BT~2..0B:~2..0B:~2..0B",
+    (str:format("~4..0B~2..0B~2..0BT~2..0B:~2..0B:~2..0B",
                                    [Year, Month, Day, Hour, Minute, Second])).
 
 -spec timestamp_to_iso_basic(calendar:datetime()) -> binary().
 %% This is the ISO 8601 basic bormat
 timestamp_to_iso_basic({{Year, Month, Day},
                   {Hour, Minute, Second}}) ->
-    iolist_to_binary(io_lib:format("~4..0B~2..0B~2..0BT~2..0B~2..0B~2..0B",
+    (str:format("~4..0B~2..0B~2..0BT~2..0B~2..0B~2..0B",
                                    [Year, Month, Day, Hour, Minute, Second])).
 
 -spec now_to_utc_string(erlang:timestamp()) -> binary().
@@ -666,7 +722,7 @@ now_to_utc_string({MegaSecs, Secs, MicroSecs}, Precision) ->
       Max ->
 	  now_to_utc_string({MegaSecs, Secs + 1, 0}, Precision);
       FracOfSec ->
-	  list_to_binary(io_lib:format("~4..0B-~2..0B-~2..0BT"
+	  (str:format("~4..0B-~2..0B-~2..0BT"
 				       "~2..0B:~2..0B:~2..0B.~*..0BZ",
 				       [Year, Month, Day, Hour, Minute, Second,
 					Precision, FracOfSec]))
@@ -688,7 +744,7 @@ now_to_local_string({MegaSecs, Secs, MicroSecs}) ->
 			end,
     {{Year, Month, Day}, {Hour, Minute, Second}} =
 	LocalTime,
-    list_to_binary(io_lib:format("~4..0B-~2..0B-~2..0BT~2..0B:~2..0B:~2..0B.~6."
+    (str:format("~4..0B-~2..0B-~2..0BT~2..0B:~2..0B:~2..0B.~6."
                                  ".0B~s~2..0B:~2..0B",
                                  [Year, Month, Day, Hour, Minute, Second,
                                   MicroSecs, Sign, H, M])).
@@ -879,6 +935,29 @@ ip_to_list(undefined) ->
 ip_to_list(IP) ->
     list_to_binary(inet_parse:ntoa(IP)).
 
+-spec hex_to_bin(binary()) -> binary().
+
+hex_to_bin(Hex) ->
+    hex_to_bin(binary_to_list(Hex), []).
+
+-spec hex_to_bin(list(), list()) -> binary().
+
+hex_to_bin([], Acc) ->
+    list_to_binary(lists:reverse(Acc));
+hex_to_bin([H1, H2 | T], Acc) ->
+    {ok, [V], []} = io_lib:fread("~16u", [H1, H2]),
+    hex_to_bin(T, [V | Acc]).
+
+-spec hex_to_base64(binary()) -> binary().
+
+hex_to_base64(Hex) -> encode_base64(hex_to_bin(Hex)).
+
+-spec expand_keyword(binary(), binary(), binary()) -> binary().
+
+expand_keyword(Keyword, Input, Replacement) ->
+    Parts = binary:split(Input, Keyword, [global]),
+    str:join(Parts, Replacement).
+
 binary_to_atom(Bin) ->
     erlang:binary_to_atom(Bin, utf8).
 
@@ -921,19 +1000,4 @@ i2l(L, N) when is_binary(L) ->
       N -> L;
       C when C > N -> L;
       _ -> i2l(<<$0, L/binary>>, N)
-    end.
-
--spec queue_drop_while(fun((term()) -> boolean()), ?TQUEUE) -> ?TQUEUE.
-
-queue_drop_while(F, Q) ->
-    case queue:peek(Q) of
-      {value, Item} ->
-	  case F(Item) of
-	    true ->
-		queue_drop_while(F, queue:drop(Q));
-	    _ ->
-		Q
-	  end;
-      empty ->
-	  Q
     end.

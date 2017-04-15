@@ -5,7 +5,7 @@
 %%% Created : 20 May 2008 by Badlop <badlop@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2016   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -210,31 +210,39 @@
 -module(ejabberd_commands).
 -author('badlop@process-one.net').
 
+-behaviour(gen_server).
+
 -define(DEFAULT_VERSION, 1000000).
 
--export([init/0,
+-export([start_link/0,
 	 list_commands/0,
 	 list_commands/1,
 	 get_command_format/1,
 	 get_command_format/2,
 	 get_command_format/3,
-         get_command_policy_and_scope/1,
+	 get_command_policy_and_scope/1,
 	 get_command_definition/1,
 	 get_command_definition/2,
 	 get_tags_commands/0,
 	 get_tags_commands/1,
-         get_exposed_commands/0,
+	 get_exposed_commands/0,
 	 register_commands/1,
-   unregister_commands/1,
-   expose_commands/1,
+	 unregister_commands/1,
+	 expose_commands/1,
 	 execute_command/2,
 	 execute_command/3,
 	 execute_command/4,
 	 execute_command/5,
 	 execute_command/6,
-         opt_type/1,
-         get_commands_spec/0
-	]).
+	 opt_type/1,
+	 get_commands_spec/0,
+	 get_commands_definition/0,
+	 get_commands_definition/1,
+	 execute_command2/3,
+	 execute_command2/4]).
+%% gen_server callbacks
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2,
+	 terminate/2, code_change/3]).
 
 -include("ejabberd_commands.hrl").
 -include("ejabberd.hrl").
@@ -242,6 +250,8 @@
 -include_lib("stdlib/include/ms_transform.hrl").
 
 -define(POLICY_ACCESS, '$policy').
+
+-record(state, {}).
 
 get_commands_spec() ->
     [
@@ -273,14 +283,40 @@ get_commands_spec() ->
                            result_desc = "0 if command failed, 1 when succedded",
                            args_example = ["/home/me/docs/api.html", "mod_admin", "java,json"],
                            result_example = ok}].
-init() ->
-    mnesia:create_table(ejabberd_commands,
+
+start_link() ->
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+init([]) ->
+    try mnesia:transform_table(ejabberd_commands, ignore,
+			       record_info(fields, ejabberd_commands))
+    catch exit:{aborted, {no_exists, _}} -> ok
+    end,
+    ejabberd_mnesia:create(?MODULE, ejabberd_commands,
                         [{ram_copies, [node()]},
                          {local_content, true},
                          {attributes, record_info(fields, ejabberd_commands)},
                          {type, bag}]),
     mnesia:add_table_copy(ejabberd_commands, node(), ram_copies),
-    register_commands(get_commands_spec()).
+    register_commands(get_commands_spec()),
+    ejabberd_access_permissions:register_permission_addon(?MODULE, fun permission_addon/0),
+    {ok, #state{}}.
+
+handle_call(_Request, _From, State) ->
+    Reply = ok,
+    {reply, Reply, State}.
+
+handle_cast(_Msg, State) ->
+    {noreply, State}.
+
+handle_info(_Info, State) ->
+    {noreply, State}.
+
+terminate(_Reason, _State) ->
+    ok.
+
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
 
 -spec register_commands([ejabberd_commands()]) -> ok.
 
@@ -296,7 +332,9 @@ register_commands(Commands) ->
               mnesia:dirty_write(Command)
               %% ?DEBUG("This command is already defined:~n~p", [Command])
       end,
-      Commands).
+      Commands),
+    ejabberd_access_permissions:invalidate(),
+    ok.
 
 -spec unregister_commands([ejabberd_commands()]) -> ok.
 
@@ -306,7 +344,9 @@ unregister_commands(Commands) ->
       fun(Command) ->
 	      mnesia:dirty_delete_object(Command)
       end,
-      Commands).
+      Commands),
+    ejabberd_access_permissions:invalidate(),
+    ok.
 
 %% @doc Expose command through ejabberd ReST API.
 %% Pass a list of command names or policy to expose.
@@ -320,7 +360,7 @@ expose_commands(Commands) ->
                       end,
                       Commands),
 
-    case ejabberd_config:add_local_option(commands, [{add_commands, Names}]) of
+    case ejabberd_config:add_option(commands, [{add_commands, Names}]) of
         {aborted, Reason} ->
             {error, Reason};
         {atomic, Result} ->
@@ -427,6 +467,9 @@ get_command_definition(Name, Version) ->
         _E -> throw({error, unknown_command})
     end.
 
+get_commands_definition() ->
+    get_commands_definition(?DEFAULT_VERSION).
+
 -spec get_commands_definition(integer()) -> [ejabberd_commands()].
 
 % @doc Returns all commands for a given API version
@@ -447,6 +490,18 @@ get_commands_definition(Version) ->
            ({_Name, _V, Command}, Acc) -> [Command | Acc]
         end,
     lists:foldl(F, [], L).
+
+execute_command2(Name, Arguments, CallerInfo) ->
+    execute_command2(Name, Arguments, CallerInfo, ?DEFAULT_VERSION).
+
+execute_command2(Name, Arguments, CallerInfo, Version) ->
+    Command = get_command_definition(Name, Version),
+    case ejabberd_access_permissions:can_access(Name, CallerInfo) of
+	allow ->
+	    do_execute_command(Command, Arguments);
+	_ ->
+	    throw({error, access_rules_unauthorized})
+    end.
 
 %% @spec (Name::atom(), Arguments) -> ResultTerm
 %% where
@@ -704,7 +759,7 @@ check_access(Command, Access, Auth, CallerInfo)
        Command#ejabberd_commands.policy == user ->
     case check_auth(Command, Auth) of
 	{ok, User, Server} ->
-	    check_access2(Access, CallerInfo#{usr => jid:split(jid:make(User, Server, <<>>))}, Server);
+	    check_access2(Access, CallerInfo#{usr => jid:split(jid:make(User, Server))}, Server);
 	no_auth_provided ->
 	    case Command#ejabberd_commands.policy of
 		user ->
@@ -791,6 +846,8 @@ get_exposed_commands(Version) ->
     Cmds.
 
 %% This is used to allow mixing command policy (like open, user, admin, restricted), with command entry
+expand_commands(L, OpenCmds, UserCmds, AdminCmds, RestrictedCmds) when is_atom(L) ->
+    expand_commands([L], OpenCmds, UserCmds, AdminCmds, RestrictedCmds);
 expand_commands(L, OpenCmds, UserCmds, AdminCmds, RestrictedCmds) when is_list(L) ->
     lists:foldl(fun(open, Acc) -> OpenCmds ++ Acc;
                    (user, Acc) -> UserCmds ++ Acc;
@@ -805,16 +862,18 @@ oauth_token_user(noauth) ->
 oauth_token_user(admin) ->
     undefined;
 oauth_token_user({User, Server, _, _}) ->
-    jid:make(User, Server, <<>>).
+    jid:make(User, Server).
 
 is_admin(_Name, admin, _Extra) ->
     true;
 is_admin(_Name, {_User, _Server, _, false}, _Extra) ->
     false;
+is_admin(_Name, Map, _extra) when is_map(Map) ->
+    true;
 is_admin(Name, Auth, Extra) ->
     {ACLInfo, Server} = case Auth of
 			    {U, S, _, _} ->
-				{Extra#{usr=>jid:split(jid:make(U, S, <<>>))}, S};
+				{Extra#{usr=>jid:split(jid:make(U, S))}, S};
 			    _ ->
 				{Extra, global}
 	      end,
@@ -831,6 +890,14 @@ is_admin(Name, Auth, Extra) ->
             end;
         deny -> false
     end.
+
+permission_addon() ->
+    [{<<"'commands' option compatibility shim">>,
+     {[],
+      [{access, ejabberd_config:get_option(commands_admin_access,
+					   fun(V) -> V end,
+					   none)}],
+      {get_exposed_commands(), []}}}].
 
 opt_type(commands_admin_access) -> fun acl:access_rules_validator/1;
 opt_type(commands) ->

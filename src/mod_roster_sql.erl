@@ -1,11 +1,27 @@
 %%%-------------------------------------------------------------------
-%%% @author Evgeny Khramtsov <ekhramtsov@process-one.net>
-%%% @copyright (C) 2016, Evgeny Khramtsov
-%%% @doc
-%%%
-%%% @end
+%%% File    : mod_roster_sql.erl
+%%% Author  : Evgeny Khramtsov <ekhramtsov@process-one.net>
 %%% Created : 14 Apr 2016 by Evgeny Khramtsov <ekhramtsov@process-one.net>
-%%%-------------------------------------------------------------------
+%%%
+%%%
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
+%%%
+%%% This program is free software; you can redistribute it and/or
+%%% modify it under the terms of the GNU General Public License as
+%%% published by the Free Software Foundation; either version 2 of the
+%%% License, or (at your option) any later version.
+%%%
+%%% This program is distributed in the hope that it will be useful,
+%%% but WITHOUT ANY WARRANTY; without even the implied warranty of
+%%% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+%%% General Public License for more details.
+%%%
+%%% You should have received a copy of the GNU General Public License along
+%%% with this program; if not, write to the Free Software Foundation, Inc.,
+%%% 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+%%%
+%%%----------------------------------------------------------------------
+
 -module(mod_roster_sql).
 
 -compile([{parse_transform, ejabberd_sql_pt}]).
@@ -18,11 +34,11 @@
 	 roster_subscribe/4, get_roster_by_jid_with_groups/3,
 	 remove_user/2, update_roster/4, del_roster/3, transaction/2,
 	 read_subscription_and_groups/3, get_only_items/2,
-	 import/1, import/2, export/1]).
+	 import/3, export/1, raw_to_record/2]).
 
--include("jlib.hrl").
 -include("mod_roster.hrl").
 -include("ejabberd_sql_pt.hrl").
+-include("logger.hrl").
 
 %%%===================================================================
 %%% API
@@ -67,7 +83,7 @@ get_roster(LUser, LServer) ->
 			  %% Bad JID in database:
 			  error -> [];
 			  R ->
-			      SJID = jid:to_string(R#roster.jid),
+			      SJID = jid:encode(R#roster.jid),
 			      Groups = case dict:find(SJID, GroupsDict) of
 					   {ok, Gs} -> Gs;
 					   error -> []
@@ -81,7 +97,7 @@ get_roster(LUser, LServer) ->
 
 get_roster_by_jid(LUser, LServer, LJID) ->
     {selected, Res} =
-	sql_queries:get_roster_by_jid(LServer, LUser, jid:to_string(LJID)),
+	sql_queries:get_roster_by_jid(LServer, LUser, jid:encode(LJID)),
     case Res of
 	[] ->
 	    #roster{usj = {LUser, LServer, LJID},
@@ -102,7 +118,13 @@ get_roster_by_jid(LUser, LServer, LJID) ->
 get_only_items(LUser, LServer) ->
     case catch sql_queries:get_roster(LServer, LUser) of
 	{selected, Is} when is_list(Is) ->
-	    lists:map(fun(I) -> raw_to_record(LServer, I) end, Is);
+	    lists:flatmap(
+	      fun(I) ->
+		      case raw_to_record(LServer, I) of
+			  error -> [];
+			  R -> [R]
+		      end
+	      end, Is);
 	_ -> []
     end.
 
@@ -114,17 +136,22 @@ transaction(LServer, F) ->
     ejabberd_sql:sql_transaction(LServer, F).
 
 get_roster_by_jid_with_groups(LUser, LServer, LJID) ->
-    SJID = jid:to_string(LJID),
+    SJID = jid:encode(LJID),
     case sql_queries:get_roster_by_jid(LServer, LUser, SJID) of
 	{selected, [I]} ->
-            R = raw_to_record(LServer, I),
-            Groups =
-                case sql_queries:get_roster_groups(LServer, LUser, SJID) of
-                    {selected, JGrps} when is_list(JGrps) ->
-                        [JGrp || {JGrp} <- JGrps];
-                    _ -> []
-                end,
-            R#roster{groups = Groups};
+            case raw_to_record(LServer, I) of
+		error ->
+		    #roster{usj = {LUser, LServer, LJID},
+			    us = {LUser, LServer}, jid = LJID};
+		R ->
+		    Groups =
+			case sql_queries:get_roster_groups(LServer, LUser, SJID) of
+			    {selected, JGrps} when is_list(JGrps) ->
+				[JGrp || {JGrp} <- JGrps];
+			    _ -> []
+			end,
+		    R#roster{groups = Groups}
+	    end;
 	{selected, []} ->
 	    #roster{usj = {LUser, LServer, LJID},
 		    us = {LUser, LServer}, jid = LJID}
@@ -135,25 +162,31 @@ remove_user(LUser, LServer) ->
     {atomic, ok}.
 
 update_roster(LUser, LServer, LJID, Item) ->
-    SJID = jid:to_string(LJID),
+    SJID = jid:encode(LJID),
     ItemVals = record_to_row(Item),
     ItemGroups = Item#roster.groups,
     sql_queries:update_roster(LServer, LUser, SJID, ItemVals,
                                ItemGroups).
 
 del_roster(LUser, LServer, LJID) ->
-    SJID = jid:to_string(LJID),
+    SJID = jid:encode(LJID),
     sql_queries:del_roster(LServer, LUser, SJID).
 
 read_subscription_and_groups(LUser, LServer, LJID) ->
-    SJID = jid:to_string(LJID),
+    SJID = jid:encode(LJID),
     case catch sql_queries:get_subscription(LServer, LUser, SJID) of
 	{selected, [{SSubscription}]} ->
 	    Subscription = case SSubscription of
 			       <<"B">> -> both;
 			       <<"T">> -> to;
 			       <<"F">> -> from;
-			       _ -> none
+			       <<"N">> -> none;
+			       <<"">> -> none;
+			       _ ->
+				   ?ERROR_MSG("~s", [format_row_error(
+						       LUser, LServer,
+						       {subscription, SSubscription})]),
+				   none
 			   end,
 	    Groups = case catch sql_queries:get_rostergroup_by_jid(
 				  LServer, LUser, SJID) of
@@ -186,27 +219,8 @@ export(_Server) ->
               []
       end}].
 
-import(LServer) ->
-    [{<<"select username, jid, nick, subscription, "
-        "ask, askmessage, server, subscribe, type from rosterusers;">>,
-      fun([LUser, JID|_] = Row) ->
-              Item = raw_to_record(LServer, Row),
-              Username = ejabberd_sql:escape(LUser),
-              SJID = ejabberd_sql:escape(JID),
-              {selected, _, Rows} =
-                  ejabberd_sql:sql_query_t(
-                    [<<"select grp from rostergroups where username='">>,
-                     Username, <<"' and jid='">>, SJID, <<"'">>]),
-              Groups = [Grp || [Grp] <- Rows],
-              Item#roster{groups = Groups}
-      end},
-     {<<"select username, version from roster_version;">>,
-      fun([LUser, Ver]) ->
-              #roster_version{us = {LUser, LServer}, version = Ver}
-      end}].
-
-import(_, _) ->
-    pass.
+import(_, _, _) ->
+    ok.
 
 %%%===================================================================
 %%% Internal functions
@@ -220,35 +234,47 @@ raw_to_record(LServer,
 raw_to_record(LServer,
 	      {User, SJID, Nick, SSubscription, SAsk, SAskMessage,
 	       _SServer, _SSubscribe, _SType}) ->
-    case jid:from_string(SJID) of
-      error -> error;
+    try jid:decode(SJID) of
       JID ->
 	  LJID = jid:tolower(JID),
 	  Subscription = case SSubscription of
-			   <<"B">> -> both;
-			   <<"T">> -> to;
-			   <<"F">> -> from;
-			   _ -> none
+			     <<"B">> -> both;
+			     <<"T">> -> to;
+			     <<"F">> -> from;
+			     <<"N">> -> none;
+			     <<"">> -> none;
+			     _ ->
+				 ?ERROR_MSG("~s", [format_row_error(
+						     User, LServer,
+						     {subscription, SSubscription})]),
+				 none
 			 end,
 	  Ask = case SAsk of
-		  <<"S">> -> subscribe;
-		  <<"U">> -> unsubscribe;
-		  <<"B">> -> both;
-		  <<"O">> -> out;
-		  <<"I">> -> in;
-		  _ -> none
+		    <<"S">> -> subscribe;
+		    <<"U">> -> unsubscribe;
+		    <<"B">> -> both;
+		    <<"O">> -> out;
+		    <<"I">> -> in;
+		    <<"N">> -> none;
+		    <<"">> -> none;
+		    _ ->
+			?ERROR_MSG("~s", [format_row_error(User, LServer, {ask, SAsk})]),
+			none
 		end,
 	  #roster{usj = {User, LServer, LJID},
 		  us = {User, LServer}, jid = LJID, name = Nick,
 		  subscription = Subscription, ask = Ask,
 		  askmessage = SAskMessage}
+    catch _:{bad_jid, _} ->
+	    ?ERROR_MSG("~s", [format_row_error(User, LServer, {jid, SJID})]),
+	    error
     end.
 
 record_to_row(
   #roster{us = {LUser, _LServer},
           jid = JID, name = Name, subscription = Subscription,
           ask = Ask, askmessage = AskMessage}) ->
-    SJID = jid:to_string(jid:tolower(JID)),
+    SJID = jid:encode(jid:tolower(JID)),
     SSubscription = case Subscription of
 		      both -> <<"B">>;
 		      to -> <<"T">>;
@@ -264,3 +290,11 @@ record_to_row(
 	     none -> <<"N">>
 	   end,
     {LUser, SJID, Name, SSubscription, SAsk, AskMessage}.
+
+format_row_error(User, Server, Why) ->
+    [case Why of
+	 {jid, JID} -> ["Malformed 'jid' field with value '", JID, "'"];
+	 {subscription, Sub} -> ["Malformed 'subscription' field with value '", Sub, "'"];
+	 {ask, Ask} -> ["Malformed 'ask' field with value '", Ask, "'"]
+     end,
+     " detected for ", User, "@", Server, " in table 'rosterusers'"].

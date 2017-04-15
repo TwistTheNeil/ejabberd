@@ -1,11 +1,27 @@
 %%%-------------------------------------------------------------------
-%%% @author Evgeny Khramtsov <ekhramtsov@process-one.net>
-%%% @copyright (C) 2016, Evgeny Khramtsov
-%%% @doc
-%%%
-%%% @end
+%%% File    : mod_shared_roster_riak.erl
+%%% Author  : Evgeny Khramtsov <ekhramtsov@process-one.net>
 %%% Created : 14 Apr 2016 by Evgeny Khramtsov <ekhramtsov@process-one.net>
-%%%-------------------------------------------------------------------
+%%%
+%%%
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
+%%%
+%%% This program is free software; you can redistribute it and/or
+%%% modify it under the terms of the GNU General Public License as
+%%% published by the Free Software Foundation; either version 2 of the
+%%% License, or (at your option) any later version.
+%%%
+%%% This program is distributed in the hope that it will be useful,
+%%% but WITHOUT ANY WARRANTY; without even the implied warranty of
+%%% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+%%% General Public License for more details.
+%%%
+%%% You should have received a copy of the GNU General Public License along
+%%% with this program; if not, write to the Free Software Foundation, Inc.,
+%%% 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+%%%
+%%%----------------------------------------------------------------------
+
 -module(mod_shared_roster_riak).
 
 -behaviour(mod_shared_roster).
@@ -15,11 +31,11 @@
 	 delete_group/2, get_group_opts/2, set_group_opts/3,
 	 get_user_groups/2, get_group_explicit_users/2,
 	 get_user_displayed_groups/3, is_user_in_group/3,
-	 add_user_to_group/3, remove_user_from_group/3, import/2]).
+	 add_user_to_group/3, remove_user_from_group/3, import/3]).
 
--include("jlib.hrl").
 -include("mod_roster.hrl").
 -include("mod_shared_roster.hrl").
+-include("xmpp.hrl").
 
 %%%===================================================================
 %%% API
@@ -121,13 +137,17 @@ add_user_to_group(Host, US, Group) ->
 remove_user_from_group(Host, US, Group) ->
     {atomic, ejabberd_riak:delete(sr_group, {US, {Group, Host}})}.
 
-import(_LServer, #sr_group{group_host = {_, Host}} = G) ->
-    ejabberd_riak:put(G, sr_group_schema(), [{'2i', [{<<"host">>, Host}]}]);
-import(_LServer, #sr_user{us = US, group_host = {Group, Host}} = User) ->
+import(LServer, <<"sr_group">>, [Group, SOpts, _TimeStamp]) ->
+    G = #sr_group{group_host = {Group, LServer},
+                  opts = ejabberd_sql:decode_term(SOpts)},
+    ejabberd_riak:put(G, sr_group_schema(), [{'2i', [{<<"host">>, LServer}]}]);
+import(LServer, <<"sr_user">>, [SJID, Group|_]) ->
+    #jid{luser = U, lserver = S} = jid:decode(SJID),
+    User = #sr_user{us = {U, S}, group_host = {Group, LServer}},
     ejabberd_riak:put(User, sr_user_schema(),
-                      [{i, {US, {Group, Host}}},
-                       {'2i', [{<<"us">>, US},
-                               {<<"group_host">>, {Group, Host}}]}]).
+                      [{i, {{U, S}, {Group, LServer}}},
+                       {'2i', [{<<"us">>, {U, S}},
+                               {<<"group_host">>, {Group, LServer}}]}]).
 
 %%%===================================================================
 %%% Internal functions

@@ -5,7 +5,7 @@
 %%% Created : 30 Apr 2009 by Christophe Romain <christophe.romain@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2016   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -34,7 +34,7 @@
 -export([init/3, new/1, free/2]).
 
 init(_Host, _ServerHost, _Opts) ->
-    mnesia:create_table(pubsub_index,
+    ejabberd_mnesia:create(?MODULE, pubsub_index,
 	[{disc_copies, [node()]},
 	    {attributes, record_info(fields, pubsub_index)}]).
 

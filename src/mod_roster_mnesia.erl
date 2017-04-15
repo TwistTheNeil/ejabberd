@@ -1,11 +1,27 @@
 %%%-------------------------------------------------------------------
-%%% @author Evgeny Khramtsov <ekhramtsov@process-one.net>
-%%% @copyright (C) 2016, Evgeny Khramtsov
-%%% @doc
-%%%
-%%% @end
+%%% File    : mod_roster_mnesia.erl
+%%% Author  : Evgeny Khramtsov <ekhramtsov@process-one.net>
 %%% Created : 13 Apr 2016 by Evgeny Khramtsov <ekhramtsov@process-one.net>
-%%%-------------------------------------------------------------------
+%%%
+%%%
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
+%%%
+%%% This program is free software; you can redistribute it and/or
+%%% modify it under the terms of the GNU General Public License as
+%%% published by the Free Software Foundation; either version 2 of the
+%%% License, or (at your option) any later version.
+%%%
+%%% This program is distributed in the hope that it will be useful,
+%%% but WITHOUT ANY WARRANTY; without even the implied warranty of
+%%% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+%%% General Public License for more details.
+%%%
+%%% You should have received a copy of the GNU General Public License along
+%%% with this program; if not, write to the Free Software Foundation, Inc.,
+%%% 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+%%%
+%%%----------------------------------------------------------------------
+
 -module(mod_roster_mnesia).
 
 -behaviour(mod_roster).
@@ -15,9 +31,8 @@
 	 get_roster/2, get_roster_by_jid/3, get_only_items/2,
 	 roster_subscribe/4, get_roster_by_jid_with_groups/3,
 	 remove_user/2, update_roster/4, del_roster/3, transaction/2,
-	 read_subscription_and_groups/3, import/2]).
+	 read_subscription_and_groups/3, import/3, create_roster/1]).
 
--include("jlib.hrl").
 -include("mod_roster.hrl").
 -include("logger.hrl").
 
@@ -25,16 +40,15 @@
 %%% API
 %%%===================================================================
 init(_Host, _Opts) ->
-    mnesia:create_table(roster,
+    ejabberd_mnesia:create(?MODULE, roster,
 			[{disc_copies, [node()]},
-			 {attributes, record_info(fields, roster)}]),
-    mnesia:create_table(roster_version,
+			 {attributes, record_info(fields, roster)},
+			 {index, [us]}]),
+    ejabberd_mnesia:create(?MODULE, roster_version,
 			[{disc_copies, [node()]},
 			 {attributes,
 			  record_info(fields, roster_version)}]),
-    update_tables(),
-    mnesia:add_table_index(roster, us),
-    mnesia:add_table_index(roster_version, us).
+    update_tables().
 
 read_roster_version(LUser, LServer) ->
     US = {LUser, LServer},
@@ -104,9 +118,13 @@ read_subscription_and_groups(LUser, LServer, LJID) ->
 transaction(_LServer, F) ->
     mnesia:transaction(F).
 
-import(_LServer, #roster{} = R) ->
+create_roster(RItem) ->
+    mnesia:dirty_write(RItem).
+
+import(_LServer, <<"rosterusers">>, #roster{} = R) ->
     mnesia:dirty_write(R);
-import(_LServer, #roster_version{} = RV) ->
+import(LServer, <<"roster_version">>, [LUser, Ver]) ->
+    RV = #roster_version{us = {LUser, LServer}, version = Ver},
     mnesia:dirty_write(RV).
 
 %%%===================================================================

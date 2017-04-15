@@ -1,24 +1,38 @@
 %%%-------------------------------------------------------------------
-%%% @author Evgeny Khramtsov <ekhramtsov@process-one.net>
-%%% @copyright (C) 2016, Evgeny Khramtsov
-%%% @doc
-%%%
-%%% @end
+%%% File    : mod_roster_riak.erl
+%%% Author  : Evgeny Khramtsov <ekhramtsov@process-one.net>
 %%% Created : 14 Apr 2016 by Evgeny Khramtsov <ekhramtsov@process-one.net>
-%%%-------------------------------------------------------------------
--module(mod_roster_riak).
+%%%
+%%%
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
+%%%
+%%% This program is free software; you can redistribute it and/or
+%%% modify it under the terms of the GNU General Public License as
+%%% published by the Free Software Foundation; either version 2 of the
+%%% License, or (at your option) any later version.
+%%%
+%%% This program is distributed in the hope that it will be useful,
+%%% but WITHOUT ANY WARRANTY; without even the implied warranty of
+%%% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+%%% General Public License for more details.
+%%%
+%%% You should have received a copy of the GNU General Public License along
+%%% with this program; if not, write to the Free Software Foundation, Inc.,
+%%% 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+%%%
+%%%----------------------------------------------------------------------
 
+-module(mod_roster_riak).
 
 -behaviour(mod_roster).
 
 %% API
 -export([init/2, read_roster_version/2, write_roster_version/4,
-	 get_roster/2, get_roster_by_jid/3,
+	 get_roster/2, get_roster_by_jid/3, create_roster/1,
 	 roster_subscribe/4, get_roster_by_jid_with_groups/3,
 	 remove_user/2, update_roster/4, del_roster/3, transaction/2,
-	 read_subscription_and_groups/3, get_only_items/2, import/2]).
+	 read_subscription_and_groups/3, get_only_items/2, import/3]).
 
--include("jlib.hrl").
 -include("mod_roster.hrl").
 
 %%%===================================================================
@@ -97,10 +111,17 @@ read_subscription_and_groups(LUser, LServer, LJID) ->
             error
     end.
 
-import(_LServer, #roster{us = {LUser, LServer}} = R) ->
-    ejabberd_riak:put(R, roster_schema(),
+create_roster(#roster{us = {LUser, LServer}} = RItem) ->
+    ejabberd_riak:put(
+      RItem, roster_schema(),
+      [{'2i', [{<<"us">>, {LUser, LServer}}]}]).
+
+import(_LServer, <<"rosterusers">>, RosterItem) ->
+    {LUser, LServer} = RosterItem#roster.us,
+    ejabberd_riak:put(RosterItem, roster_schema(),
 		      [{'2i', [{<<"us">>, {LUser, LServer}}]}]);
-import(_LServer, #roster_version{} = RV) ->
+import(LServer, <<"roster_version">>, [LUser, Ver]) ->
+    RV = #roster_version{us = {LUser, LServer}, version = Ver},
     ejabberd_riak:put(RV, roster_version_schema()).
 
 %%%===================================================================

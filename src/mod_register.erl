@@ -5,7 +5,7 @@
 %%% Created :  8 Dec 2002 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2016   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -33,16 +33,15 @@
 
 -behaviour(gen_mod).
 
--export([start/2, stop/1, stream_feature_register/2,
-	 unauthenticated_iq_register/4, try_register/5,
-	 process_iq/3, send_registration_notifications/3,
+-export([start/2, stop/1, reload/3, stream_feature_register/2,
+	 c2s_unauthenticated_packet/2, try_register/5,
+	 process_iq/1, send_registration_notifications/3,
 	 transform_options/1, transform_module_options/1,
 	 mod_opt_type/1, opt_type/1, depends/2]).
 
 -include("ejabberd.hrl").
 -include("logger.hrl").
-
--include("jlib.hrl").
+-include("xmpp.hrl").
 
 start(Host, Opts) ->
     IQDisc = gen_mod:get_opt(iqdisc, Opts, fun gen_iq_handler:check_type/1,
@@ -51,11 +50,11 @@ start(Host, Opts) ->
 				  ?NS_REGISTER, ?MODULE, process_iq, IQDisc),
     gen_iq_handler:add_iq_handler(ejabberd_sm, Host,
 				  ?NS_REGISTER, ?MODULE, process_iq, IQDisc),
-    ejabberd_hooks:add(c2s_stream_features, Host, ?MODULE,
+    ejabberd_hooks:add(c2s_pre_auth_features, Host, ?MODULE,
 		       stream_feature_register, 50),
-    ejabberd_hooks:add(c2s_unauthenticated_iq, Host,
-		       ?MODULE, unauthenticated_iq_register, 50),
-    mnesia:create_table(mod_register_ip,
+    ejabberd_hooks:add(c2s_unauthenticated_packet, Host,
+		       ?MODULE, c2s_unauthenticated_packet, 50),
+    ejabberd_mnesia:create(?MODULE, mod_register_ip,
 			[{ram_copies, [node()]}, {local_content, true},
 			 {attributes, [key, value]}]),
     mnesia:add_table_copy(mod_register_ip, node(),
@@ -63,347 +62,261 @@ start(Host, Opts) ->
     ok.
 
 stop(Host) ->
-    ejabberd_hooks:delete(c2s_stream_features, Host,
+    ejabberd_hooks:delete(c2s_pre_auth_features, Host,
 			  ?MODULE, stream_feature_register, 50),
-    ejabberd_hooks:delete(c2s_unauthenticated_iq, Host,
-			  ?MODULE, unauthenticated_iq_register, 50),
+    ejabberd_hooks:delete(c2s_unauthenticated_packet, Host,
+			  ?MODULE, c2s_unauthenticated_packet, 50),
     gen_iq_handler:remove_iq_handler(ejabberd_local, Host,
 				     ?NS_REGISTER),
     gen_iq_handler:remove_iq_handler(ejabberd_sm, Host,
 				     ?NS_REGISTER).
 
+reload(Host, NewOpts, OldOpts) ->
+    case gen_mod:is_equal_opt(iqdisc, NewOpts, OldOpts,
+			      fun gen_iq_handler:check_type/1,
+			      one_queue) of
+	{false, IQDisc, _} ->
+	    gen_iq_handler:add_iq_handler(ejabberd_local, Host, ?NS_REGISTER,
+					  ?MODULE, process_iq, IQDisc),
+	    gen_iq_handler:add_iq_handler(ejabberd_sm, Host, ?NS_REGISTER,
+					  ?MODULE, process_iq, IQDisc);
+	true ->
+	    ok
+    end.
+
 depends(_Host, _Opts) ->
     [].
 
+-spec stream_feature_register([xmpp_element()], binary()) -> [xmpp_element()].
 stream_feature_register(Acc, Host) ->
     AF = gen_mod:get_module_opt(Host, ?MODULE, access_from,
                                           fun(A) -> A end,
 					  all),
-    case (AF /= none) and lists:keymember(<<"mechanisms">>, 2, Acc) of
+    case (AF /= none) of
 	true ->
-	    [#xmlel{name = <<"register">>,
-		    attrs = [{<<"xmlns">>, ?NS_FEATURE_IQREGISTER}],
-		    children = []}
-	     | Acc];
+	    [#feature_register{}|Acc];
 	false ->
 	    Acc
     end.
 
-unauthenticated_iq_register(_Acc, Server,
-			    #iq{xmlns = ?NS_REGISTER} = IQ, IP) ->
-    Address = case IP of
-		{A, _Port} -> A;
-		_ -> undefined
-	      end,
-    ResIQ = process_iq(jid:make(<<"">>, <<"">>,
-				     <<"">>),
-		       jid:make(<<"">>, Server, <<"">>), IQ, Address),
-    Res1 = jlib:replace_from_to(jid:make(<<"">>,
-					      Server, <<"">>),
-				jid:make(<<"">>, <<"">>, <<"">>),
-				jlib:iq_to_xml(ResIQ)),
-    jlib:remove_attr(<<"to">>, Res1);
-unauthenticated_iq_register(Acc, _Server, _IQ, _IP) ->
-    Acc.
+c2s_unauthenticated_packet(#{ip := IP, server := Server} = State,
+			   #iq{type = T, sub_els = [_]} = IQ)
+  when T == set; T == get ->
+    case xmpp:get_subtag(IQ, #register{}) of
+	#register{} = Register ->
+	    {Address, _} = IP,
+	    IQ1 = xmpp:set_els(IQ, [Register]),
+	    IQ2 = xmpp:set_from_to(IQ1, jid:make(<<>>), jid:make(Server)),
+	    ResIQ = process_iq(IQ2, Address),
+	    ResIQ1 = xmpp:set_from_to(ResIQ, jid:make(Server), undefined),
+	    {stop, ejabberd_c2s:send(State, ResIQ1)};
+	false ->
+	    State
+    end;
+c2s_unauthenticated_packet(State, _) ->
+    State.
 
-process_iq(From, To, IQ) ->
-    process_iq(From, To, IQ, jid:tolower(From)).
+process_iq(#iq{from = From} = IQ) ->
+    process_iq(IQ, jid:tolower(From)).
 
-process_iq(From, To,
-	   #iq{type = Type, lang = Lang, sub_el = SubEl, id = ID} =
-	       IQ,
-	   Source) ->
-    IsCaptchaEnabled = case
-			 gen_mod:get_module_opt(To#jid.lserver, ?MODULE,
-						captcha_protected,
-                                                fun(B) when is_boolean(B) -> B end,
-                                                false)
-			   of
-			 true -> true;
-			 _ -> false
-		       end,
-    case Type of
-      set ->
-	  UTag = fxml:get_subtag(SubEl, <<"username">>),
-	  PTag = fxml:get_subtag(SubEl, <<"password">>),
-	  RTag = fxml:get_subtag(SubEl, <<"remove">>),
-	  Server = To#jid.lserver,
-	  Access = gen_mod:get_module_opt(Server, ?MODULE, access,
-                                          fun(A) -> A end,
-					  all),
-	  AllowRemove = allow ==
-			  acl:match_rule(Server, Access, From),
-	  if (UTag /= false) and (RTag /= false) and
-	       AllowRemove ->
-		 User = fxml:get_tag_cdata(UTag),
-		 case From of
-		   #jid{user = User, lserver = Server} ->
-		       ejabberd_auth:remove_user(User, Server),
-		       IQ#iq{type = result, sub_el = []};
-		   _ ->
-		       if PTag /= false ->
-			      Password = fxml:get_tag_cdata(PTag),
-			      case ejabberd_auth:remove_user(User, Server,
-							     Password)
-				  of
-				ok -> IQ#iq{type = result, sub_el = []};
-				%% TODO FIXME: This piece of
-				%% code does not work since
-				%% the code have been changed
-				%% to allow several auth
-				%% modules.  lists:foreach can
-				%% only return ok:
-				not_allowed ->
-				    Txt = <<"Removal is not allowed">>,
-				    IQ#iq{type = error,
-					  sub_el = [SubEl,
-						    ?ERRT_NOT_ALLOWED(Lang, Txt)]};
-				not_exists ->
-				    Txt = <<"No such user">>,
-				    IQ#iq{type = error,
-					  sub_el =
-					      [SubEl,
-					       ?ERRT_ITEM_NOT_FOUND(Lang, Txt)]};
-				Err ->
-				    ?ERROR_MSG("failed to remove user ~s@~s: ~p",
-					       [User, Server, Err]),
-				    IQ#iq{type = error,
-					  sub_el =
-					      [SubEl,
-					       ?ERR_INTERNAL_SERVER_ERROR]}
-			      end;
-			  true ->
-			      Txt = <<"No password in this query">>,
-			      IQ#iq{type = error,
-				    sub_el = [SubEl, ?ERRT_BAD_REQUEST(Lang, Txt)]}
-		       end
-		 end;
-	     (UTag == false) and (RTag /= false) and AllowRemove ->
-		 case From of
-		   #jid{user = User, lserver = Server,
-			resource = Resource} ->
-		       ResIQ = #iq{type = result, xmlns = ?NS_REGISTER,
-				   id = ID, sub_el = []},
-		       ejabberd_router:route(jid:make(User, Server,
-							   Resource),
-					     jid:make(User, Server,
-							   Resource),
-					     jlib:iq_to_xml(ResIQ)),
-		       ejabberd_auth:remove_user(User, Server),
-		       ignore;
-		   _ ->
-		       Txt = <<"The query is only allowed from local users">>,
-		       IQ#iq{type = error,
-			     sub_el = [SubEl, ?ERRT_NOT_ALLOWED(Lang, Txt)]}
-		 end;
-	     (UTag /= false) and (PTag /= false) ->
-		 User = fxml:get_tag_cdata(UTag),
-		 Password = fxml:get_tag_cdata(PTag),
-		 try_register_or_set_password(User, Server, Password,
-					      From, IQ, SubEl, Source, Lang,
-					      not IsCaptchaEnabled);
-	     IsCaptchaEnabled ->
-		 case ejabberd_captcha:process_reply(SubEl) of
-		   ok ->
-		       case process_xdata_submit(SubEl) of
-			 {ok, User, Password} ->
-			     try_register_or_set_password(User, Server,
-							  Password, From, IQ,
-							  SubEl, Source, Lang,
-							  true);
-			 _ ->
-			     Txt = <<"Incorrect data form">>,
-			     IQ#iq{type = error,
-				   sub_el = [SubEl, ?ERRT_BAD_REQUEST(Lang, Txt)]}
-		       end;
-		   {error, malformed} ->
-		       Txt = <<"Incorrect CAPTCHA submit">>,
-		       IQ#iq{type = error,
-			     sub_el = [SubEl, ?ERRT_BAD_REQUEST(Lang, Txt)]};
-		   _ ->
-		       ErrText = <<"The CAPTCHA verification has failed">>,
-		       IQ#iq{type = error,
-			     sub_el = [SubEl, ?ERRT_NOT_ALLOWED(Lang, ErrText)]}
-		 end;
-	     true ->
-		 IQ#iq{type = error, sub_el = [SubEl, ?ERR_BAD_REQUEST]}
-	  end;
-      get ->
-	  {IsRegistered, UsernameSubels, QuerySubels} = case From
-							    of
-							  #jid{user = User,
-							       lserver =
-								   Server} ->
-							      case
-								ejabberd_auth:is_user_exists(User,
-											     Server)
-								  of
-								true ->
-								    {true,
-								     [{xmlcdata,
-								       User}],
-								     [#xmlel{name
-										 =
-										 <<"registered">>,
-									     attrs
-										 =
-										 [],
-									     children
-										 =
-										 []}]};
-								false ->
-								    {false,
-								     [{xmlcdata,
-								       User}],
-								     []}
-							      end;
-							  _ -> {false, [], []}
-							end,
-	  if IsCaptchaEnabled and not IsRegistered ->
-		 TopInstrEl = #xmlel{name = <<"instructions">>,
-				     attrs = [],
-				     children =
-					 [{xmlcdata,
-					   translate:translate(Lang,
-							       <<"You need a client that supports x:data "
-								 "and CAPTCHA to register">>)}]},
-		 InstrEl = #xmlel{name = <<"instructions">>, attrs = [],
-				  children =
-				      [{xmlcdata,
-					translate:translate(Lang,
-							    <<"Choose a username and password to register "
-							      "with this server">>)}]},
-		 UField = #xmlel{name = <<"field">>,
-				 attrs =
-				     [{<<"type">>, <<"text-single">>},
-				      {<<"label">>,
-				       translate:translate(Lang, <<"User">>)},
-				      {<<"var">>, <<"username">>}],
-				 children =
-				     [#xmlel{name = <<"required">>, attrs = [],
-					     children = []}]},
-		 PField = #xmlel{name = <<"field">>,
-				 attrs =
-				     [{<<"type">>, <<"text-private">>},
-				      {<<"label">>,
-				       translate:translate(Lang,
-							   <<"Password">>)},
-				      {<<"var">>, <<"password">>}],
-				 children =
-				     [#xmlel{name = <<"required">>, attrs = [],
-					     children = []}]},
-		 case ejabberd_captcha:create_captcha_x(ID, To, Lang,
-							Source,
-							[InstrEl, UField,
-							 PField])
-		     of
-		   {ok, CaptchaEls} ->
-		       IQ#iq{type = result,
-			     sub_el =
-				 [#xmlel{name = <<"query">>,
-					 attrs =
-					     [{<<"xmlns">>,
-					       ?NS_REGISTER}],
-					 children =
-					     [TopInstrEl | CaptchaEls]}]};
-		   {error, limit} ->
-		       ErrText = <<"Too many CAPTCHA requests">>,
-		       IQ#iq{type = error,
-			     sub_el =
-				 [SubEl,
-				  ?ERRT_RESOURCE_CONSTRAINT(Lang, ErrText)]};
-		   _Err ->
-		       ErrText = <<"Unable to generate a CAPTCHA">>,
-		       IQ#iq{type = error,
-			     sub_el =
-				 [SubEl,
-				  ?ERRT_INTERNAL_SERVER_ERROR(Lang, ErrText)]}
-		 end;
-	     true ->
-		 IQ#iq{type = result,
-		       sub_el =
-			   [#xmlel{name = <<"query">>,
-				   attrs =
-				       [{<<"xmlns">>,
-					 ?NS_REGISTER}],
-				   children =
-				       [#xmlel{name = <<"instructions">>,
-					       attrs = [],
-					       children =
-						   [{xmlcdata,
-						     translate:translate(Lang,
-									 <<"Choose a username and password to register "
-									   "with this server">>)}]},
-					#xmlel{name = <<"username">>,
-					       attrs = [],
-					       children = UsernameSubels},
-					#xmlel{name = <<"password">>,
-					       attrs = [], children = []}
-					| QuerySubels]}]}
-	  end
+process_iq(#iq{from = From, to = To} = IQ, Source) ->
+    IsCaptchaEnabled =
+	case gen_mod:get_module_opt(To#jid.lserver, ?MODULE,
+				    captcha_protected,
+				    fun(B) when is_boolean(B) -> B end,
+				    false) of
+	    true -> true;
+	    false -> false
+	end,
+    Server = To#jid.lserver,
+    Access = gen_mod:get_module_opt(Server, ?MODULE, access,
+				    fun(A) -> A end, all),
+    AllowRemove = allow == acl:match_rule(Server, Access, From),
+    process_iq(IQ, Source, IsCaptchaEnabled, AllowRemove).
+
+process_iq(#iq{type = set, lang = Lang,
+	       sub_els = [#register{remove = true}]} = IQ,
+	   _Source, _IsCaptchaEnabled, _AllowRemove = false) ->
+    Txt = <<"Denied by ACL">>,
+    xmpp:make_error(IQ, xmpp:err_forbidden(Txt, Lang));
+process_iq(#iq{type = set, lang = Lang, to = To, from = From,
+	       sub_els = [#register{remove = true,
+				    username = User,
+				    password = Password}]} = IQ,
+	   _Source, _IsCaptchaEnabled, _AllowRemove = true) ->
+    Server = To#jid.lserver,
+    if is_binary(User) ->
+	    case From of
+		#jid{user = User, lserver = Server} ->
+		    ejabberd_auth:remove_user(User, Server),
+		    xmpp:make_iq_result(IQ);
+		_ ->
+		    if is_binary(Password) ->
+			    ejabberd_auth:remove_user(User, Server, Password),
+			    xmpp:make_iq_result(IQ);
+		       true ->
+			    Txt = <<"No 'password' found in this query">>,
+			    xmpp:make_error(IQ, xmpp:err_bad_request(Txt, Lang))
+		    end
+	    end;
+       true ->
+	    case From of
+		#jid{luser = LUser, lserver = Server} ->
+		    ResIQ = xmpp:make_iq_result(IQ),
+		    ejabberd_router:route(xmpp:set_from_to(ResIQ, From, From)),
+		    ejabberd_auth:remove_user(LUser, Server),
+		    ignore;
+		_ ->
+		    Txt = <<"The query is only allowed from local users">>,
+		    xmpp:make_error(IQ, xmpp:err_not_allowed(Txt, Lang))
+	    end
+    end;
+process_iq(#iq{type = set, to = To,
+	       sub_els = [#register{username = User,
+				    password = Password}]} = IQ,
+	   Source, IsCaptchaEnabled, _AllowRemove) when is_binary(User),
+							is_binary(Password) ->
+    Server = To#jid.lserver,
+    try_register_or_set_password(
+      User, Server, Password, IQ, Source, not IsCaptchaEnabled);
+process_iq(#iq{type = set, to = To,
+	       lang = Lang, sub_els = [#register{xdata = #xdata{} = X}]} = IQ,
+	   Source, true, _AllowRemove) ->
+    Server = To#jid.lserver,
+    case ejabberd_captcha:process_reply(X) of
+	ok ->
+	    case process_xdata_submit(X) of
+		{ok, User, Password} ->
+		    try_register_or_set_password(
+		      User, Server, Password, IQ, Source, true);
+		_ ->
+		    Txt = <<"Incorrect data form">>,
+		    xmpp:make_error(IQ, xmpp:err_bad_request(Txt, Lang))
+	    end;
+	{error, malformed} ->
+	    Txt = <<"Incorrect CAPTCHA submit">>,
+	    xmpp:make_error(IQ, xmpp:err_bad_request(Txt, Lang));
+	_ ->
+	    ErrText = <<"The CAPTCHA verification has failed">>,
+	    xmpp:make_error(IQ, xmpp:err_not_allowed(ErrText, Lang))
+    end;
+process_iq(#iq{type = set} = IQ, _Source, _IsCaptchaEnabled, _AllowRemove) ->
+    xmpp:make_error(IQ, xmpp:err_bad_request());
+process_iq(#iq{type = get, from = From, to = To, id = ID, lang = Lang} = IQ,
+	   Source, IsCaptchaEnabled, _AllowRemove) ->
+    Server = To#jid.lserver,
+    {IsRegistered, Username} =
+	case From of
+	    #jid{user = User, lserver = Server} ->
+		case ejabberd_auth:is_user_exists(User, Server) of
+		    true ->
+			{true, User};
+		    false ->
+			{false, User}
+		end;
+	    _ ->
+		{false, <<"">>}
+	end,
+    Instr = translate:translate(
+	      Lang, <<"Choose a username and password to register "
+		      "with this server">>),
+    if IsCaptchaEnabled and not IsRegistered ->
+	    TopInstr = translate:translate(
+			 Lang, <<"You need a client that supports x:data "
+				 "and CAPTCHA to register">>),
+	    UField = #xdata_field{type = 'text-single',
+				  label = translate:translate(Lang, <<"User">>),
+				  var = <<"username">>,
+				  required = true},
+	    PField = #xdata_field{type = 'text-private',
+				  label = translate:translate(Lang, <<"Password">>),
+				  var = <<"password">>,
+				  required = true},
+	    X = #xdata{type = form, instructions = [Instr],
+		       fields = [UField, PField]},
+	    case ejabberd_captcha:create_captcha_x(ID, To, Lang, Source, X) of
+		{ok, CaptchaEls} ->
+		    xmpp:make_iq_result(
+		      IQ, #register{instructions = TopInstr,
+				    sub_els = CaptchaEls});
+		{error, limit} ->
+		    ErrText = <<"Too many CAPTCHA requests">>,
+		    xmpp:make_error(
+		      IQ, xmpp:err_resource_constraint(ErrText, Lang));
+		_Err ->
+		    ErrText = <<"Unable to generate a CAPTCHA">>,
+		    xmpp:make_error(
+		      IQ, xmpp:err_internal_server_error(ErrText, Lang))
+	    end;
+       true ->
+	    xmpp:make_iq_result(
+	      IQ,
+	      #register{instructions = Instr,
+			username = Username,
+			password = <<"">>,
+			registered = IsRegistered})
     end.
 
 try_register_or_set_password(User, Server, Password,
-			     From, IQ, SubEl, Source, Lang, CaptchaSucceed) ->
+			     #iq{from = From, lang = Lang} = IQ,
+			     Source, CaptchaSucceed) ->
     case From of
-      #jid{user = User, lserver = Server} ->
-	  try_set_password(User, Server, Password, IQ, SubEl,
-			   Lang);
-      _ when CaptchaSucceed ->
-	  case check_from(From, Server) of
-	    allow ->
-		case try_register(User, Server, Password, Source, Lang)
-		    of
-		  ok -> IQ#iq{type = result, sub_el = []};
-		  {error, Error} ->
-		      IQ#iq{type = error, sub_el = [SubEl, Error]}
-		end;
-	    deny ->
-		Txt = <<"Denied by ACL">>,
-		IQ#iq{type = error, sub_el = [SubEl, ?ERRT_FORBIDDEN(Lang, Txt)]}
-	  end;
-      _ ->
-	  IQ#iq{type = error, sub_el = [SubEl, ?ERR_NOT_ALLOWED]}
+	#jid{user = User, lserver = Server} ->
+	    try_set_password(User, Server, Password, IQ);
+	_ when CaptchaSucceed ->
+	    case check_from(From, Server) of
+		allow ->
+		    case try_register(User, Server, Password, Source, Lang) of
+			ok ->
+			    xmpp:make_iq_result(IQ);
+			{error, Error} ->
+			    xmpp:make_error(IQ, Error)
+		    end;
+		deny ->
+		    Txt = <<"Denied by ACL">>,
+		    xmpp:make_error(IQ, xmpp:err_forbidden(Txt, Lang))
+	    end;
+	_ ->
+	    xmpp:make_error(IQ, xmpp:err_not_allowed())
     end.
 
 %% @doc Try to change password and return IQ response
-try_set_password(User, Server, Password, IQ, SubEl,
-		 Lang) ->
+try_set_password(User, Server, Password, #iq{lang = Lang, meta = M} = IQ) ->
     case is_strong_password(Server, Password) of
       true ->
-	  case ejabberd_auth:set_password(User, Server, Password)
-	      of
-	    ok -> IQ#iq{type = result, sub_el = []};
+	  case ejabberd_auth:set_password(User, Server, Password) of
+	    ok ->
+		?INFO_MSG("~s has changed password from ~s",
+			  [jid:encode({User, Server, <<"">>}),
+			   ejabberd_config:may_hide_data(
+			     misc:ip_to_list(maps:get(ip, M, {0,0,0,0})))]),
+		xmpp:make_iq_result(IQ);
 	    {error, empty_password} ->
 		Txt = <<"Empty password">>,
-		IQ#iq{type = error, sub_el = [SubEl, ?ERRT_BAD_REQUEST(Lang, Txt)]};
+		xmpp:make_error(IQ, xmpp:err_bad_request(Txt, Lang));
 	    {error, not_allowed} ->
 		Txt = <<"Changing password is not allowed">>,
-		IQ#iq{type = error, sub_el = [SubEl, ?ERRT_NOT_ALLOWED(Lang, Txt)]};
+		xmpp:make_error(IQ, xmpp:err_not_allowed(Txt, Lang));
 	    {error, invalid_jid} ->
-		IQ#iq{type = error,
-		      sub_el = [SubEl, ?ERR_JID_MALFORMED]};
+		xmpp:make_error(IQ, xmpp:err_jid_malformed());
 	    Err ->
 		?ERROR_MSG("failed to register user ~s@~s: ~p",
 			   [User, Server, Err]),
-		IQ#iq{type = error,
-		      sub_el = [SubEl, ?ERR_INTERNAL_SERVER_ERROR]}
+		xmpp:make_error(IQ, xmpp:err_internal_server_error())
 	  end;
       error_preparing_password ->
 	  ErrText = <<"The password contains unacceptable characters">>,
-	  IQ#iq{type = error,
-		sub_el = [SubEl, ?ERRT_NOT_ACCEPTABLE(Lang, ErrText)]};
+	  xmpp:make_error(IQ, xmpp:err_not_acceptable(ErrText, Lang));
       false ->
 	  ErrText = <<"The password is too weak">>,
-	  IQ#iq{type = error,
-		sub_el = [SubEl, ?ERRT_NOT_ACCEPTABLE(Lang, ErrText)]}
+	  xmpp:make_error(IQ, xmpp:err_not_acceptable(ErrText, Lang))
     end.
 
 try_register(User, Server, Password, SourceRaw, Lang) ->
     case jid:is_nodename(User) of
-      false -> {error, ?ERRT_BAD_REQUEST(Lang, <<"Malformed username">>)};
+      false -> {error, xmpp:err_bad_request(<<"Malformed username">>, Lang)};
       _ ->
-	  JID = jid:make(User, Server, <<"">>),
+	  JID = jid:make(User, Server),
 	  Access = gen_mod:get_module_opt(Server, ?MODULE, access,
                                           fun(A) -> A end,
 					  all),
@@ -411,8 +324,8 @@ try_register(User, Server, Password, SourceRaw, Lang) ->
 	  case {acl:match_rule(Server, Access, JID),
 		check_ip_access(SourceRaw, IPAccess)}
 	      of
-	    {deny, _} -> {error, ?ERRT_FORBIDDEN(Lang, <<"Denied by ACL">>)};
-	    {_, deny} -> {error, ?ERRT_FORBIDDEN(Lang, <<"Denied by ACL">>)};
+	    {deny, _} -> {error, xmpp:err_forbidden(<<"Denied by ACL">>, Lang)};
+	    {_, deny} -> {error, xmpp:err_forbidden(<<"Denied by ACL">>, Lang)};
 	    {allow, allow} ->
 		Source = may_remove_resource(SourceRaw),
 		case check_timeout(Source) of
@@ -432,35 +345,35 @@ try_register(User, Server, Password, SourceRaw, Lang) ->
 				  case Error of
 				    {atomic, exists} ->
 					Txt = <<"User already exists">>,
-					{error, ?ERRT_CONFLICT(Lang, Txt)};
+					{error, xmpp:err_conflict(Txt, Lang)};
 				    {error, invalid_jid} ->
-					{error, ?ERR_JID_MALFORMED};
+					{error, xmpp:err_jid_malformed()};
 				    {error, not_allowed} ->
-					{error, ?ERR_NOT_ALLOWED};
+					{error, xmpp:err_not_allowed()};
 				    {error, too_many_users} ->
 					Txt = <<"Too many users registered">>,
-					{error, ?ERRT_RESOURCE_CONSTRAINT(Lang, Txt)};
+					{error, xmpp:err_resource_constraint(Txt, Lang)};
 				    {error, _} ->
 					?ERROR_MSG("failed to register user "
 						   "~s@~s: ~p",
 						   [User, Server, Error]),
-					{error, ?ERR_INTERNAL_SERVER_ERROR}
+					{error, xmpp:err_internal_server_error()}
 				  end
 			    end;
 			error_preparing_password ->
 			    remove_timeout(Source),
 			    ErrText = <<"The password contains unacceptable characters">>,
-			    {error, ?ERRT_NOT_ACCEPTABLE(Lang, ErrText)};
+			    {error, xmpp:err_not_acceptable(ErrText, Lang)};
 			false ->
 			    remove_timeout(Source),
 			    ErrText = <<"The password is too weak">>,
-			    {error, ?ERRT_NOT_ACCEPTABLE(Lang, ErrText)}
+			    {error, xmpp:err_not_acceptable(ErrText, Lang)}
 		      end;
 		  false ->
 		      ErrText =
 			  <<"Users are not allowed to register accounts "
 			    "so quickly">>,
-		      {error, ?ERRT_RESOURCE_CONSTRAINT(Lang, ErrText)}
+		      {error, xmpp:err_resource_constraint(ErrText, Lang)}
 		end
 	  end
     end.
@@ -479,20 +392,11 @@ send_welcome_message(JID) ->
 	of
       {<<"">>, <<"">>} -> ok;
       {Subj, Body} ->
-	  ejabberd_router:route(jid:make(<<"">>, Host,
-					      <<"">>),
-				JID,
-				#xmlel{name = <<"message">>,
-				       attrs = [{<<"type">>, <<"normal">>}],
-				       children =
-					   [#xmlel{name = <<"subject">>,
-						   attrs = [],
-						   children =
-						       [{xmlcdata, Subj}]},
-					    #xmlel{name = <<"body">>,
-						   attrs = [],
-						   children =
-						       [{xmlcdata, Body}]}]});
+	  ejabberd_router:route(
+	    #message{from = jid:make(Host),
+		     to = JID,
+		     subject = xmpp:mk_text(Subj),
+		     body = xmpp:mk_text(Body)});
       _ -> ok
     end.
 
@@ -501,28 +405,24 @@ send_registration_notifications(Mod, UJID, Source) ->
     case gen_mod:get_module_opt(
            Host, Mod, registration_watchers,
            fun(Ss) ->
-                   [#jid{} = jid:from_string(iolist_to_binary(S))
-                    || S <- Ss]
+                   [jid:decode(iolist_to_binary(S)) || S <- Ss]
            end, []) of
         [] -> ok;
         JIDs when is_list(JIDs) ->
             Body =
-                iolist_to_binary(io_lib:format("[~s] The account ~s was registered from "
+                (str:format("[~s] The account ~s was registered from "
                                                "IP address ~s on node ~w using ~p.",
                                                [get_time_string(),
-                                                jid:to_string(UJID),
+                                                jid:encode(UJID),
                                                 ip_to_string(Source), node(),
                                                 Mod])),
             lists:foreach(
               fun(JID) ->
                       ejabberd_router:route(
-                        jid:make(<<"">>, Host, <<"">>),
-                        JID,
-                        #xmlel{name = <<"message">>,
-                               attrs = [{<<"type">>, <<"chat">>}],
-                               children = [#xmlel{name = <<"body">>,
-                                                  attrs = [],
-                                                  children = [{xmlcdata,Body}]}]})
+			#message{from = jid:make(Host),
+				 to = JID,
+				 type = chat,
+				 body = xmpp:mk_text(Body)})
               end, JIDs)
     end.
 
@@ -622,7 +522,7 @@ remove_timeout(Source) ->
     end.
 
 ip_to_string(Source) when is_tuple(Source) ->
-    jlib:ip_to_list(Source);
+    misc:ip_to_list(Source);
 ip_to_string(undefined) -> <<"undefined">>;
 ip_to_string(_) -> <<"unknown">>.
 
@@ -633,17 +533,11 @@ write_time({{Y, Mo, D}, {H, Mi, S}}) ->
     io_lib:format("~w-~.2.0w-~.2.0w ~.2.0w:~.2.0w:~.2.0w",
 		  [Y, Mo, D, H, Mi, S]).
 
-process_xdata_submit(El) ->
-    case fxml:get_subtag(El, <<"x">>) of
-      false -> error;
-      Xdata ->
-	  Fields = jlib:parse_xdata_submit(Xdata),
-	  case catch {proplists:get_value(<<"username">>, Fields),
-		      proplists:get_value(<<"password">>, Fields)}
-	      of
-	    {[User | _], [Pass | _]} -> {ok, User, Pass};
-	    _ -> error
-	  end
+process_xdata_submit(X) ->
+    case {xmpp_util:get_xdata_values(<<"username">>, X),
+	  xmpp_util:get_xdata_values(<<"password">>, X)} of
+	{[User], [Pass]} -> {ok, User, Pass};
+	_ -> error
     end.
 
 is_strong_password(Server, Password) ->
@@ -681,7 +575,7 @@ transform_ip_access(Opts) ->
                      "use access rules instead.", []),
         ACLs = lists:flatmap(
                  fun({Action, S}) ->
-                         ACLName = jlib:binary_to_atom(
+                         ACLName = misc:binary_to_atom(
                                      iolist_to_binary(
                                        ["ip_", S])),
                          [{Action, ACLName},
@@ -738,21 +632,17 @@ check_ip_access(undefined, _IPAccess) ->
 check_ip_access(IPAddress, IPAccess) ->
     acl:match_rule(global, IPAccess, IPAddress).
 
-mod_opt_type(access) ->
-    fun acl:access_rules_validator/1;
-mod_opt_type(access_from) ->
-    fun (A) when is_atom(A) -> A end;
+mod_opt_type(access) -> fun acl:access_rules_validator/1;
+mod_opt_type(access_from) -> fun acl:access_rules_validator/1;
 mod_opt_type(captcha_protected) ->
     fun (B) when is_boolean(B) -> B end;
-mod_opt_type(ip_access) ->
-    fun acl:access_rules_validator/1;
+mod_opt_type(ip_access) -> fun acl:access_rules_validator/1;
 mod_opt_type(iqdisc) -> fun gen_iq_handler:check_type/1;
 mod_opt_type(password_strength) ->
     fun (N) when is_number(N), N >= 0 -> N end;
 mod_opt_type(registration_watchers) ->
     fun (Ss) ->
-	    [#jid{} = jid:from_string(iolist_to_binary(S))
-	     || S <- Ss]
+	    [jid:decode(iolist_to_binary(S)) || S <- Ss]
     end;
 mod_opt_type(welcome_message) ->
     fun (Opts) ->

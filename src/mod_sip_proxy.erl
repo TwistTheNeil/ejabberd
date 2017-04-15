@@ -1,12 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @author Evgeny Khramtsov <ekhramtsov@process-one.net>
-%%% @doc
-%%%
-%%% @end
+%%% File    : mod_sip_proxy.erl
+%%% Author  : Evgeny Khramtsov <ekhramtsov@process-one.net>
+%%% Purpose : 
 %%% Created : 21 Apr 2014 by Evgeny Khramtsov <ekhramtsov@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2014-2016   ProcessOne
+%%% ejabberd, Copyright (C) 2014-2017   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -49,7 +48,7 @@
 		orig_trid,
 		responses = [] :: [#sip{}],
 		tr_ids = []    :: list(),
-		orig_req       :: #sip{}}).
+		orig_req = #sip{} :: #sip{}}).
 
 %%%===================================================================
 %%% API
@@ -299,7 +298,7 @@ add_record_route_and_set_uri(URI, LServer, #sip{hdrs = Hdrs} = Req) ->
 	    case need_record_route(LServer) of
 		true ->
 		    RR_URI = get_configured_record_route(LServer),
-		    TS = list_to_binary(integer_to_list(p1_time_compat:system_time(seconds))),
+		    TS = (integer_to_binary(p1_time_compat:system_time(seconds))),
 		    Sign = make_sign(TS, Hdrs),
 		    User = <<TS/binary, $-, Sign/binary>>,
 		    NewRR_URI = RR_URI#uri{user = User},
@@ -333,13 +332,13 @@ make_sign(TS, Hdrs) ->
     FromTag = esip:get_param(<<"tag">>, FParams),
     CallID = esip:get_hdr('call-id', Hdrs),
     SharedKey = ejabberd_config:get_option(shared_key, fun(V) -> V end),
-    p1_sha:sha([SharedKey, LFUser, LFServer, LTUser, LTServer,
+    str:sha([SharedKey, LFUser, LFServer, LTUser, LTServer,
 		FromTag, CallID, TS]).
 
 is_signed_by_me(TS_Sign, Hdrs) ->
     try
 	[TSBin, Sign] = str:tokens(TS_Sign, <<"-">>),
-	TS = list_to_integer(binary_to_list(TSBin)),
+	TS = (binary_to_integer(TSBin)),
 	NowTS = p1_time_compat:system_time(seconds),
 	true = (NowTS - TS) =< ?SIGN_LIFETIME,
 	Sign == make_sign(TSBin, Hdrs)

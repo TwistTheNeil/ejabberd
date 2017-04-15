@@ -1,11 +1,27 @@
 %%%-------------------------------------------------------------------
-%%% @author Evgeny Khramtsov <ekhramtsov@process-one.net>
-%%% @copyright (C) 2016, Evgeny Khramtsov
-%%% @doc
-%%%
-%%% @end
+%%% File    : mod_privacy_riak.erl
+%%% Author  : Evgeny Khramtsov <ekhramtsov@process-one.net>
 %%% Created : 14 Apr 2016 by Evgeny Khramtsov <ekhramtsov@process-one.net>
-%%%-------------------------------------------------------------------
+%%%
+%%%
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
+%%%
+%%% This program is free software; you can redistribute it and/or
+%%% modify it under the terms of the GNU General Public License as
+%%% published by the Free Software Foundation; either version 2 of the
+%%% License, or (at your option) any later version.
+%%%
+%%% This program is distributed in the hope that it will be useful,
+%%% but WITHOUT ANY WARRANTY; without even the implied warranty of
+%%% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+%%% General Public License for more details.
+%%%
+%%% You should have received a copy of the GNU General Public License along
+%%% with this program; if not, write to the Free Software Foundation, Inc.,
+%%% 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+%%%
+%%%----------------------------------------------------------------------
+
 -module(mod_privacy_riak).
 
 -behaviour(mod_privacy).
@@ -15,11 +31,11 @@
 	 process_default_set/3, process_active_set/3,
 	 remove_privacy_list/3, set_privacy_list/1,
 	 set_privacy_list/4, get_user_list/2, get_user_lists/2,
-	 remove_user/2, import/2]).
+	 remove_user/2, import/1]).
 
 -export([privacy_schema/0]).
 
--include("jlib.hrl").
+-include("xmpp.hrl").
 -include("mod_privacy.hrl").
 
 %%%===================================================================
@@ -31,12 +47,7 @@ init(_Host, _Opts) ->
 process_lists_get(LUser, LServer) ->
     case ejabberd_riak:get(privacy, privacy_schema(), {LUser, LServer}) of
         {ok, #privacy{default = Default, lists = Lists}} ->
-            LItems = lists:map(fun ({N, _}) ->
-                                       #xmlel{name = <<"list">>,
-                                              attrs = [{<<"name">>, N}],
-                                              children = []}
-                               end,
-                               Lists),
+            LItems = lists:map(fun ({N, _}) -> N end, Lists),
             {Default, LItems};
         {error, notfound} ->
             {none, []};
@@ -57,7 +68,15 @@ process_list_get(LUser, LServer, Name) ->
             error
     end.
 
-process_default_set(LUser, LServer, {value, Name}) ->
+process_default_set(LUser, LServer, none) ->
+    {atomic,
+     case ejabberd_riak:get(privacy, privacy_schema(), {LUser, LServer}) of
+         {ok, R} ->
+             ejabberd_riak:put(R#privacy{default = none}, privacy_schema());
+         {error, _} ->
+             ok
+     end};
+process_default_set(LUser, LServer, Name) ->
     {atomic,
      case ejabberd_riak:get(privacy, privacy_schema(), {LUser, LServer}) of
          {ok, #privacy{lists = Lists} = P} ->
@@ -71,14 +90,6 @@ process_default_set(LUser, LServer, {value, Name}) ->
              end;
          {error, _} ->
              not_found
-     end};
-process_default_set(LUser, LServer, false) ->
-    {atomic,
-     case ejabberd_riak:get(privacy, privacy_schema(), {LUser, LServer}) of
-         {ok, R} ->
-             ejabberd_riak:put(R#privacy{default = none}, privacy_schema());
-         {error, _} ->
-             ok
      end}.
 
 process_active_set(LUser, LServer, Name) ->
@@ -150,7 +161,7 @@ get_user_lists(LUser, LServer) ->
 remove_user(LUser, LServer) ->
     {atomic, ejabberd_riak:delete(privacy, {LUser, LServer})}.
 
-import(_LServer, #privacy{} = P) ->
+import(#privacy{} = P) ->
     ejabberd_riak:put(P, privacy_schema()).
 
 %%%===================================================================

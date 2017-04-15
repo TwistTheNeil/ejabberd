@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 #
-# ejabberd, Copyright (C) 2002-2016   ProcessOne
+# ejabberd, Copyright (C) 2002-2017   ProcessOne
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -25,10 +25,12 @@ defmodule ACLTest do
 
   setup_all do
     :ok = :mnesia.start
-    :ok = :jid.start
+    {:ok, _} = :jid.start
+    :ejabberd_hooks.start_link
     :stringprep.start
     :ok = :ejabberd_config.start(["domain1", "domain2"], [])
-    :ok = :acl.start
+    {:ok, _} = :acl.start_link
+    :ok
   end
 
   setup do

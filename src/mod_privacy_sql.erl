@@ -1,11 +1,27 @@
 %%%-------------------------------------------------------------------
-%%% @author Evgeny Khramtsov <ekhramtsov@process-one.net>
-%%% @copyright (C) 2016, Evgeny Khramtsov
-%%% @doc
-%%%
-%%% @end
+%%% File    : mod_privacy_sql.erl
+%%% Author  : Evgeny Khramtsov <ekhramtsov@process-one.net>
 %%% Created : 14 Apr 2016 by Evgeny Khramtsov <ekhramtsov@process-one.net>
-%%%-------------------------------------------------------------------
+%%%
+%%%
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
+%%%
+%%% This program is free software; you can redistribute it and/or
+%%% modify it under the terms of the GNU General Public License as
+%%% published by the Free Software Foundation; either version 2 of the
+%%% License, or (at your option) any later version.
+%%%
+%%% This program is distributed in the hope that it will be useful,
+%%% but WITHOUT ANY WARRANTY; without even the implied warranty of
+%%% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+%%% General Public License for more details.
+%%%
+%%% You should have received a copy of the GNU General Public License along
+%%% with this program; if not, write to the Free Software Foundation, Inc.,
+%%% 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+%%%
+%%%----------------------------------------------------------------------
+
 -module(mod_privacy_sql).
 
 -compile([{parse_transform, ejabberd_sql_pt}]).
@@ -17,7 +33,7 @@
 	 process_default_set/3, process_active_set/3,
 	 remove_privacy_list/3, set_privacy_list/1,
 	 set_privacy_list/4, get_user_list/2, get_user_lists/2,
-	 remove_user/2, import/1, import/2, export/1]).
+	 remove_user/2, import/1, export/1]).
 
 -export([item_to_raw/1, raw_to_item/1,
 	 sql_add_privacy_list/2,
@@ -28,7 +44,7 @@
 	 sql_get_privacy_list_id_t/2,
 	 sql_set_default_privacy_list/2, sql_set_privacy_list/2]).
 
--include("jlib.hrl").
+-include("xmpp.hrl").
 -include("mod_privacy.hrl").
 -include("logger.hrl").
 -include("ejabberd_sql_pt.hrl").
@@ -47,12 +63,7 @@ process_lists_get(LUser, LServer) ->
 	      end,
     case catch sql_get_privacy_list_names(LUser, LServer) of
       {selected, Names} ->
-	  LItems = lists:map(fun ({N}) ->
-				     #xmlel{name = <<"list">>,
-					    attrs = [{<<"name">>, N}],
-					    children = []}
-			     end,
-			     Names),
+	  LItems = lists:map(fun ({N}) -> N end, Names),
 	  {Default, LItems};
       _ -> error
     end.
@@ -69,7 +80,15 @@ process_list_get(LUser, LServer, Name) ->
       _ -> error
     end.
 
-process_default_set(LUser, LServer, {value, Name}) ->
+process_default_set(LUser, LServer, none) ->
+    case catch sql_unset_default_privacy_list(LUser,
+					      LServer)
+	of
+      {'EXIT', _Reason} -> {atomic, error};
+      {error, _Reason} -> {atomic, error};
+      _ -> {atomic, ok}
+    end;
+process_default_set(LUser, LServer, Name) ->
     F = fun () ->
 		case sql_get_privacy_list_names_t(LUser) of
 		  {selected, []} -> not_found;
@@ -80,15 +99,7 @@ process_default_set(LUser, LServer, {value, Name}) ->
 		      end
 		end
 	end,
-    sql_queries:sql_transaction(LServer, F);
-process_default_set(LUser, LServer, false) ->
-    case catch sql_unset_default_privacy_list(LUser,
-					      LServer)
-	of
-      {'EXIT', _Reason} -> {atomic, error};
-      {error, _Reason} -> {atomic, error};
-      _ -> {atomic, ok}
-    end.
+    sql_queries:sql_transaction(LServer, F).
 
 process_active_set(LUser, LServer, Name) ->
     case catch sql_get_privacy_list_id(LUser, LServer, Name) of
@@ -203,7 +214,7 @@ export(Server) ->
 				 [<<"select id from privacy_list order by "
 				    "id desc limit 1;">>]) of
         {selected, [<<"id">>], [[I]]} ->
-            put(id, jlib:binary_to_integer(I));
+            put(id, binary_to_integer(I));
         _ ->
             put(id, 0)
     end,
@@ -238,7 +249,7 @@ export(Server) ->
                                       "values (%(ID)d, %(SType)s, %(SValue)s, %(SAction)s,"
                                       " %(Order)d, %(MatchAll)b, %(MatchIQ)b,"
                                       " %(MatchMessage)b, %(MatchPresenceIn)b,"
-                                      " %(MatchPresenceOut)b)")
+                                      " %(MatchPresenceOut)b);")
                                  || {SType, SValue, SAction, Order,
                                      MatchAll, MatchIQ,
                                      MatchMessage, MatchPresenceIn,
@@ -254,37 +265,8 @@ get_id() ->
     put(id, ID + 1),
     ID + 1.
 
-import(LServer) ->
-    [{<<"select username from privacy_list;">>,
-      fun([LUser]) ->
-              Default = case sql_get_default_privacy_list_t(LUser) of
-                            {selected, [<<"name">>], []} ->
-                                none;
-                            {selected, [<<"name">>], [[DefName]]} ->
-                                DefName;
-                            _ ->
-                                none
-                        end,
-              {selected, [<<"name">>], Names} =
-                  sql_get_privacy_list_names_t(LUser),
-              Lists = lists:flatmap(
-                        fun([Name]) ->
-                                case sql_get_privacy_list_data_t(LUser, Name) of
-                                    {selected, _, RItems} ->
-                                        [{Name,
-                                          lists:map(fun raw_to_item/1,
-                                                    RItems)}];
-                                    _ ->
-                                        []
-                                end
-                        end, Names),
-              #privacy{default = Default,
-                       us = {LUser, LServer},
-                       lists = Lists}
-      end}].
-
-import(_, _) ->
-    pass.
+import(_) ->
+    ok.
 
 %%%===================================================================
 %%% Internal functions
@@ -296,10 +278,8 @@ raw_to_item({SType, SValue, SAction, Order, MatchAll,
         {Type, Value} = case SType of
                             <<"n">> -> {none, none};
                             <<"j">> ->
-                                case jid:from_string(SValue) of
-                                    #jid{} = JID ->
-                                        {jid, jid:tolower(JID)}
-                                end;
+                                JID = jid:decode(SValue),
+				{jid, jid:tolower(JID)};
                             <<"g">> -> {group, SValue};
                             <<"s">> ->
                                 case SValue of
@@ -330,7 +310,7 @@ item_to_raw(#listitem{type = Type, value = Value,
 		      match_presence_out = MatchPresenceOut}) ->
     {SType, SValue} = case Type of
 			none -> {<<"n">>, <<"">>};
-			jid -> {<<"j">>, jid:to_string(Value)};
+			jid -> {<<"j">>, jid:encode(Value)};
 			group -> {<<"g">>, Value};
 			subscription ->
 			    case Value of
@@ -367,9 +347,6 @@ sql_get_privacy_list_id_t(LUser, Name) ->
 
 sql_get_privacy_list_data(LUser, LServer, Name) ->
     sql_queries:get_privacy_list_data(LServer, LUser, Name).
-
-sql_get_privacy_list_data_t(LUser, Name) ->
-    sql_queries:get_privacy_list_data_t(LUser, Name).
 
 sql_get_privacy_list_data_by_id(ID, LServer) ->
     sql_queries:get_privacy_list_data_by_id(LServer, ID).

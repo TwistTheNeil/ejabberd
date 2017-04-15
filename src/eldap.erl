@@ -126,14 +126,14 @@
 -record(eldap,
 	{version = ?LDAP_VERSION :: non_neg_integer(),
          hosts = []              :: [binary()],
-         host                    :: binary(),
+         host = undefined        :: binary() | undefined,
 	 port = 389              :: inet:port_number(),
          sockmod = gen_tcp       :: ssl | gen_tcp,
          tls = none              :: none | tls,
          tls_options = []        :: [{cacertfile, string()} |
                                      {depth, non_neg_integer()} |
                                      {verify, non_neg_integer()}],
-	 fd,
+	 fd                      :: gen_tcp:socket() | undefined,
          rootdn = <<"">>         :: binary(),
          passwd = <<"">>         :: binary(),
          id = 0                  :: non_neg_integer(),
@@ -145,7 +145,7 @@
 %%% API
 %%%----------------------------------------------------------------------
 start_link(Name) ->
-    Reg_name = jlib:binary_to_atom(<<"eldap_",
+    Reg_name = misc:binary_to_atom(<<"eldap_",
 				       Name/binary>>),
     gen_fsm:start_link({local, Reg_name}, ?MODULE, [], []).
 
@@ -153,7 +153,7 @@ start_link(Name) ->
                  binary(), tlsopts()) -> any().
 
 start_link(Name, Hosts, Port, Rootdn, Passwd, Opts) ->
-    Reg_name = jlib:binary_to_atom(<<"eldap_",
+    Reg_name = misc:binary_to_atom(<<"eldap_",
 				       Name/binary>>),
     gen_fsm:start_link({local, Reg_name}, ?MODULE,
 		       [Hosts, Port, Rootdn, Passwd, Opts], []).
@@ -548,7 +548,7 @@ extensibleMatch_opts([], MRA) -> MRA.
 get_handle(Pid) when is_pid(Pid) -> Pid;
 get_handle(Atom) when is_atom(Atom) -> Atom;
 get_handle(Name) when is_binary(Name) ->
-    jlib:binary_to_atom(<<"eldap_",
+    misc:binary_to_atom(<<"eldap_",
 			    Name/binary>>).
 
 %%%----------------------------------------------------------------------

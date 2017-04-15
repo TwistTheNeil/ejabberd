@@ -5,7 +5,7 @@
 %%% Created :  1 Dec 2007 by Christophe Romain <christophe.romain@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2016   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -25,7 +25,7 @@
 
 -module(gen_pubsub_node).
 
--include("jlib.hrl").
+-include("xmpp.hrl").
 
 -type(host() :: mod_pubsub:host()).
 -type(nodeId() :: mod_pubsub:nodeId()).
@@ -83,7 +83,7 @@
 -callback purge_node(NodeIdx :: nodeIdx(),
 	Owner :: jid()) ->
     {result, {default, broadcast}} |
-    {error, xmlel()}.
+    {error, stanza_error()}.
 
 -callback subscribe_node(NodeIdx :: nodeIdx(),
 	Sender :: jid(),
@@ -96,14 +96,14 @@
     {result, {default, subscribed, subId()}} |
     {result, {default, subscribed, subId(), send_last}} |
     {result, {default, pending, subId()}} |
-    {error, xmlel()}.
+    {error, stanza_error()}.
 
 -callback unsubscribe_node(NodeIdx :: nodeIdx(),
 	Sender :: jid(),
 	Subscriber :: jid(),
 	SubId :: subId()) ->
-    {result, default} |
-    {error, xmlel()}.
+    {result, []} |
+    {error, stanza_error()}.
 
 -callback publish_item(NodeId :: nodeIdx(),
 	Publisher :: jid(),
@@ -113,14 +113,14 @@
 	Payload :: payload(),
 	Options :: pubOptions()) ->
     {result, {default, broadcast, [itemId()]}} |
-    {error, xmlel()}.
+    {error, stanza_error()}.
 
 -callback delete_item(NodeIdx :: nodeIdx(),
 	Publisher :: jid(),
 	PublishModel :: publishModel(),
 	ItemId :: <<>> | itemId()) ->
     {result, {default, broadcast}} |
-    {error, xmlel()}.
+    {error, stanza_error()}.
 
 -callback remove_extra_items(NodeIdx :: nodeIdx(),
 	Max_Items :: unlimited | non_neg_integer(),
@@ -143,7 +143,7 @@
 	Owner :: jid(),
 	Affiliation :: affiliation()) ->
     ok |
-    {error, xmlel()}.
+    {error, stanza_error()}.
 
 -callback get_node_subscriptions(NodeIdx :: nodeIdx()) ->
     {result,
@@ -173,22 +173,18 @@
 
 -callback set_state(State::pubsubState()) ->
     ok |
-    {error, xmlel()}.
+    {error, stanza_error()}.
 
--callback get_items(NodeIdx :: nodeIdx(),
-	JID :: jid(),
-	AccessModel :: accessModel(),
-	Presence_Subscription :: boolean(),
-	RosterGroup :: boolean(),
-	SubId :: subId(),
-	RSM :: none | rsm_in()) ->
-    {result, {[pubsubItem()], none | rsm_out()}} |
-    {error, xmlel()}.
+-callback get_items(nodeIdx(), jid(), accessModel(),
+		    boolean(), boolean(), binary(),
+		    undefined | rsm_set()) ->
+    {result, {[pubsubItem()], undefined | rsm_set()}} | {error, stanza_error()}.
 
--callback get_items(NodeIdx :: nodeIdx(),
-	From :: jid(),
-	RSM :: none | rsm_in()) ->
-    {result, {[pubsubItem()], none | rsm_out()}}.
+-callback get_items(nodeIdx(), jid(), undefined | rsm_set()) ->
+    {result, {[pubsubItem()], undefined | rsm_set()}}.
+
+-callback get_last_items(nodeIdx(), jid(), undefined | rsm_set()) ->
+    {result, {[pubsubItem()], undefined | rsm_set()}}.
 
 -callback get_item(NodeIdx :: nodeIdx(),
 	ItemId :: itemId(),
@@ -198,12 +194,12 @@
 	RosterGroup :: boolean(),
 	SubId :: subId()) ->
     {result, pubsubItem()} |
-    {error, xmlel()}.
+    {error, stanza_error()}.
 
 -callback get_item(NodeIdx :: nodeIdx(),
 	ItemId :: itemId()) ->
     {result, pubsubItem()} |
-    {error, xmlel()}.
+    {error, stanza_error()}.
 
 -callback set_item(Item :: pubsubItem()) ->
     ok.

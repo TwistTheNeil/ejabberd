@@ -5,7 +5,7 @@
 %%% Created :  1 Dec 2007 by Christophe Romain <christophe.romain@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2016   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -31,7 +31,6 @@
 -author('christophe.romain@process-one.net').
 
 -include("pubsub.hrl").
--include("jlib.hrl").
 -include("logger.hrl").
 
 -export([init/3, terminate/2, options/0, features/0,

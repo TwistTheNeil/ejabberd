@@ -1,22 +1,39 @@
 %%%-------------------------------------------------------------------
-%%% @author Evgeny Khramtsov <ekhramtsov@process-one.net>
-%%% @copyright (C) 2016, Evgeny Khramtsov
-%%% @doc
-%%%
-%%% @end
+%%% File    : mod_announce_sql.erl
+%%% Author  : Evgeny Khramtsov <ekhramtsov@process-one.net>
 %%% Created : 13 Apr 2016 by Evgeny Khramtsov <ekhramtsov@process-one.net>
-%%%-------------------------------------------------------------------
+%%%
+%%%
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
+%%%
+%%% This program is free software; you can redistribute it and/or
+%%% modify it under the terms of the GNU General Public License as
+%%% published by the Free Software Foundation; either version 2 of the
+%%% License, or (at your option) any later version.
+%%%
+%%% This program is distributed in the hope that it will be useful,
+%%% but WITHOUT ANY WARRANTY; without even the implied warranty of
+%%% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+%%% General Public License for more details.
+%%%
+%%% You should have received a copy of the GNU General Public License along
+%%% with this program; if not, write to the Free Software Foundation, Inc.,
+%%% 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+%%%
+%%%----------------------------------------------------------------------
+
 -module(mod_announce_sql).
+
 -behaviour(mod_announce).
 
 -compile([{parse_transform, ejabberd_sql_pt}]).
 
 %% API
 -export([init/2, set_motd_users/2, set_motd/2, delete_motd/1,
-	 get_motd/1, is_motd_user/2, set_motd_user/2, import/1,
-	 import/2, export/1]).
+	 get_motd/1, is_motd_user/2, set_motd_user/2, import/3,
+	 export/1]).
 
--include("jlib.hrl").
+-include("xmpp.hrl").
 -include("mod_announce.hrl").
 -include("ejabberd_sql_pt.hrl").
 
@@ -108,19 +125,8 @@ export(_Server) ->
               []
       end}].
 
-import(LServer) ->
-    [{<<"select xml from motd where username='';">>,
-      fun([XML]) ->
-              El = fxml_stream:parse_element(XML),
-              #motd{server = LServer, packet = El}
-      end},
-     {<<"select username from motd where xml='';">>,
-      fun([LUser]) ->
-              #motd_users{us = {LUser, LServer}}
-      end}].
-
-import(_, _) ->
-    pass.
+import(_, _, _) ->
+    ok.
 
 %%%===================================================================
 %%% Internal functions

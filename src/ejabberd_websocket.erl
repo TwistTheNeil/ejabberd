@@ -33,7 +33,7 @@
 %%% NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 %%% POSSIBILITY OF SUCH DAMAGE.
 %%% ==========================================================================================================
-%%% ejabberd, Copyright (C) 2002-2016   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
 %%%----------------------------------------------------------------------
 
 -module(ejabberd_websocket).
@@ -47,7 +47,7 @@
 -include("ejabberd.hrl").
 -include("logger.hrl").
 
--include("jlib.hrl").
+-include("xmpp.hrl").
 
 -include("ejabberd_http.hrl").
 
@@ -152,8 +152,8 @@ handshake(#ws{headers = Headers} = State) ->
                             V ->
                                 [<<"Sec-Websocket-Protocol:">>, V, <<"\r\n">>]
                         end,
-    Hash = jlib:encode_base64(
-             p1_sha:sha1(<<Key/binary, "258EAFA5-E914-47DA-95CA-C5AB0DC85B11">>)),
+    Hash = misc:encode_base64(
+             crypto:hash(sha, <<Key/binary, "258EAFA5-E914-47DA-95CA-C5AB0DC85B11">>)),
     {State, [<<"HTTP/1.1 101 Switching Protocols\r\n">>,
              <<"Upgrade: websocket\r\n">>,
              <<"Connection: Upgrade\r\n">>,

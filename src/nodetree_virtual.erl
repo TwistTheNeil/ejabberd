@@ -5,7 +5,7 @@
 %%% Created :  1 Dec 2007 by Christophe Romain <christophe.romain@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2016   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -35,7 +35,6 @@
 -author('christophe.romain@process-one.net').
 
 -include("pubsub.hrl").
--include("jlib.hrl").
 
 -export([init/3, terminate/2, options/0, set_node/1,
     get_node/3, get_node/2, get_node/1, get_nodes/2,
@@ -113,13 +112,13 @@ node_record(Host, Node, Nidx) ->
                  options = Module:options()}.
 
 nodeidx({U,S,R}, Node) ->
-    JID = jid:to_string(jid:make(U,S,R)),
+    JID = jid:encode(jid:make(U,S,R)),
     <<JID/binary, ":", Node/binary>>;
 nodeidx(Host, Node) ->
     <<Host/binary, ":", Node/binary>>.
 nodeid(Nidx) ->
     [Head, Node] = binary:split(Nidx, <<":">>),
-    case jid:from_string(Head) of
+    case jid:decode(Head) of
         {jid,<<>>,Host,<<>>,_,_,_} -> {Host, Node};
         {jid,U,S,R,_,_,_} -> {{U,S,R}, Node}
     end.

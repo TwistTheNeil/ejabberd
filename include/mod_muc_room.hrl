@@ -1,6 +1,6 @@
 %%%----------------------------------------------------------------------
 %%%
-%%% ejabberd, Copyright (C) 2002-2016   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -28,9 +28,8 @@
 
 -record(lqueue,
 {
-    queue :: ?TQUEUE,
-    len :: integer(),
-    max :: integer()
+    queue   :: p1_queue:queue(),
+    max = 0 :: integer()
 }).
 
 -type lqueue() :: #lqueue{}.
@@ -71,6 +70,7 @@
 -type config() :: #config{}.
 
 -type role() :: moderator | participant | visitor | none.
+-type affiliation() :: admin | member | outcast | owner | none.
 
 -record(user,
 {
@@ -79,7 +79,7 @@
     role :: role(),
     %%is_subscriber = false :: boolean(),
     %%subscriptions = [] :: [binary()],
-    last_presence :: xmlel()
+    last_presence :: presence() | undefined
 }).
 
 -record(subscriber, {jid :: jid(),
@@ -90,10 +90,10 @@
 {
     message_time    = 0 :: integer(),
     presence_time   = 0 :: integer(),
-    message_shaper :: shaper:shaper(),
-    presence_shaper :: shaper:shaper(),
-    message :: xmlel(),
-    presence :: {binary(), xmlel()}
+    message_shaper  = none :: shaper:shaper(),
+    presence_shaper = none :: shaper:shaper(),
+    message :: message() | undefined,
+    presence :: {binary(), presence()} | undefined
 }).
 
 -record(state,
@@ -117,14 +117,5 @@
     just_created            = false :: boolean(),
     activity                = treap:empty() :: treap:treap(),
     room_shaper             = none :: shaper:shaper(),
-    room_queue              = queue:new() :: ?TQUEUE
+    room_queue              :: p1_queue:queue() | undefined
 }).
-
--record(muc_online_users, {us = {<<>>, <<>>} :: {binary(), binary()},
-                           resource = <<>> :: binary() | '_',
-                           room = <<>> :: binary() | '_' | '$1',
-                           host = <<>> :: binary() | '_' | '$2'}).
-
--type muc_online_users() :: #muc_online_users{}.
-
--type muc_room_state() :: #state{}.

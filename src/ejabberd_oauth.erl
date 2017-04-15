@@ -5,7 +5,7 @@
 %%% Created : 20 Mar 2015 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2016   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -32,8 +32,7 @@
 -export([init/1, handle_call/3, handle_cast/2,
 	 handle_info/2, terminate/2, code_change/3]).
 
--export([start/0,
-         start_link/0,
+-export([start_link/0,
          get_client_identity/2,
          verify_redirection_uri/3,
          authenticate_user/2,
@@ -42,14 +41,16 @@
          associate_access_code/3,
          associate_access_token/3,
          associate_refresh_token/3,
+         check_token/1,
          check_token/4,
          check_token/2,
+         scope_in_scope_list/2,
          process/2,
          opt_type/1]).
 
 -export([oauth_issue_token/3, oauth_list_tokens/0, oauth_revoke_token/1, oauth_list_scopes/0]).
 
--include("jlib.hrl").
+-include("xmpp.hrl").
 
 -include("ejabberd.hrl").
 -include("logger.hrl").
@@ -68,32 +69,6 @@
 
 -define(EXPIRE, 4294967).
 
-start() ->
-    DBMod = get_db_backend(),
-    DBMod:init(),
-    MaxSize =
-        ejabberd_config:get_option(
-          oauth_cache_size,
-          fun(I) when is_integer(I), I>0 -> I end,
-          1000),
-    LifeTime =
-        ejabberd_config:get_option(
-          oauth_cache_life_time,
-          fun(I) when is_integer(I), I>0 -> I end,
-          timer:hours(1) div 1000),
-    cache_tab:new(oauth_token,
-		  [{max_size, MaxSize}, {life_time, LifeTime}]),
-    Expire = expire(),
-    application:set_env(oauth2, backend, ejabberd_oauth),
-    application:set_env(oauth2, expiry_time, Expire),
-    application:start(oauth2),
-    ChildSpec = {?MODULE, {?MODULE, start_link, []},
-		 transient, 1000, worker, [?MODULE]},
-    supervisor:start_child(ejabberd_sup, ChildSpec),
-    ejabberd_commands:register_commands(get_commands_spec()),
-    ok.
-
-
 get_commands_spec() ->
     [
      #ejabberd_commands{name = oauth_issue_token, tags = [oauth],
@@ -108,21 +83,23 @@ get_commands_spec() ->
                         result = {result, {tuple, [{token, string}, {scopes, string}, {expires_in, string}]}}
                        },
      #ejabberd_commands{name = oauth_list_tokens, tags = [oauth],
-                        desc = "List oauth tokens, their user and scope, and how many seconds remain until expirity",
+                        desc = "List oauth tokens, user, scope, and seconds to expire (only Mnesia)",
+                        longdesc = "List oauth tokens, their user and scope, and how many seconds remain until expirity",
                         module = ?MODULE, function = oauth_list_tokens,
                         args = [],
                         policy = restricted,
                         result = {tokens, {list, {token, {tuple, [{token, string}, {user, string}, {scope, string}, {expires_in, string}]}}}}
                        },
      #ejabberd_commands{name = oauth_list_scopes, tags = [oauth],
-                        desc = "List scopes that can be granted to tokens generated through the command line, together with the commands they allow",
+                        desc = "List scopes that can be granted, and commands",
+                        longdesc = "List scopes that can be granted to tokens generated through the command line, together with the commands they allow",
                         module = ?MODULE, function = oauth_list_scopes,
                         args = [],
                         policy = restricted,
                         result = {scopes, {list, {scope, {tuple, [{scope, string}, {commands, string}]}}}}
                        },
      #ejabberd_commands{name = oauth_revoke_token, tags = [oauth],
-                        desc = "Revoke authorization for a token",
+                        desc = "Revoke authorization for a token (only Mnesia)",
                         module = ?MODULE, function = oauth_revoke_token,
                         args = [{token, string}],
                         policy = restricted,
@@ -133,18 +110,18 @@ get_commands_spec() ->
 
 oauth_issue_token(Jid, TTLSeconds, ScopesString) ->
     Scopes = [list_to_binary(Scope) || Scope <- string:tokens(ScopesString, ";")],
-    case jid:from_string(list_to_binary(Jid)) of
+    try jid:decode(list_to_binary(Jid)) of
         #jid{luser =Username, lserver = Server} ->
             case oauth2:authorize_password({Username, Server},  Scopes, admin_generated) of
                 {ok, {_Ctx,Authorization}} ->
                     {ok, {_AppCtx2, Response}} = oauth2:issue_token(Authorization, [{expiry_time, TTLSeconds}]),
-                    {ok, AccessToken} = oauth2_response:access_token(Response),
-                    {ok, VerifiedScope} = oauth2_response:scope(Response),
+		    {ok, AccessToken} = oauth2_response:access_token(Response),
+		    {ok, VerifiedScope} = oauth2_response:scope(Response),
                     {AccessToken, VerifiedScope, integer_to_list(TTLSeconds) ++ " seconds"};
-                {error, Error} ->
-                    {error, Error}
-            end;
-        error ->
+		{error, Error} ->
+		    {error, Error}
+            end
+    catch _:{bad_jid, _} ->
             {error, "Invalid JID: " ++ Jid}
     end.
 
@@ -152,7 +129,7 @@ oauth_list_tokens() ->
     Tokens = mnesia:dirty_match_object(#oauth_token{_ = '_'}),
     {MegaSecs, Secs, _MiniSecs} = os:timestamp(),
     TS = 1000000 * MegaSecs + Secs,
-    [{Token, jid:to_string(jid:make(U,S,<<>>)), Scope, integer_to_list(Expires - TS) ++ " seconds"} ||
+    [{Token, jid:encode(jid:make(U,S)), Scope, integer_to_list(Expires - TS) ++ " seconds"} ||
         #oauth_token{token=Token, scope=Scope, us= {U,S},expire=Expires} <- Tokens].
 
 
@@ -171,6 +148,25 @@ start_link() ->
 
 
 init([]) ->
+    DBMod = get_db_backend(),
+    DBMod:init(),
+    MaxSize =
+        ejabberd_config:get_option(
+          oauth_cache_size,
+          fun(I) when is_integer(I), I>0 -> I end,
+          1000),
+    LifeTime =
+        ejabberd_config:get_option(
+          oauth_cache_life_time,
+          fun(I) when is_integer(I), I>0 -> I end,
+          timer:hours(1) div 1000),
+    cache_tab:new(oauth_token,
+		  [{max_size, MaxSize}, {life_time, LifeTime}]),
+    Expire = expire(),
+    application:set_env(oauth2, backend, ejabberd_oauth),
+    application:set_env(oauth2, expiry_time, Expire),
+    application:start(oauth2),
+    ejabberd_commands:register_commands(get_commands_spec()),
     erlang:send_after(expire() * 1000, self(), clean),
     {ok, ok}.
 
@@ -199,7 +195,7 @@ get_client_identity(Client, Ctx) -> {ok, {Ctx, {client, Client}}}.
 verify_redirection_uri(_, _, Ctx) -> {ok, Ctx}.
 
 authenticate_user({User, Server}, Ctx) ->
-    case jid:make(User, Server, <<"">>) of
+    case jid:make(User, Server) of
         #jid{} = JID ->
             Access =
                 ejabberd_config:get_option(
@@ -210,12 +206,12 @@ authenticate_user({User, Server}, Ctx) ->
                 allow ->
                     case Ctx of
                         {password, Password} ->
-                            case ejabberd_auth:check_password(User, <<"">>, Server, Password) of
-                                true ->
-                                    {ok, {Ctx, {user, User, Server}}};
-                                false ->
-                                    {error, badpass}
-                            end;
+                    case ejabberd_auth:check_password(User, <<"">>, Server, Password) of
+                        true ->
+                            {ok, {Ctx, {user, User, Server}}};
+                        false ->
+                            {error, badpass}
+                    end;
                         admin_generated ->
                             {ok, {Ctx, {user, User, Server}}}
                     end;
@@ -289,7 +285,7 @@ associate_access_token(AccessToken, Context, AppContext) ->
             %% It always pass the global configured value.  Here we use the app context to pass the per-case
             %% ttl if we want to override it.
             seconds_since_epoch(ExpiresIn)
-    end,
+                           end,
     {user, User, Server} = proplists:get_value(<<"resource_owner">>, Context, <<"">>),
     Scope = proplists:get_value(<<"scope">>, Context, []),
     R = #oauth_token{
@@ -305,12 +301,35 @@ associate_refresh_token(_RefreshToken, _Context, AppContext) ->
     %put(?REFRESH_TOKEN_TABLE, RefreshToken, Context),
     {ok, AppContext}.
 
+scope_in_scope_list(Scope, ScopeList) ->
+    TokenScopeSet = oauth2_priv_set:new(Scope),
+    lists:any(fun(Scope2) ->
+        oauth2_priv_set:is_member(Scope2, TokenScopeSet) end,
+              ScopeList).
+
+check_token(Token) ->
+    case lookup(Token) of
+        {ok, #oauth_token{us = US,
+                          scope = TokenScope,
+                          expire = Expire}} ->
+            {MegaSecs, Secs, _} = os:timestamp(),
+            TS = 1000000 * MegaSecs + Secs,
+            if
+                Expire > TS ->
+                    {ok, US, TokenScope};
+                true ->
+                    {false, expired}
+            end;
+        _ ->
+            {false, not_found}
+    end.
+
 check_token(User, Server, ScopeList, Token) ->
     LUser = jid:nodeprep(User),
     LServer = jid:nameprep(Server),
     case lookup(Token) of
         {ok, #oauth_token{us = {LUser, LServer},
-                          scope = TokenScope,
+                      scope = TokenScope,
                           expire = Expire}} ->
             {MegaSecs, Secs, _} = os:timestamp(),
             TS = 1000000 * MegaSecs + Secs,
@@ -330,7 +349,7 @@ check_token(User, Server, ScopeList, Token) ->
 check_token(ScopeList, Token) ->
     case lookup(Token) of
         {ok, #oauth_token{us = US,
-                          scope = TokenScope,
+                      scope = TokenScope,
                           expire = Expire}} ->
             {MegaSecs, Secs, _} = os:timestamp(),
             TS = 1000000 * MegaSecs + Secs,
@@ -342,7 +361,7 @@ check_token(ScopeList, Token) ->
                                    ScopeList) of
                         true -> {ok, user, US};
                         false -> {false, no_matching_scope}
-                    end;
+                        end;
                 true ->
                     {false, expired}
             end;
@@ -446,7 +465,7 @@ process(_Handlers,
                          [{<<"href">>, <<"https://www.ejabberd.im">>},
                           {<<"title">>, <<"ejabberd XMPP server">>}],
                          <<"ejabberd">>),
-                    ?C(" is maintained by "),
+                    ?C(<<" is maintained by ">>),
                     ?XAC(<<"a">>,
                          [{<<"href">>, <<"https://www.process-one.net">>},
                           {<<"title">>, <<"ProcessOne - Leader in Instant Messaging and Push Solutions">>}],
@@ -462,14 +481,14 @@ process(_Handlers,
     RedirectURI = proplists:get_value(<<"redirect_uri">>, Q, <<"">>),
     SScope = proplists:get_value(<<"scope">>, Q, <<"">>),
     StringJID = proplists:get_value(<<"username">>, Q, <<"">>),
-    #jid{user = Username, server = Server} = jid:from_string(StringJID),
+    #jid{user = Username, server = Server} = jid:decode(StringJID),
     Password = proplists:get_value(<<"password">>, Q, <<"">>),
     State = proplists:get_value(<<"state">>, Q, <<"">>),
     Scope = str:tokens(SScope, <<" ">>),
     TTL = proplists:get_value(<<"ttl">>, Q, <<"">>),
     ExpiresIn = case TTL of
                     <<>> -> undefined;
-                    _ -> jlib:binary_to_integer(TTL)
+                    _ -> binary_to_integer(TTL)
                 end,
     case oauth2:authorize_password({Username, Server},
                                    ClientId,
@@ -525,13 +544,13 @@ process(_Handlers,
       <<"password">> ->
         SScope = proplists:get_value(<<"scope">>, Q, <<"">>),
         StringJID = proplists:get_value(<<"username">>, Q, <<"">>),
-        #jid{user = Username, server = Server} = jid:from_string(StringJID),
+        #jid{user = Username, server = Server} = jid:decode(StringJID),
         Password = proplists:get_value(<<"password">>, Q, <<"">>),
         Scope = str:tokens(SScope, <<" ">>),
         TTL = proplists:get_value(<<"ttl">>, Q, <<"">>),
         ExpiresIn = case TTL of
                         <<>> -> undefined;
-                        _ -> jlib:binary_to_integer(TTL)
+                        _ -> binary_to_integer(TTL)
                     end,
         case oauth2:authorize_password({Username, Server},
                                        Scope,
@@ -707,7 +726,7 @@ css() ->
             text-decoration: underline;
           }
 
-      .container > .section {
+      .container > .section { 
           background: #424A55;
       }
 

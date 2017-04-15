@@ -5,7 +5,7 @@
 %%% Created : 21 Mar 2007 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2016   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2017   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -32,8 +32,8 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, process_command/3, register_hook/1,
-	 process_remote_command/1]).
+-export([start_link/0, process_command/1, register_hook/1,
+	 unregister_hook/1, process_remote_command/1]).
 
 -export([init/1, handle_call/3, handle_cast/2,
 	 handle_info/2, terminate/2, code_change/3, opt_type/1]).
@@ -41,7 +41,7 @@
 -include("ejabberd.hrl").
 -include("logger.hrl").
 
--include("jlib.hrl").
+-include("xmpp.hrl").
 
 -record(state, {}).
 
@@ -61,33 +61,34 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, Opts,
 			  []).
 
-process_command(From, To, Packet) ->
+-spec process_command(stanza()) -> ok.
+process_command(#message{from = From, to = To, body = Body}) ->
     case To of
-      #jid{luser = <<"">>, lresource = <<"watchdog">>} ->
-	  #xmlel{name = Name} = Packet,
-	  case Name of
-	    <<"message">> ->
-		LFrom =
-		    jid:tolower(jid:remove_resource(From)),
-		case lists:member(LFrom, get_admin_jids()) of
-		  true ->
-		      Body = fxml:get_path_s(Packet,
-					    [{elem, <<"body">>}, cdata]),
-		      spawn(fun () ->
-				    process_flag(priority, high),
-				    process_command1(From, To, Body)
-			    end),
-		      stop;
-		  false -> ok
-		end;
-	    _ -> ok
-	  end;
-      _ -> ok
-    end.
+	#jid{luser = <<"">>, lresource = <<"watchdog">>} ->
+	    LFrom = jid:tolower(jid:remove_resource(From)),
+	    case lists:member(LFrom, get_admin_jids()) of
+		true ->
+		    BodyText = xmpp:get_text(Body),
+		    spawn(fun () ->
+				  process_flag(priority, high),
+				  process_command1(From, To, BodyText)
+			  end),
+		    ok;
+		false -> ok
+	    end;
+	_ ->
+	    ok
+    end;
+process_command(_) ->
+    ok.
 
 register_hook(Host) ->
     ejabberd_hooks:add(local_send_to_resource_hook, Host,
 		       ?MODULE, process_command, 50).
+
+unregister_hook(Host) ->
+    ejabberd_hooks:delete(local_send_to_resource_hook, Host,
+			  ?MODULE, process_command, 50).
 
 %%====================================================================
 %% gen_server callbacks
@@ -104,6 +105,8 @@ init(Opts) ->
     LH = proplists:get_value(large_heap, Opts),
     process_flag(priority, high),
     erlang:system_monitor(self(), [{large_heap, LH}]),
+    ejabberd_hooks:add(host_up, ?MODULE, register_hook, 50),
+    ejabberd_hooks:add(host_down, ?MODULE, unregister_hook, 60),
     lists:foreach(fun register_hook/1, ?MYHOSTS),
     {ok, #state{}}.
 
@@ -181,36 +184,32 @@ process_large_heap(Pid, Info) ->
     Host = (?MYNAME),
     JIDs = get_admin_jids(),
     DetailedInfo = detailed_info(Pid),
-    Body = iolist_to_binary(
-             io_lib:format("(~w) The process ~w is consuming too "
-                           "much memory:~n~p~n~s",
-                           [node(), Pid, Info, DetailedInfo])),
+    Body = str:format("(~w) The process ~w is consuming too "
+		      "much memory:~n~p~n~s",
+		      [node(), Pid, Info, DetailedInfo]),
     From = jid:make(<<"">>, Host, <<"watchdog">>),
-    Hint = [#xmlel{name = <<"no-permanent-store">>,
-		   attrs = [{<<"xmlns">>, ?NS_HINTS}]}],
-    lists:foreach(fun (JID) ->
-                          send_message(From, jid:make(JID), Body, Hint)
-                  end, JIDs).
+    Hint = [#hint{type = 'no-permanent-store'}],
+    lists:foreach(
+      fun(JID) ->
+	      send_message(From, jid:make(JID), Body, Hint)
+      end, JIDs).
 
 send_message(From, To, Body) ->
     send_message(From, To, Body, []).
 
 send_message(From, To, Body, ExtraEls) ->
-    ejabberd_router:route(From, To,
-			  #xmlel{name = <<"message">>,
-				 attrs = [{<<"type">>, <<"chat">>}],
-				 children =
-				     [#xmlel{name = <<"body">>, attrs = [],
-					     children =
-						 [{xmlcdata, Body}]}
-				      | ExtraEls]}).
+    ejabberd_router:route(#message{type = chat,
+				   from = From,
+				   to = To,
+				   body = xmpp:mk_text(Body),
+				   sub_els = ExtraEls}).
 
 get_admin_jids() ->
     ejabberd_config:get_option(
       watchdog_admins,
       fun(JIDs) ->
               [jid:tolower(
-                 jid:from_string(
+                 jid:decode(
                    iolist_to_binary(S))) || S <- JIDs]
       end, []).
 
@@ -297,15 +296,15 @@ process_command1(From, To, Body) ->
     process_command2(str:tokens(Body, <<" ">>), From, To).
 
 process_command2([<<"kill">>, SNode, SPid], From, To) ->
-    Node = jlib:binary_to_atom(SNode),
+    Node = misc:binary_to_atom(SNode),
     remote_command(Node, [kill, SPid], From, To);
 process_command2([<<"showlh">>, SNode], From, To) ->
-    Node = jlib:binary_to_atom(SNode),
+    Node = misc:binary_to_atom(SNode),
     remote_command(Node, [showlh], From, To);
 process_command2([<<"setlh">>, SNode, NewValueString],
 		 From, To) ->
-    Node = jlib:binary_to_atom(SNode),
-    NewValue = jlib:binary_to_integer(NewValueString),
+    Node = misc:binary_to_atom(SNode),
+    NewValue = binary_to_integer(NewValueString),
     remote_command(Node, [setlh, NewValue], From, To);
 process_command2([<<"help">>], From, To) ->
     send_message(To, From, help());
@@ -342,7 +341,7 @@ process_remote_command(_) -> throw(unknown_command).
 
 opt_type(watchdog_admins) ->
     fun (JIDs) ->
-	    [jid:tolower(jid:from_string(iolist_to_binary(S)))
+	    [jid:tolower(jid:decode(iolist_to_binary(S)))
 	     || S <- JIDs]
     end;
 opt_type(watchdog_large_heap) ->
