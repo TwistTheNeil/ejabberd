@@ -1,0 +1,58 @@
+From b8a77209865447e587e3f40313a89e93c26d260f Mon Sep 17 00:00:00 2001
+From: Holger Weiss <holger@zedat.fu-berlin.de>
+Date: Wed, 19 Apr 2017 01:20:28 +0200
+Subject: [PATCH] ejabberd_c2s: Don't close session on stream resume
+
+Don't let ejabberd_c2s close the session and unset presence if a
+'c2s_terminated' callback stops hook execution, as is done in
+mod_stream_mgmt:c2s_terminated/2 on resumption.
+
+Fixes #1680.
+---
+ src/ejabberd_c2s.erl | 17 +++++------------
+ 1 file changed, 5 insertions(+), 12 deletions(-)
+
+diff --git a/src/ejabberd_c2s.erl b/src/ejabberd_c2s.erl
+index e0a10e6..b6bd1c5 100644
+--- a/src/ejabberd_c2s.erl
++++ b/src/ejabberd_c2s.erl
+@@ -258,7 +258,8 @@ reject_unauthenticated_packet(State, _Pkt) ->
+ process_closed(State, Reason) ->
+     stop(State#{stop_reason => Reason}).
+ 
+-process_terminated(#{sockmod := SockMod, socket := Socket, jid := JID} = State,
++process_terminated(#{sid := SID, sockmod := SockMod, socket := Socket,
++		     jid := JID, user := U, server := S, resource := R} = State,
+ 		   Reason) ->
+     Status = format_reason(State, Reason),
+     ?INFO_MSG("(~s) Closing c2s session for ~s: ~s",
+@@ -269,8 +270,11 @@ process_terminated(#{sockmod := SockMod, socket := Socket, jid := JID} = State,
+ 				      status = xmpp:mk_text(Status),
+ 				      from = JID,
+ 				      to = jid:remove_resource(JID)},
++		     ejabberd_sm:close_session_unset_presence(SID, U, S, R,
++							      Status),
+ 		     broadcast_presence_unavailable(State, Pres);
+ 		 false ->
++		     ejabberd_sm:close_session(SID, U, S, R),
+ 		     State
+ 	     end,
+     bounce_message_queue(),
+@@ -560,17 +564,6 @@ handle_cast(Msg, #{lserver := LServer} = State) ->
+ handle_info(Info, #{lserver := LServer} = State) ->
+     ejabberd_hooks:run_fold(c2s_handle_info, LServer, State, [Info]).
+ 
+-terminate(Reason, #{sid := SID,
+-		    user := U, server := S, resource := R,
+-		    lserver := LServer} = State) ->
+-    case maps:is_key(pres_last, State) of
+-	true ->
+-	    Status = format_reason(State, Reason),
+-	    ejabberd_sm:close_session_unset_presence(SID, U, S, R, Status);
+-	false ->
+-	    ejabberd_sm:close_session(SID, U, S, R)
+-    end,
+-    ejabberd_hooks:run_fold(c2s_terminated, LServer, State, [Reason]);
+ terminate(Reason, #{lserver := LServer} = State) ->
+     ejabberd_hooks:run_fold(c2s_terminated, LServer, State, [Reason]).
+ 
