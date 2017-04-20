@@ -12,11 +12,11 @@ Fixes #1680.
  src/ejabberd_c2s.erl | 17 +++++------------
  1 file changed, 5 insertions(+), 12 deletions(-)
 
-diff --git a/src/ejabberd_c2s.erl b/src/ejabberd_c2s.erl
-index e0a10e6..b6bd1c5 100644
---- a/src/ejabberd_c2s.erl
-+++ b/src/ejabberd_c2s.erl
-@@ -258,7 +258,8 @@ reject_unauthenticated_packet(State, _Pkt) ->
+Index: ejabberd/src/ejabberd_c2s.erl
+===================================================================
+--- ejabberd.orig/src/ejabberd_c2s.erl
++++ ejabberd/src/ejabberd_c2s.erl
+@@ -258,7 +258,8 @@ reject_unauthenticated_packet(State, _Pk
  process_closed(State, Reason) ->
      stop(State#{stop_reason => Reason}).
  
@@ -26,7 +26,7 @@ index e0a10e6..b6bd1c5 100644
  		   Reason) ->
      Status = format_reason(State, Reason),
      ?INFO_MSG("(~s) Closing c2s session for ~s: ~s",
-@@ -269,8 +270,11 @@ process_terminated(#{sockmod := SockMod, socket := Socket, jid := JID} = State,
+@@ -269,8 +270,11 @@ process_terminated(#{sockmod := SockMod,
  				      status = xmpp:mk_text(Status),
  				      from = JID,
  				      to = jid:remove_resource(JID)},
@@ -38,7 +38,7 @@ index e0a10e6..b6bd1c5 100644
  		     State
  	     end,
      bounce_message_queue(),
-@@ -560,17 +564,6 @@ handle_cast(Msg, #{lserver := LServer} = State) ->
+@@ -560,17 +564,6 @@ handle_cast(Msg, #{lserver := LServer} =
  handle_info(Info, #{lserver := LServer} = State) ->
      ejabberd_hooks:run_fold(c2s_handle_info, LServer, State, [Info]).
  
