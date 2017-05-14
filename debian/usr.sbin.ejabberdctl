@@ -34,7 +34,7 @@
 
 		/bin/bash				px -> /usr/sbin/ejabberdctl,
 		/bin/dash				px -> /usr/sbin/ejabberdctl,
-		/bin/su					r,
+		/bin/su					rm,
 
 		/etc/environment			r,
 		/etc/default/locale			r,
