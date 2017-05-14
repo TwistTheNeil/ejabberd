@@ -1,3 +1,13 @@
+ejabberd (17.04-1~exp2) experimental; urgency=medium
+
+  * Added upstream patch to not disable carbons on stream resumption
+  * Added upstream patch to fix regression from previous patch
+  * Added upstream patch to fix 'if_offline' detection
+  * Added missing mmap permission in apparmor profile (Closes: #860951,
+    LP: #1659801)
+
+ -- Philipp Huebner <debalance@debian.org>  Sun, 14 May 2017 17:10:45 +0200
+
 ejabberd (17.04-1~exp1) experimental; urgency=medium
 
   * New upstream version 17.04 (Closes: #856927, #855493)
