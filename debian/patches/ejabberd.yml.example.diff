@@ -124,8 +124,8 @@ Index: ejabberd/ejabberd.yml.example
      ip: "::"
      module: ejabberd_http
 @@ -164,18 +137,21 @@ listen:
+     ##  "/pub/archive": mod_http_fileserver
      web_admin: true
-     http_bind: true
      ## register: true
 -    captcha: true
 +    ## captcha: true
@@ -222,7 +222,7 @@ Index: ejabberd/ejabberd.yml.example
      user_regexp: ""
  
    ##
-@@ -537,24 +513,24 @@ access_rules:
+@@ -539,24 +515,24 @@ access_rules:
    announce:
      - allow: admin
    ## Only admins can use the configuration interface:
@@ -253,28 +253,20 @@ Index: ejabberd/ejabberd.yml.example
    ##   - deny:
    ##     - ip: "XXX.XXX.XXX.XXX/32"
    ##   - deny:
-@@ -589,14 +565,14 @@ api_permissions:
+@@ -590,9 +566,9 @@ api_permissions:
+   "admin access":
      who:
        - access:
-           - allow:
--            - ip: "127.0.0.1/8"
--            - acl: admin
--      - oauth:
--        - scope: "ejabberd:admin"
--        - access:
 -          - allow:
-               - ip: "127.0.0.1/8"
-               - acl: admin
-+      - oauth:
-+          - scope: "ejabberd:admin"
-+          - access:
-+              - allow:
-+                  - ip: "127.0.0.1/8"
-+                  - acl: admin
-     what:
-       - "*"
-       - "!stop"
-@@ -611,7 +587,7 @@ api_permissions:
+-            - acl: loopback
+-            - acl: admin
++        - allow:
++          - acl: loopback
++          - acl: admin
+       - oauth:
+         - scope: "ejabberd:admin"
+         - access:
+@@ -613,7 +589,7 @@ api_permissions:
  ## By default the frequency of account registrations from the same IP
  ## is limited to 1 account every 10 minutes. To disable, specify: infinity
  ## registration_timeout: 600
@@ -283,7 +275,7 @@ Index: ejabberd/ejabberd.yml.example
  ##
  ## Define specific Access Rules in a virtual host.
  ##
-@@ -645,7 +621,7 @@ language: "en"
+@@ -647,7 +623,7 @@ language: "en"
  ##
  ## Full path to a script that generates the image.
  ##
@@ -292,7 +284,7 @@ Index: ejabberd/ejabberd.yml.example
  
  ##
  ## Host for the URL and port where ejabberd listens for CAPTCHA requests.
-@@ -663,7 +639,7 @@ language: "en"
+@@ -665,7 +641,7 @@ language: "en"
  ##
  ## Modules enabled in all ejabberd virtual hosts.
  ##
@@ -301,7 +293,7 @@ Index: ejabberd/ejabberd.yml.example
    mod_adhoc: {}
    mod_admin_extra: {}
    mod_announce: # recommends mod_adhoc
-@@ -692,7 +668,7 @@ modules:
+@@ -694,7 +670,7 @@ modules:
    ## You might want to setup a SQL backend for MAM because the mnesia database is
    ## limited to 2GB which might be exceeded on large servers
    ## mod_mam: {} # for xep0313, mnesia is limited to 2GB, better use an SQL backend
@@ -310,7 +302,7 @@ Index: ejabberd/ejabberd.yml.example
      ## host: "conference.@HOST@"
      access:
        - allow
-@@ -703,7 +679,7 @@ modules:
+@@ -705,7 +681,7 @@ modules:
    mod_muc_admin: {}
    ## mod_muc_log: {}
    ## mod_multicast: {}
@@ -319,7 +311,7 @@ Index: ejabberd/ejabberd.yml.example
      access_max_user_messages: max_user_offline_messages
    mod_ping: {}
    ## mod_pres_counter:
-@@ -712,14 +688,14 @@ modules:
+@@ -714,14 +690,14 @@ modules:
    mod_privacy: {}
    mod_private: {}
    ## mod_proxy65: {}
@@ -336,7 +328,7 @@ Index: ejabberd/ejabberd.yml.example
        - "flat"
        - "hometree"
        - "pep" # pep requires mod_caps
-@@ -756,7 +732,8 @@ modules:
+@@ -758,7 +734,8 @@ modules:
      ##
      ##   access_from: deny
      ##   access: register
