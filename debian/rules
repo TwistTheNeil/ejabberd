@@ -14,8 +14,19 @@ DESTDIR=$(CURDIR)/debian/ejabberd
 .PHONY: override_dh_auto_configure
 override_dh_auto_configure:
 	mkdir $(CURDIR)/deps && touch $(CURDIR)/deps/.got $(CURDIR)/deps/.built
-	dh_auto_configure -- --enable-odbc --enable-mysql --enable-pgsql --enable-pam \
-			--enable-zlib --enable-iconv --enable-lager --enable-redis --enable-sqlite
+	dh_auto_configure -- \
+		--disable-erlang-version-check \
+		--enable-iconv \
+		--enable-lager \
+		--enable-mysql \
+		--enable-odbc \
+		--enable-pam \
+		--enable-pgsql \
+		--enable-redis \
+		--enable-sip \
+		--enable-sqlite \
+		--enable-stun \
+		--enable-zlib
 
 .PHONY: override_dh_auto_install
 override_dh_auto_install:
@@ -66,7 +77,8 @@ override_dh_auto_test:
 override_dh_installdeb:
 	erlang-depends
 	rm -rf $(DESTDIR)/var/lock $(DESTDIR)/usr/bin
-	rm -f $(DESTDIR)/usr/share/doc/ejabberd/COPYING.gz
+	find $(DESTDIR)/usr/ -name COPYING -delete
+	find $(DESTDIR)/usr/ -name COPYING.gz -delete
 	dh_installdeb
 
 .PHONY: override_dh_auto_clean
