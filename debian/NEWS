@@ -1,3 +1,17 @@
+ejabberd (17.07-1) UNRELEASED; urgency=medium
+
+  When upgrading an existing system, you need to care about few required
+  changes. In order to enable S2S dialback, stream management (XEP-0178),
+  legacy client auth or the new anti-spam feature, the following modules
+  should be added to ejabberd’s configuration:
+
+    mod_s2s_dialback
+    mod_stream_mgmt
+    mod_legacy_auth
+    mod_block_strangers
+
+ -- Philipp Huebner <debalance@debian.org>  Fri, 14 Jul 2017 11:48:26 +0200
+
 ejabberd (16.06-1) unstable; urgency=medium
 
   If you are using or intend to use sqlite3, oauth2 or xmlrpc with ejabberd
