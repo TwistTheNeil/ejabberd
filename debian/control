@@ -55,7 +55,7 @@ Depends: adduser, openssl, ucf, ${misc:Depends}, ${shlibs:Depends},  lsb-base (>
  		erlang-p1-zlib       (>= 1.0.2),
  		erlang-xmerl
 Suggests: apparmor, apparmor-utils, libunix-syslog-perl, imagemagick, yamllint,
- 		ejabberd-contrib     (>> 0.2017.04),
+ 		ejabberd-contrib     (>> 0.2017.07),
  		erlang-luerl,
  		erlang-p1-oauth2     (>= 0.6.1),
  		erlang-p1-mysql      (>= 1.0.3),
@@ -65,7 +65,7 @@ Suggests: apparmor, apparmor-utils, libunix-syslog-perl, imagemagick, yamllint,
  		erlang-p1-stun       (>= 1.0.12),
  		erlang-p1-sqlite3    (>= 1.1.5~dfsg0),
  		erlang-redis-client  (>= 1.0.8)
-Breaks: ejabberd-contrib (<= 0.2017.04), ejabberd-mod-http-upload
+Breaks: ejabberd-contrib (<= 0.2017.07), ejabberd-mod-http-upload
 Replaces: ejabberd-contrib (<= 0.2015.08), ejabberd-mod-http-upload
 Provides: xmpp-server, stun-server, turn-server
 Description: distributed, fault-tolerant Jabber/XMPP server

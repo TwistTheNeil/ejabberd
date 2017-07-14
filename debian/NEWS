@@ -1,4 +1,4 @@
-ejabberd (17.07-1) UNRELEASED; urgency=medium
+ejabberd (17.07-1) unstable; urgency=medium
 
   When upgrading an existing system, you need to care about few required
   changes. In order to enable S2S dialback, stream management (XEP-0178),
