@@ -17,7 +17,6 @@ setup_ejabberd()
     # the world.
     if ! dpkg-statoverride --list /etc/ejabberd >/dev/null; then
 	chown root:ejabberd /etc/ejabberd
-	chmod 750 /etc/ejabberd
     fi
 
     # The users database dir /var/lib/ejabberd must be writable by user ejabberd.
@@ -41,27 +40,13 @@ setup_ejabberd()
 	fi
     fi
 
-    # Making /etc/ejabberd/ejabberd.pem if it does not exist.
-    ( cd /etc/ejabberd
-    if [ ! -f ejabberd.pem ]
+    # Chown the cert so ejabberd user can use it but not be accessible by the
+    # world.
+    ( if [ -f /etc/ejabberd/ejabberd.pem ]
     then
-	echo "Generating SSL certificate /etc/ejabberd/ejabberd.pem..."
-	EHOSTNAME=$(hostname -s 2>/dev/null || echo localhost)
-	EDOMAINNAME=$(hostname -d 2>/dev/null || echo localdomain)
-	openssl req -new -x509 -days 365 -nodes -out ejabberd.pem \
-		    -keyout ejabberd.pem > /dev/null 2>&1 <<+++
-.
-.
-.
-$EDOMAINNAME
-$EHOSTNAME
-ejabberd
-root@$EHOSTNAME.$EDOMAINNAME
-+++
-    fi
-    if ! dpkg-statoverride --list /etc/ejabberd/ejabberd.pem >/dev/null; then
-	chown root:ejabberd /etc/ejabberd/ejabberd.pem
-	chmod 640 /etc/ejabberd/ejabberd.pem
+        if ! dpkg-statoverride --list /etc/ejabberd/ejabberd.pem >/dev/null; then
+            chown root:ejabberd /etc/ejabberd/ejabberd.pem
+        fi
     fi
     )
 

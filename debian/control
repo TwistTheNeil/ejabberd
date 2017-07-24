@@ -40,7 +40,8 @@ Vcs-Browser: http://git.deb.at/w/pkg/ejabberd.git
 
 Package: ejabberd
 Architecture: any
-Depends: adduser, openssl, ucf, ${misc:Depends}, ${shlibs:Depends},  lsb-base (>= 3.0-6),
+Pre-Depends: openssl
+Depends: adduser, ucf, ${misc:Depends}, ${shlibs:Depends},  lsb-base (>= 3.0-6),
  		erlang-base (>= 1:17) | ${erlang-abi:Depends}, ${erlang:Depends},
  		erlang-jiffy         (>= 0.14.8),
  		erlang-lager         (>= 3.4.2),
