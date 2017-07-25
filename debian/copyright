@@ -22,15 +22,15 @@ Copyright: 1994 X Consortium
 License: MIT
 
 Files: debian/*
-Copyright: 2014-2017, Philipp Hübner <debalance@debian.org>
+Copyright: 2017, Neil Castelino <neil.fl93@gmail.com>
            2015-2017, Mathias Ertl <mati@jabber.at>
+           2014-2017, Philipp Hübner <debalance@debian.org>
            2010-2013, Konstantin Khomoutov <flatworm@users.sourceforge.net>
            2009-2013, Gerfried Fuchs <rhonda@debian.org>
            2009, Hideki Yamane <henrich@debian.or.jp>
            2006-2009, Torsten Werner <twerner@debian.org>
            2006, Miroslav Kure <kurem@upcase.inf.upol.cz>
            2004-2008, Sergei Golovan <sgolovan@nes.ru>
-           2017, Neil Castelino <neil.fl93@gmail.com>
 License: GPL-2+ with OpenSSL exception
 
 License: GPL-2+ with OpenSSL exception
