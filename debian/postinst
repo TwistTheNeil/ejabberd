@@ -113,7 +113,7 @@ register_admin()
 
 case "$1" in
     configure|reconfigure)
-	adduser --quiet --system --shell /bin/sh --group --home /var/lib/ejabberd ejabberd 2> /dev/null
+	adduser --quiet --system --shell /bin/sh --group --home /var/lib/ejabberd ejabberd 2> /dev/null || true
 	setup_ejabberd "$@"
     ;;
 
