@@ -59,8 +59,15 @@ setup_ejabberd()
     sed -e     "s/  - \"localhost\"/  - \"$HOST\"/ ;
 		s/  ## admin/  admin/ ;
 		0,/  ##   user/s/  ##   user/     user/ ;
-		s/  ##     - \"aleksey@localhost\"/       - \"$USER@$HOST\"/ ;
 		s/.*ermine.*//" $CONFIG_SOURCE > $TEMPFILE
+    # Since username is optional and we let the user set up the admin account
+    # if there is no input to debconf's query, we use the given username or
+    # leave it empty
+    if [ -n "$USER" ]; then
+		  sed -i "s/  ##     - \"aleksey@localhost\"/       - \"$USER@$HOST\"/" $TEMPFILE
+    else
+      sed -i "s/  ##     - \"aleksey@localhost\"/       - \"\"/" $TEMPFILE
+    fi
     ucf --three-way --debconf-ok $TEMPFILE $CONFIG_TARGET
     db_stop
 

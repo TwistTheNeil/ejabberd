@@ -4,17 +4,58 @@ set -e
 
 get_passwd()
 {
-  db_input medium ejabberd/password || true
-  db_input medium ejabberd/verify || true
-  db_go || true
-  db_get ejabberd/password
-  PASSWORD="$RET"
-  db_get ejabberd/verify
-  VERIFY="$RET"
-  if [ "$PASSWORD" != "$VERIFY" ]; then
-    db_input medium ejabberd/nomatch || true
+  db_get ejabberd/user
+  if [ -n "$RET" ]; then
+    db_input medium ejabberd/password || true
+    db_input medium ejabberd/verify || true
     db_go || true
-    get_passwd
+    db_get ejabberd/password
+    PASSWORD="$RET"
+    db_get ejabberd/verify
+    VERIFY="$RET"
+    if [ -z "$PASSWORD" ] || [ "$PASSWORD" != "$VERIFY" ]; then
+      db_input medium ejabberd/nomatch || true
+      db_go || true
+      get_passwd
+    fi
+  fi
+}
+
+get_hostname()
+{
+  db_input medium ejabberd/hostname || true
+  db_go || true
+
+  db_get ejabberd/hostname
+  HOST="$RET"
+
+  # Check hostname for invalid characters
+  # If there were invalid characters, show error and ask again
+  if [ -z "$HOST" ] || echo "$HOST" | grep -Evq '^[a-z0-9][a-z0-9_-]*(\.[a-z0-9_-]+){0,}?[a-z0-9]$'; then
+      db_input medium ejabberd/invalidhostname || true
+      db_go || true
+      get_hostname
+  fi
+}
+
+get_username()
+{
+  db_input medium ejabberd/user || true
+  db_go || true
+  db_get ejabberd/user
+
+  # If username is not empty, check it for invalid characters
+  if [ -n "$RET" ]; then
+    # Strip the hostname if user entered it in the JID
+    NEWUSER=$(echo "$RET" | sed -e "s/\(.*\)@$HOST/\1/")
+    db_set ejabberd/user "$NEWUSER"
+
+    # Check for invalid characters
+    if echo "$NEWUSER" | grep -Evq '^[[:alnum:]_\.-]+$'; then
+      db_input medium ejabberd/invaliduser || true
+      db_go || true
+      get_username
+    fi
   fi
 }
 
@@ -26,36 +67,15 @@ get_credentials()
   db_get ejabberd/hostname
   HOST=${RET:-hostname}
   db_subst ejabberd/user hostname "$HOST"
-  db_input medium ejabberd/user || true
-  db_go || true
-  db_get ejabberd/user
-  if [ -n "$RET" ]; then
-    NEWUSER="$RET"
 
-    # Strip the ejabberd hostname
-    STRIPDOMAIN=$(echo "$NEWUSER" | awk -v host="@$HOST" 'host{ print $0 }')
-    if [ -n "$STRIPDOMAIN" ]; then
-      NEWUSER=$(echo "$NEWUSER" | awk -v host="@$HOST" '{ sub(host, ""); print}')
-      db_set ejabberd/user "$NEWUSER"
-    fi
-
-    # Check for invalid characters
-    INVALID=$(echo "$NEWUSER" | awk '/[[:cntrl:]]|[[:space:]]|@|<|>|:|\/|&|\"|\x27/{ print $0 }')
-    if [ -n "$INVALID" ]; then
-      db_input medium ejabberd/invaliduser || true
-      db_go || true
-      get_credentials
-    else
-      get_passwd
-    fi
-  fi
+  get_username
+  get_passwd
 }
 
 # Source debconf library.
 . /usr/share/debconf/confmodule
 
-db_input medium ejabberd/hostname || true
-db_go || true
+get_hostname
 
 FLAG="/var/lib/ejabberd/.admin_registered"
 if [ ! -f $FLAG ]; then
