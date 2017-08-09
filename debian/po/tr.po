@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: ejabberd\n"
 "Report-Msgid-Bugs-To: ejabberd@packages.debian.org\n"
-"POT-Creation-Date: 2015-07-22 19:04+0200\n"
+"POT-Creation-Date: 2017-08-09 10:07+0200\n"
 "PO-Revision-Date: 2015-07-29 22:24+0300\n"
 "Last-Translator: Mert Dirik <mertdirik@gmail.com>\n"
 "Language-Team: Debian L10n Turkish <debian-l10n-turkish@lists.debian.org>\n"
@@ -27,8 +27,18 @@ msgstr "Bu Jabber sunucusunun makine adı:"
 #. Type: string
 #. Description
 #: ../templates:2001
-msgid "Please enter the host name of this Jabber server (lowercase)."
+#, fuzzy
+#| msgid "Please enter the host name of this Jabber server (lowercase)."
+msgid "Please enter a host name for this Jabber server (lowercase)."
 msgstr "Lütfen bu Jabber sunucusunun makine adını (küçük harflerle) girin."
+
+#. Type: string
+#. Description
+#: ../templates:2001
+msgid ""
+"If you would like to configure multiple hostnames for this server, you will "
+"have to do so manually in /etc/ejabberd/ejabberd.yml after installation."
+msgstr ""
 
 #. Type: string
 #. Description
@@ -111,7 +121,10 @@ msgstr "Parola girişi hatası"
 #. Type: error
 #. Description
 #: ../templates:6001
-msgid "The two passwords you entered were not the same. Please try again."
+#, fuzzy
+#| msgid "The two passwords you entered were not the same. Please try again."
+msgid ""
+"The two passwords you entered did not match or were empty. Please try again."
 msgstr "Girdiğiniz parolalar eşleşmedi. Lütfen tekrar deneyin."
 
 #. Type: error
@@ -134,6 +147,20 @@ msgstr ""
 "rfc6122#appendix-A.5). Eğer tam bir JID kullandıysanız (örneğin "
 "kullanıcı@makineadı), makine adı kısmı yapılandırma adımında belirttiğiniz "
 "makine adıyla aynı olmalıdır."
+
+#. Type: error
+#. Description
+#: ../templates:8001
+msgid "Invalid hostname or special characters in hostname"
+msgstr ""
+
+#. Type: error
+#. Description
+#: ../templates:8001
+msgid ""
+"The hostname which you have typed contains forbidden characters. Please "
+"correct the hostname entered."
+msgstr ""
 
 #~ msgid "The username of an admin account for ejabberd:"
 #~ msgstr "ejabberd yönetici hesabının kullanıcı adı:"

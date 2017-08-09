@@ -2,7 +2,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: ejabberd\n"
 "Report-Msgid-Bugs-To: ejabberd@packages.debian.org\n"
-"POT-Creation-Date: 2015-07-22 19:04+0200\n"
+"POT-Creation-Date: 2017-08-09 10:07+0200\n"
 "PO-Revision-Date: 2008-07-21 08:41+0200\n"
 "Last-Translator: Esko Arajärvi <edu@iki.fi>\n"
 "Language-Team: Finnish <debian-l10n-finnish@lists.debian.org>\n"
@@ -26,8 +26,16 @@ msgstr "Palvelin, jolla ejabberdia ajetaan:"
 #: ../templates:2001
 #, fuzzy
 #| msgid "Please enter the hostname of your Jabber server (in lowercase)."
-msgid "Please enter the host name of this Jabber server (lowercase)."
+msgid "Please enter a host name for this Jabber server (lowercase)."
 msgstr "Anna Jabber-palvelimen verkkonimi (pienellä kirjoitettuna)."
+
+#. Type: string
+#. Description
+#: ../templates:2001
+msgid ""
+"If you would like to configure multiple hostnames for this server, you will "
+"have to do so manually in /etc/ejabberd/ejabberd.yml after installation."
+msgstr ""
 
 #. Type: string
 #. Description
@@ -57,10 +65,10 @@ msgstr ""
 "Anna tunnus, jota käytetään ejabberd-palvelimen ylläpitoon. Asennuksen "
 "jälkeen tällä tunnuksella voidaan tehdä ylläpitoon liittyviä tehtäviä "
 "käyttäen mitä tahansa Jabber-asiakasta. Sen avulla voidaan myös kirjautua "
-"osoitteessa https://${hostname}:5280/admin/ olevaan ylläpitokäyttöliittymään. "
-"Anna tässä vain käyttäjätunnus (esim. ${user}), mutta käytä ejabberdin "
-"verkkokäyttöliittymässä Jabber ID:tä kokonaisuudessaan (esim. ${user}@"
-"${hostname}). "
+"osoitteessa https://${hostname}:5280/admin/ olevaan "
+"ylläpitokäyttöliittymään. Anna tässä vain käyttäjätunnus (esim. ${user}), "
+"mutta käytä ejabberdin verkkokäyttöliittymässä Jabber ID:tä "
+"kokonaisuudessaan (esim. ${user}@${hostname}). "
 
 #. Type: string
 #. Description
@@ -120,7 +128,8 @@ msgstr ""
 #: ../templates:6001
 #, fuzzy
 #| msgid "The passwords you have typed do not match. Please try again."
-msgid "The two passwords you entered were not the same. Please try again."
+msgid ""
+"The two passwords you entered did not match or were empty. Please try again."
 msgstr "Annetut salasanat eivät täsmää. Yritä uudelleen."
 
 #. Type: error
@@ -137,6 +146,20 @@ msgid ""
 "the  JID syntax (http://tools.ietf.org/html/rfc6122#appendix-A.5). If you "
 "used a full JID (e.g. user@hostname), you have to use the same host name you "
 "typed into the host name configuration step."
+msgstr ""
+
+#. Type: error
+#. Description
+#: ../templates:8001
+msgid "Invalid hostname or special characters in hostname"
+msgstr ""
+
+#. Type: error
+#. Description
+#: ../templates:8001
+msgid ""
+"The hostname which you have typed contains forbidden characters. Please "
+"correct the hostname entered."
 msgstr ""
 
 #~ msgid "The username of an admin account for ejabberd:"

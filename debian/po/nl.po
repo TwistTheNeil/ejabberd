@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: ejabberd 2.1.9-1\n"
 "Report-Msgid-Bugs-To: ejabberd@packages.debian.org\n"
-"POT-Creation-Date: 2015-07-22 19:04+0200\n"
+"POT-Creation-Date: 2017-08-09 10:07+0200\n"
 "PO-Revision-Date: 2015-08-05 23:27+0200\n"
 "Last-Translator: Frans Spiesschaert <Frans.Spiesschaert@yucom.be>\n"
 "Language-Team: Debian Dutch l10n Team <debian-l10n-dutch@lists.debian.org>\n"
@@ -29,8 +29,18 @@ msgstr "Computernaam van deze Jabber-server:"
 #. Type: string
 #. Description
 #: ../templates:2001
-msgid "Please enter the host name of this Jabber server (lowercase)."
+#, fuzzy
+#| msgid "Please enter the host name of this Jabber server (lowercase)."
+msgid "Please enter a host name for this Jabber server (lowercase)."
 msgstr "Voer de computernaam in van deze Jabber-server (in kleine letters)."
+
+#. Type: string
+#. Description
+#: ../templates:2001
+msgid ""
+"If you would like to configure multiple hostnames for this server, you will "
+"have to do so manually in /etc/ejabberd/ejabberd.yml after installation."
+msgstr ""
 
 #. Type: string
 #. Description
@@ -113,7 +123,10 @@ msgstr "Fout bij het invoeren van het wachtwoord"
 #. Type: error
 #. Description
 #: ../templates:6001
-msgid "The two passwords you entered were not the same. Please try again."
+#, fuzzy
+#| msgid "The two passwords you entered were not the same. Please try again."
+msgid ""
+"The two passwords you entered did not match or were empty. Please try again."
 msgstr "De twee ingevoerde wachtwoorden komen niet overeen. Probeer opnieuw."
 
 #. Type: error
@@ -136,6 +149,20 @@ msgstr ""
 "Indien u een volledig JID (bijvoorbeeld gebruiker@computernaam) gebruikte, "
 "dient u dezelfde computernaam te gebruiken als die welke u tijdens het "
 "configureren van de computernaam invoerde."
+
+#. Type: error
+#. Description
+#: ../templates:8001
+msgid "Invalid hostname or special characters in hostname"
+msgstr ""
+
+#. Type: error
+#. Description
+#: ../templates:8001
+msgid ""
+"The hostname which you have typed contains forbidden characters. Please "
+"correct the hostname entered."
+msgstr ""
 
 #~ msgid "The username of an admin account for ejabberd:"
 #~ msgstr "De gebruikersnaam van een beheerdersaccount voor ejabberd:"

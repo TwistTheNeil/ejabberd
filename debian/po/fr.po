@@ -10,7 +10,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: ejabberd\n"
 "Report-Msgid-Bugs-To: ejabberd@packages.debian.org\n"
-"POT-Creation-Date: 2015-07-22 19:04+0200\n"
+"POT-Creation-Date: 2017-08-09 10:07+0200\n"
 "PO-Revision-Date: 2015-07-22 21:06+0200\n"
 "Last-Translator: Jean-Pierre Giraud <jean-pierregiraud@neuf.fr>\n"
 "Language-Team: French <debian-l10n-french@lists.debian.org>\n"
@@ -30,8 +30,18 @@ msgstr "Nom d'hôte du serveur Jabber :"
 #. Type: string
 #. Description
 #: ../templates:2001
-msgid "Please enter the host name of this Jabber server (lowercase)."
+#, fuzzy
+#| msgid "Please enter the host name of this Jabber server (lowercase)."
+msgid "Please enter a host name for this Jabber server (lowercase)."
 msgstr "Veuillez indiquer le nom d'hôte (en minuscules) du serveur Jabber."
+
+#. Type: string
+#. Description
+#: ../templates:2001
+msgid ""
+"If you would like to configure multiple hostnames for this server, you will "
+"have to do so manually in /etc/ejabberd/ejabberd.yml after installation."
+msgstr ""
 
 #. Type: string
 #. Description
@@ -51,8 +61,8 @@ msgid ""
 msgstr ""
 "Veuillez indiquer un identifiant afin d'administrer le serveur ejabberd. "
 "Après l'installation, vous pourrez utilisez cette identité pour vous "
-"connecter avec tout client Jabber ou l'interface d'administration sur https://"
-"${hostname}:5280/admin/ pour réaliser des tâches administratives."
+"connecter avec tout client Jabber ou l'interface d'administration sur "
+"https://${hostname}:5280/admin/ pour réaliser des tâches administratives."
 
 #. Type: string
 #. Description
@@ -113,7 +123,10 @@ msgstr "Erreur d'entrée du mot de passe"
 #. Type: error
 #. Description
 #: ../templates:6001
-msgid "The two passwords you entered were not the same. Please try again."
+#, fuzzy
+#| msgid "The two passwords you entered were not the same. Please try again."
+msgid ""
+"The two passwords you entered did not match or were empty. Please try again."
 msgstr "Les mots de passe saisis ne correspondent pas. Veuillez recommencer."
 
 #. Type: error
@@ -136,6 +149,20 @@ msgstr ""
 "org/html/rfc6122#appendix-A.5). Si vous utilisez une identité Jabber "
 "complète (par exemple, user@hostname), vous devez utiliser le même nom "
 "d'hôte que vous avez entré lors de l'étape de configuration du nom d'hôte."
+
+#. Type: error
+#. Description
+#: ../templates:8001
+msgid "Invalid hostname or special characters in hostname"
+msgstr ""
+
+#. Type: error
+#. Description
+#: ../templates:8001
+msgid ""
+"The hostname which you have typed contains forbidden characters. Please "
+"correct the hostname entered."
+msgstr ""
 
 #~ msgid "The username of an admin account for ejabberd:"
 #~ msgstr "Identifiant du compte administrateur d'ejabberd :"
