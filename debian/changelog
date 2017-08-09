@@ -1,3 +1,19 @@
+ejabberd (17.07-2) UNRELEASED; urgency=medium
+
+  [ Neil Castelino ]
+  * Avoid regeneration of ejabberd.pem on upgrades (Closes: #600146)
+  * debian/rules clean: remove ejabberd.service created by upstream makefile
+  * Validate hostname, username input to debconf and update debconf templates
+    (Closes: #597806)
+
+  [ Philipp Huebner ]
+  * Updated debian/copyright
+  * Don't error out in postinst if user already present (LP: #1501983)
+  * Make scripts in debian/ executable
+  * Update po(t) files
+
+ -- Philipp Huebner <debalance@debian.org>  Wed, 09 Aug 2017 10:29:18 +0200
+
 ejabberd (17.07-1) unstable; urgency=medium
 
   * New upstream version 17.07 (Closes: #867723)
