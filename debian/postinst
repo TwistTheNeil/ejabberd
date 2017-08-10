@@ -32,11 +32,7 @@ setup_ejabberd()
 	chown ejabberd:adm /var/log/ejabberd
 	chmod 2750 /var/log/ejabberd
 	if dpkg --compare-versions "$2" lt '2.1.4'; then
-	    find /var/log/ejabberd -type f -name '*.log*' \
-		| while read f; do
-		    chown ejabberd:adm "$f"
-		    chmod 0640 "$f"
-	    done
+	    find /var/log/ejabberd -type f -name '*.log*' -exec chown ejabberd:adm {} \+ -exec chmod 0640 {} \+
 	fi
     fi
 
@@ -59,39 +55,38 @@ setup_ejabberd()
     sed -e     "s/  - \"localhost\"/  - \"$HOST\"/ ;
 		s/  ## admin/  admin/ ;
 		0,/  ##   user/s/  ##   user/     user/ ;
-		s/.*ermine.*//" $CONFIG_SOURCE > $TEMPFILE
+		s/.*ermine.*//" $CONFIG_SOURCE > "$TEMPFILE"
     # Since username is optional and we let the user set up the admin account
     # if there is no input to debconf's query, we use the given username or
     # leave it empty
     if [ -n "$USER" ]; then
-		  sed -i "s/  ##     - \"aleksey@localhost\"/       - \"$USER@$HOST\"/" $TEMPFILE
+		  sed -i "s/  ##     - \"aleksey@localhost\"/       - \"$USER@$HOST\"/" "$TEMPFILE"
     else
-      sed -i "s/  ##     - \"aleksey@localhost\"/       - \"\"/" $TEMPFILE
+      sed -i "s/  ##     - \"aleksey@localhost\"/       - \"\"/" "$TEMPFILE"
     fi
-    ucf --three-way --debconf-ok $TEMPFILE $CONFIG_TARGET
+    ucf --three-way --debconf-ok "$TEMPFILE" "$CONFIG_TARGET"
     db_stop
 
     # Making ejabberd config readable only by ejabberd user.
-    chown ejabberd:ejabberd $CONFIG_TARGET
-    chmod 600 $CONFIG_TARGET
+    chown ejabberd:ejabberd "$CONFIG_TARGET"
+    chmod 600 "$CONFIG_TARGET"
 }
 
 register_admin()
 {
-    if [ -n "$USER" -a -n "$PASSWD" ]; then
-	echo -n "Waiting for ejabberd to register admin user"
+    if [ -n "$USER" ] && [ -n "$PASSWD" ]; then
+	echo "Waiting for ejabberd to register admin user"
 
 	if ejabberdctl status >/dev/null || test $? = 1 ; then
 	    # Ejabberd is starting ($? = 1) or running ($? = 0) already.
 	    cnt=0
 	    flag=1
 	    while ! ejabberdctl status >/dev/null ; do
-		echo -n "."
-		cnt=`expr $cnt + 1`
+		cnt=$((cnt + 1))
 		if [ $cnt -ge 60 ] ; then
 		    echo
 		    echo "Can't register admin user \"$USER@$HOST\"."
-		    echo -n "Ejabberd is starting too long."
+		    echo "Ejabberd is starting too long."
 		    flag=0
 		    break
 		fi
@@ -101,7 +96,7 @@ register_admin()
 	    echo
 	    if [ $flag -eq 1 ] ; then
 		if ! status=$(ejabberdctl register "$USER" "$HOST" "$PASSWD") ; then
-		    if echo $status | grep -q "already registered" ; then
+		    if echo "$status" | grep -q "already registered" ; then
 			echo "Admin user \"$USER@$HOST\" is already registered. Password IS NOT changed."
 		    else
 			echo "Can't register admin user \"$USER@$HOST\"."
