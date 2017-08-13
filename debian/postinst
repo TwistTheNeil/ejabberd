@@ -86,7 +86,7 @@ register_admin()
 		if [ $cnt -ge 60 ] ; then
 		    echo
 		    echo "Can't register admin user \"$USER@$HOST\"."
-		    echo "Ejabberd is starting too long."
+		    echo "Ejabberd is taking too long to start."
 		    flag=0
 		    break
 		fi
@@ -95,14 +95,15 @@ register_admin()
 
 	    echo
 	    if [ $flag -eq 1 ] ; then
-		if ! status=$(ejabberdctl register "$USER" "$HOST" "$PASSWD") ; then
-		    if echo "$status" | grep -q "already registered" ; then
+		if ejabberdctl registered_users "$HOST" | grep -q "$USER"; then
 			echo "Admin user \"$USER@$HOST\" is already registered. Password IS NOT changed."
-		    else
-			echo "Can't register admin user \"$USER@$HOST\"."
-		    fi
 		else
-		    echo "Admin user \"$USER@$HOST\" is registered successfully."
+			status=$(ejabberdctl register "$USER" "$HOST" "$PASSWD")
+		    	if echo "$status" | grep -q "successfully registered" ; then
+				echo "Admin user \"$USER@$HOST\" is registered successfully."
+			else
+				echo "Can't register admin user \"$USER@$HOST\". ($status)"
+			fi
 		fi
 	    fi
 	else

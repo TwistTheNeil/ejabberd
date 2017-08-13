@@ -27,11 +27,16 @@ get_hostname()
   db_go || true
 
   db_get ejabberd/hostname
-  HOST="$RET"
+
+  # Convert hostname to lowercase if user entered in uppercase alphabets,
+  # save it back to the debconf database, and read it back
+  db_set ejabberd/hostname "$(echo "$RET" | sed -e 's/\(.*\)/\L\1/')" && \
+	  db_get ejabberd/hostname && \
+	  HOST="$RET"
 
   # Check hostname for invalid characters
   # If there were invalid characters, show error and ask again
-  if [ -z "$HOST" ] || echo "$HOST" | grep -Evq '^[a-z0-9][a-z0-9_-]*(\.[a-z0-9_-]+){0,}?[a-z0-9]$'; then
+  if [ -z "$HOST" ] || echo "$HOST" | grep -Evq '(^[a-z0-9]+$)|^([a-z0-9]*\.)+([a-z0-9]|[a-z0-9][a-z0-9_-]*[a-z0-9]\.)*([a-z0-9]+)$'; then
       db_input medium ejabberd/invalidhostname || true
       db_go || true
       get_hostname
