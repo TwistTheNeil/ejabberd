@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: ejabberd\n"
 "Report-Msgid-Bugs-To: ejabberd@packages.debian.org\n"
-"POT-Creation-Date: 2017-08-09 10:07+0200\n"
+"POT-Creation-Date: 2017-08-12 20:22-0400\n"
 "PO-Revision-Date: 2015-08-08 14:13-0300\n"
 "Last-Translator: Adriano Rafael Gomes <adrianorg@arg.eti.br>\n"
 "Language-Team: Brazilian Portuguese <debian-l10n-portuguese@lists.debian."
@@ -22,7 +22,9 @@ msgstr ""
 #. Type: string
 #. Description
 #: ../templates:2001
-msgid "Host name for this Jabber server:"
+#, fuzzy
+#| msgid "Host name for this Jabber server:"
+msgid "Hostname for this Jabber server:"
 msgstr "Nome de máquina para este servidor Jabber:"
 
 #. Type: string
@@ -30,7 +32,7 @@ msgstr "Nome de máquina para este servidor Jabber:"
 #: ../templates:2001
 #, fuzzy
 #| msgid "Please enter the host name of this Jabber server (lowercase)."
-msgid "Please enter a host name for this Jabber server (lowercase)."
+msgid "Please enter a hostname for this Jabber server."
 msgstr ""
 "Por favor, informe o nome de máquina deste servidor Jabber (letras "
 "minúsculas)."
@@ -52,12 +54,18 @@ msgstr "Nome de usuário do administrador do servidor Jabber:"
 #. Type: string
 #. Description
 #: ../templates:3001
+#, fuzzy
+#| msgid ""
+#| "Please provide the name of an account to administrate the ejabberd "
+#| "server. After the installation of ejabberd you can use this account to "
+#| "log in with any Jabber client to do administrative tasks or go to https://"
+#| "${hostname}:5280/admin/ and log in with this account to enter the admin "
+#| "interface."
 msgid ""
 "Please provide the name of an account to administrate the ejabberd server. "
-"After the installation of ejabberd you can use this account to log in with "
-"any Jabber client to do administrative tasks or go to https://"
-"${hostname}:5280/admin/ and log in with this account to enter the admin "
-"interface."
+"After the installation of ejabberd, you can log in to this account using "
+"either any Jabber client or a web browser pointed at the administrative "
+"https://${hostname}:5280/admin/ interface."
 msgstr ""
 "Por favor, forneça o nome de uma conta para administrar o servidor ejabberd. "
 "Depois da instalação do ejabberd, você pode usar esta conta para logar com "
@@ -140,11 +148,17 @@ msgstr "Nome de usuário da conta do administrador inválido"
 #. Type: error
 #. Description
 #: ../templates:7001
+#, fuzzy
+#| msgid ""
+#| "The username you have typed contains forbidden characters. Please respect "
+#| "the  JID syntax (http://tools.ietf.org/html/rfc6122#appendix-A.5). If you "
+#| "used a full JID (e.g. user@hostname), you have to use the same host name "
+#| "you typed into the host name configuration step."
 msgid ""
 "The username you have typed contains forbidden characters. Please respect "
-"the  JID syntax (http://tools.ietf.org/html/rfc6122#appendix-A.5). If you "
-"used a full JID (e.g. user@hostname), you have to use the same host name you "
-"typed into the host name configuration step."
+"the JID syntax (https://tools.ietf.org/html/rfc6122#appendix-A.5). If you "
+"used a full JID (e.g. user@hostname), the hostname needs to match the one "
+"previously specified."
 msgstr ""
 "O nome de usuário que você digitou contém caracteres proibidos. Por favor, "
 "respeite a sintaxe JID (http://tools.ietf.org/html/rfc6122#appendix-A.5). Se "
@@ -155,15 +169,15 @@ msgstr ""
 #. Type: error
 #. Description
 #: ../templates:8001
-msgid "Invalid hostname or special characters in hostname"
+msgid "Invalid hostname"
 msgstr ""
 
 #. Type: error
 #. Description
 #: ../templates:8001
 msgid ""
-"The hostname which you have typed contains forbidden characters. Please "
-"correct the hostname entered."
+"The hostname specified contains forbidden characters or is otherwise "
+"invalid. Please try again."
 msgstr ""
 
 #~ msgid "The username of an admin account for ejabberd:"

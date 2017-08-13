@@ -10,8 +10,8 @@
 Template: ejabberd/hostname
 Type: string
 Default: localhost
-_Description: Host name for this Jabber server:
- Please enter a host name for this Jabber server (lowercase).
+_Description: Hostname for this Jabber server:
+ Please enter a hostname for this Jabber server.
  .
  If you would like to configure multiple hostnames for this server, you will
  have to do so manually in /etc/ejabberd/ejabberd.yml after installation.
@@ -20,10 +20,9 @@ Template: ejabberd/user
 Type: string
 _Description: Jabber server administrator username:
  Please provide the name of an account to administrate the ejabberd server.
- After the installation of ejabberd you can use this account to log in with any
- Jabber client to do administrative tasks or go to
- https://${hostname}:5280/admin/ and log in with this account to enter the admin
- interface.
+ After the installation of ejabberd, you can log in to this account using
+ either any Jabber client or a web browser pointed at the administrative
+ https://${hostname}:5280/admin/ interface.
  .
  You only need to enter the username part here (such as ${user}), but
  the full Jabber ID (such as ${user}@${hostname}) is required to
@@ -51,13 +50,13 @@ _Description: Password input error
 Template: ejabberd/invaliduser
 Type: error
 _Description: Invalid administrator account username
- The username you have typed contains forbidden characters. Please respect the 
- JID syntax (http://tools.ietf.org/html/rfc6122#appendix-A.5). If you used
- a full JID (e.g. user@hostname), you have to use the same host name
- you typed into the host name configuration step.
+ The username you have typed contains forbidden characters. Please respect the
+ JID syntax (https://tools.ietf.org/html/rfc6122#appendix-A.5). If you used
+ a full JID (e.g. user@hostname), the hostname needs to match the one
+ previously specified.
 
 Template: ejabberd/invalidhostname
 Type: error
-_Description: Invalid hostname or special characters in hostname
- The hostname which you have typed contains forbidden characters. Please correct
- the hostname entered.
+_Description: Invalid hostname
+ The hostname specified contains forbidden characters or is otherwise
+ invalid. Please try again.
