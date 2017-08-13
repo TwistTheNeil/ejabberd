@@ -99,7 +99,7 @@ register_admin()
 			echo "Admin user \"$USER@$HOST\" is already registered. Password IS NOT changed."
 		else
 			status=$(ejabberdctl register "$USER" "$HOST" "$PASSWD")
-		    	if echo "$status" | grep -q "successfully registered" ; then
+			if echo "$status" | grep -q "successfully registered" ; then
 				echo "Admin user \"$USER@$HOST\" is registered successfully."
 			else
 				echo "Can't register admin user \"$USER@$HOST\". ($status)"
