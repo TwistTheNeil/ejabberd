@@ -48,6 +48,7 @@ setup_ejabberd()
 
     db_get ejabberd/hostname
     HOST="$RET"
+
     db_get ejabberd/user
     USER="$RET"
     db_get ejabberd/password
@@ -95,7 +96,7 @@ register_admin()
 
 	    echo
 	    if [ $flag -eq 1 ] ; then
-		if ejabberdctl registered_users "$HOST" | grep -q "$USER"; then
+		if ejabberdctl registered_users "$HOST" | grep -q "^${USER}$"; then
 			echo "Admin user \"$USER@$HOST\" is already registered. Password IS NOT changed."
 		else
 			status=$(ejabberdctl register "$USER" "$HOST" "$PASSWD")

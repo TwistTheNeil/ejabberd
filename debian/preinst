@@ -38,7 +38,12 @@ root@$EHOSTNAME.$EDOMAINNAME
 
   ;;
 
-  upgrade|abort-upgrade)
+  upgrade)
+    touch /var/lib/ejabberd/.upgrade_flag && chmod 644 /var/lib/ejabberd/.upgrade_flag
+  ;;
+
+  abort-upgrade)
+    rm -f /var/lib/ejabberd/.upgrade_flag
   ;;
 
   *)
