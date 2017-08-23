@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: ejabberd 2.0.5-1.1\n"
 "Report-Msgid-Bugs-To: ejabberd@packages.debian.org\n"
-"POT-Creation-Date: 2017-08-12 20:22-0400\n"
+"POT-Creation-Date: 2017-08-20 19:16-0400\n"
 "PO-Revision-Date: 2016-02-22 12:08+0900\n"
 "Last-Translator: Takuma Yamada <tyamada@takumayamada.com>\n"
 "Language-Team: 日本語 <debian-japanese@lists.debian.org>\n"
@@ -150,10 +150,10 @@ msgstr "無効な管理者アカウントユーザ名"
 #| "used a full JID (e.g. user@hostname), you have to use the same host name "
 #| "you typed into the host name configuration step."
 msgid ""
-"The username you have typed contains forbidden characters. Please respect "
-"the JID syntax (https://tools.ietf.org/html/rfc6122#appendix-A.5). If you "
-"used a full JID (e.g. user@hostname), the hostname needs to match the one "
-"previously specified."
+"The username previously specified contains forbidden characters. Please "
+"respect the JID syntax (https://tools.ietf.org/html/rfc6122#appendix-A.5). "
+"If you used a full JID (e.g. user@hostname), the hostname needs to match the "
+"one previously specified."
 msgstr ""
 "入力したユーザ名には禁止されている文字が含まれています。JID 構文を尊重してく"
 "ださい (http://tools.ietf.org/html/rfc6122#appendix-A.5)。完全な JID (例えば"
@@ -170,6 +170,30 @@ msgstr ""
 #. Description
 #: ../templates:8001
 msgid ""
-"The hostname specified contains forbidden characters or is otherwise "
-"invalid. Please try again."
+"The hostname previously specified contains forbidden characters or is "
+"otherwise invalid. Please correct it and try again."
+msgstr ""
+
+#. Type: error
+#. Description
+#: ../templates:9001
+msgid "Invalid preseeded configuration"
+msgstr ""
+
+#. Type: error
+#. Description
+#: ../templates:9001
+msgid ""
+"A newer ${preseed} validation is being used and has determined that the "
+"currently setup ${preseed} is invalid or incorrectly specified."
+msgstr ""
+
+#. Type: error
+#. Description
+#: ../templates:9001
+msgid ""
+"If you would like to correct it, please backup your data and run dpkg-"
+"reconfigure ejabberd after the upgrade is finished and note that any "
+"databases and usernames will be lost or invalidated in this process if the "
+"hostname is changed."
 msgstr ""
