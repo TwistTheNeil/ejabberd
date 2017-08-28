@@ -145,5 +145,19 @@ fi
 # Note that if unremoved, it will cause dpkg-reconfigure to skip its queries
 rm -f /var/lib/ejabberd/.upgrade_flag
 
+# If the config was previous default, we show the user a high priority note on
+# how to deal with changes.
+# If not, show it as a medium priority
+# Once the user reads it, we flag it as 'read' and do not show it again
+if [ -f /var/lib/ejabberd/.ctlcfg.update ]; then
+  msg_priority=$(cat /var/lib/ejabberd/.ctlcfg.update)
+  if [ -n "$msg_priority" ] && ( [ "$msg_priority" = "high" ] || [ "$msg_priority" = "medium" ] ); then
+    db_input "$msg_priority" ejabberd/nodenamechanges || true
+    if db_go; then
+      echo "read" > /var/lib/ejabberd/.ctlcfg.update
+    fi
+  fi
+fi
+
 exit 0
 

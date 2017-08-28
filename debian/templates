@@ -72,3 +72,20 @@ _Description: Invalid preseeded configuration
  dpkg-reconfigure ejabberd after the upgrade is finished and note that
  any databases and usernames will be lost or invalidated in this process
  if the hostname is changed.
+
+Template: ejabberd/nodenamechanges
+Type: note
+_Description: Important changes to nodename (ERLANG_NODE) configuration
+ The nodename has changed to reflect ejabberd's upstream recommended nodename
+ configuration (ejabberd@localhost) which saves effort when moving XMPP domains
+ to a different machine.
+ .
+ This may break the current installation but may easily be fixed by editing
+ the ERLANG_NODE option in /etc/default/ejabberd either back to ejabberd or to
+ the name it was manually specified.
+ .
+ Another way to fix a broken installation is to use ejabberdctl's mnesia_change_nodename
+ option to change the nodename in the mnesia database. More information on this
+ method may be found on the ejabberd guide
+ (https://docs.ejabberd.im/admin/guide/managing/#change-computer-hostname). Please
+ make appropriate backups of the database before attempting this method.
