@@ -1,3 +1,20 @@
+ejabberd (17.07-2.1) unstable; urgency=high
+
+  The ERLANG_NODE default option has been changed to reflect ejabberd's
+  upstream recommended nodename (ejabberd@localhost) which saves effort
+  when moving XMPP domains to a different machine.
+
+  This may break the current installation but may easily be fixed by
+  editing the ERLANG_NODE option in /etc/default/ejabberd back to the
+  previous default ('ejabberd' without a specified hostname) or you may
+  follow the guide here
+  (https://docs.ejabberd.im/admin/guide/managing/#change-computer-hostname)
+  which will make changes to the mnesia database which will allow the
+  new nodename to take effect. Please take caution and make appropriate
+  backups of the database before attempting this method.
+
+ -- Neil Castelino <neil.fl93@gmail.com>  Wed, 30 Aug 2017 00:54:13 -0400
+
 ejabberd (17.07-1) unstable; urgency=medium
 
   When upgrading an existing system, you need to care about few required

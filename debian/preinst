@@ -39,7 +39,25 @@ root@$EHOSTNAME.$EDOMAINNAME
   ;;
 
   upgrade)
+    # This flag would determine whether or not debconf would query a user's
+    # preferences - it is used for get_hostname() and  get_username() in debian/config
     touch /var/lib/ejabberd/.upgrade_flag && chmod 644 /var/lib/ejabberd/.upgrade_flag
+
+    # If the config has an old node configuration (pre ejabberd/nodenamechanges),
+    # use a flag so that debian/config may alert the user of a change and how to
+    # deal with the change
+    node_check="$(debconf-show ejabberd | grep -E 'ejabberd/nodenamechanges' | sed 's/.//2g')"
+    if [ -z "$node_check" ]; then
+      touch /var/lib/ejabberd/.ctlcfg.update
+
+      if grep -Eq '^#?ERLANG_NODE=ejabberd$' /etc/default/ejabberd; then
+        echo "high" > /var/lib/ejabberd/.ctlcfg.update
+      else
+        echo "medium" > /var/lib/ejabberd/.ctlcfg.update
+      fi
+
+      chmod 644 /var/lib/ejabberd/.ctlcfg.update
+    fi
   ;;
 
   abort-upgrade)
