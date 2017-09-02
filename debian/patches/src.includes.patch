@@ -1647,3 +1647,42 @@ Index: ejabberd/src/ejabberd_pkix.erl
  
  -record(state, {validate = true :: boolean(),
  		certs = #{}}).
+Index: ejabberd/src/mod_push.erl
+===================================================================
+--- ejabberd.orig/src/mod_push.erl
++++ ejabberd/src/mod_push.erl
+@@ -49,7 +49,7 @@
+ -include("ejabberd.hrl").
+ -include("ejabberd_commands.hrl").
+ -include("logger.hrl").
+--include("xmpp.hrl").
++-include_lib("p1_xmpp/include/xmpp.hrl").
+ 
+ -define(PUSH_CACHE, push_cache).
+ 
+Index: ejabberd/src/mod_push_keepalive.erl
+===================================================================
+--- ejabberd.orig/src/mod_push_keepalive.erl
++++ ejabberd/src/mod_push_keepalive.erl
+@@ -36,7 +36,7 @@
+ 	 c2s_handle_cast/2, c2s_handle_info/2, c2s_stanza/3]).
+ 
+ -include("logger.hrl").
+--include("xmpp.hrl").
++-include_lib("p1_xmpp/include/xmpp.hrl").
+ 
+ -define(PUSH_BEFORE_TIMEOUT_SECS, 120).
+ 
+Index: ejabberd/src/mod_push_mnesia.erl
+===================================================================
+--- ejabberd.orig/src/mod_push_mnesia.erl
++++ ejabberd/src/mod_push_mnesia.erl
+@@ -35,7 +35,7 @@
+ 
+ -include_lib("stdlib/include/ms_transform.hrl").
+ -include("logger.hrl").
+--include("xmpp.hrl").
++-include_lib("p1_xmpp/include/xmpp.hrl").
+ 
+ -record(push_session,
+ 	{us = {<<"">>, <<"">>}                  :: {binary(), binary()},
