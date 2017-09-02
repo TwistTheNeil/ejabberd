@@ -68,6 +68,6 @@ root@$EHOSTNAME.$EDOMAINNAME
   ;;
 esac
 
-
+#DEBHELPER#
 
 exit 0
