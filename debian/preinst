@@ -15,7 +15,7 @@ case "$1" in
     echo "Generating SSL certificate /etc/ejabberd/ejabberd.pem..."
     EHOSTNAME=$(hostname -s 2>/dev/null || echo localhost)
     EDOMAINNAME=$(hostname -d 2>/dev/null || echo localdomain)
-    openssl req -new -x509 -days 365 -nodes -out ejabberd.pem \
+    openssl req -new -x509 -days 365 -nodes -out /etc/ejabberd/ejabberd.pem \
                 -keyout /etc/ejabberd/ejabberd.pem > /dev/null 2>&1 <<+++
 .
 .
@@ -28,14 +28,12 @@ root@$EHOSTNAME.$EDOMAINNAME
 
     # Ejabberd cert should have appropriate permissions so as to not be readable
     # by the world.
-    ( if [ -f /etc/ejabberd/ejabberd.pem ]
+    if [ -f /etc/ejabberd/ejabberd.pem ]
     then
         if ! dpkg-statoverride --list /etc/ejabberd/ejabberd.pem >/dev/null; then
             chmod 640 /etc/ejabberd/ejabberd.pem
         fi
     fi
-    )
-
   ;;
 
   upgrade)
@@ -70,6 +68,6 @@ root@$EHOSTNAME.$EDOMAINNAME
   ;;
 esac
 
-#DEBHELPER#
+
 
 exit 0
