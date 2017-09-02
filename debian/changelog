@@ -1,18 +1,28 @@
-ejabberd (17.07-2) UNRELEASED; urgency=medium
+ejabberd (17.08-1) UNRELEASED; urgency=medium
 
   [ Neil Castelino ]
   * Avoid regeneration of ejabberd.pem on upgrades (Closes: #600146)
   * debian/rules clean: remove ejabberd.service created by upstream makefile
   * Validate hostname, username input to debconf and update debconf templates
     (Closes: #597806)
+  * Fix issues found in maintainer scripts by shellcheck
+  * Updated debconf templates with help from debian-l10n-en team
+  * debconf: normalize case and improve hostname validation
+  * debconf: check if admin account already exists before registering it
+  * Change ERLANG_NODE to upstream default, add template and update NEWS to
+    help users through the change
 
   [ Philipp Huebner ]
+  * New upstream version 17.08
+  * Refreshed patches for ejabberd 17.08
+  * Updated erlang-p1-* dependencies
+  * Updated Standards-Version: 4.1.0 (no changes needed)
   * Updated debian/copyright
   * Don't error out in postinst if user already present (LP: #1501983)
   * Make scripts in debian/ executable
   * Update po(t) files
 
- -- Philipp Huebner <debalance@debian.org>  Wed, 09 Aug 2017 10:29:18 +0200
+ -- Philipp Huebner <debalance@debian.org>  Sat, 02 Sep 2017 18:11:32 +0200
 
 ejabberd (17.07-1) unstable; urgency=medium
 

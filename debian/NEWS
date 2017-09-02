@@ -1,4 +1,4 @@
-ejabberd (17.07-2.1) unstable; urgency=high
+ejabberd (17.08-1) UNRELEASED; urgency=medium
 
   The ERLANG_NODE default option has been changed to reflect ejabberd's
   upstream recommended nodename (ejabberd@localhost) which saves effort
@@ -9,7 +9,7 @@ ejabberd (17.07-2.1) unstable; urgency=high
   previous default ('ejabberd' without a specified hostname) or you may
   follow the guide here
   (https://docs.ejabberd.im/admin/guide/managing/#change-computer-hostname)
-  which will make changes to the mnesia database which will allow the
+  which will make changes to the mnesia database that will allow the
   new nodename to take effect. Please take caution and make appropriate
   backups of the database before attempting this method.
 
