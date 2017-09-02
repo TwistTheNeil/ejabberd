@@ -328,7 +328,7 @@ Index: ejabberd/ejabberd.yml.example
        - "flat"
        - "hometree"
        - "pep" # pep requires mod_caps
-@@ -758,7 +734,8 @@ modules:
+@@ -760,7 +736,8 @@ modules:
      ##
      ##   access_from: deny
      ##   access: register
