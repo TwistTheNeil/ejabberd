@@ -251,28 +251,3 @@ msgstr ""
 "la Guia de ejabberd (https://docs.ejabberd.im/admin/guide/managing/#change-"
 "computer-hostname). Por favor haz las correspondientes copias de seguridad "
 "antes de intentar este método."
-
-#~ msgid "The username of an admin account for ejabberd:"
-#~ msgstr "Cuenta de administrador en ejabberd:"
-
-#~ msgid "The password for the admin account:"
-#~ msgstr "La contraseña de la cuenta del administrador:"
-
-#~ msgid "The password for the admin account again for verification:"
-#~ msgstr ""
-#~ "Introduce de nuevo la contraseña para la cuenta de administrador para "
-#~ "verificación:"
-
-#~ msgid ""
-#~ "Please reenter the password for the administrative user for verification."
-#~ msgstr ""
-#~ "Por favor introduce de nuevo la contraseña de la cuenta de administrador "
-#~ "para verificación."
-
-#~ msgid "The passwords do not match!"
-#~ msgstr "¡Las contraseñas no coinciden!"
-
-#, fuzzy
-#~| msgid "The username of an admin account for ejabberd:"
-#~ msgid "The username of the admin account is invalid!"
-#~ msgstr "Cuenta de administrador en ejabberd:"

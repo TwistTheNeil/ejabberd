@@ -22,14 +22,12 @@ msgstr ""
 #. Type: string
 #. Description
 #: ../templates:2001
-#| msgid "Host name for this Jabber server:"
 msgid "Hostname for this Jabber server:"
 msgstr "Nome de máquina para este servidor Jabber:"
 
 #. Type: string
 #. Description
 #: ../templates:2001
-#| msgid "Please enter the host name of this Jabber server (lowercase)."
 msgid "Please enter a hostname for this Jabber server."
 msgstr "Por favor insira um nome de máquina para este servidor Jabber."
 
@@ -52,12 +50,6 @@ msgstr "Nome do utilizador administrador do servidor Jabber:"
 #. Type: string
 #. Description
 #: ../templates:3001
-#| msgid ""
-#| "Please provide the name of an account to administrate the ejabberd "
-#| "server. After the installation of ejabberd you can use this account to "
-#| "log in with any Jabber client to do administrative tasks or go to https://"
-#| "${hostname}:5280/admin/ and log in with this account to enter the admin "
-#| "interface."
 msgid ""
 "Please provide the name of an account to administrate the ejabberd server. "
 "After the installation of ejabberd, you can log in to this account using "
@@ -128,7 +120,6 @@ msgstr "Erro na entrada da palavra passe"
 #. Type: error
 #. Description
 #: ../templates:6001
-#| msgid "The two passwords you entered were not the same. Please try again."
 msgid ""
 "The two passwords you entered did not match or were empty. Please try again."
 msgstr ""
@@ -144,11 +135,6 @@ msgstr "Nome de utilizador inválido para a conta de administrador"
 #. Type: error
 #. Description
 #: ../templates:7001
-#| msgid ""
-#| "The username you have typed contains forbidden characters. Please respect "
-#| "the  JID syntax (http://tools.ietf.org/html/rfc6122#appendix-A.5). If you "
-#| "used a full JID (e.g. user@hostname), you have to use the same host name "
-#| "you typed into the host name configuration step."
 msgid ""
 "The username previously specified contains forbidden characters. Please "
 "respect the JID syntax (https://tools.ietf.org/html/rfc6122#appendix-A.5). "

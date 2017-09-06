@@ -244,26 +244,3 @@ msgstr ""
 "guia de ejabberd (https://docs.ejabberd.im/admin/guide/managing/#change-"
 "computer-hostname). Por favor, Faça backups apropriados do banco de dados "
 "antes de tentar esse método."
-
-#~ msgid "The username of an admin account for ejabberd:"
-#~ msgstr "O nome de usuário de uma conta administrativa para o ejabberd:"
-
-#~ msgid "The password for the admin account:"
-#~ msgstr "A senha para a conta administrativa:"
-
-#~ msgid "The password for the admin account again for verification:"
-#~ msgstr "A senha para a conta administrativa, novamente, para verificação:"
-
-#~ msgid ""
-#~ "Please reenter the password for the administrative user for verification."
-#~ msgstr ""
-#~ "Por favor, informe novamente a senha do usuário administrativo para "
-#~ "verificação."
-
-#~ msgid "The passwords do not match!"
-#~ msgstr "As senhas não conferem!"
-
-#, fuzzy
-#~| msgid "The username of an admin account for ejabberd:"
-#~ msgid "The username of the admin account is invalid!"
-#~ msgstr "O nome de usuário de uma conta administrativa para o ejabberd:"
