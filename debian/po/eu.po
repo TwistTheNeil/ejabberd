@@ -1,37 +1,35 @@
-# translation of eu.po to Euskara
+# Basque translation for ejabberd
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
-# 
-# Aitor Ibañez  <aitiba@gmail.com>, 2008.
+#
+# Aitor Ibañez <aitiba@gmail.com>, 2008.
+# Iñaki Larrañaga Murgoitio <dooteo@zundan.com>, 2017.
 msgid ""
 msgstr ""
 "Project-Id-Version: ejabberd\n"
 "Report-Msgid-Bugs-To: ejabberd@packages.debian.org\n"
 "POT-Creation-Date: 2017-08-27 23:58-0400\n"
-"PO-Revision-Date: 2008-07-22 01:19+0200\n"
-"Last-Translator: Aitor Ibañez  <aitiba@gmail.com>\n"
+"PO-Revision-Date: 2017-09-06 22:29+0200\n"
+"Last-Translator: Iñaki Larrañaga Murgoitio <dooteo@zundan.com>\n"
 "Language-Team: Basque <debian-l10n-basque@lists.debian.org>\n"
-"Language: \n"
+"Language: eu\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: KBabel 1.11.4\n"
+"X-Generator: Lokalize 1.5\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
 
 #. Type: string
 #. Description
 #: ../templates:2001
-#, fuzzy
-#| msgid "The name of the host ejabberd will serve:"
 msgid "Hostname for this Jabber server:"
-msgstr "Ejabberd-ek zerbitzatuko duen ostalariaren izena:"
+msgstr "Jabber zerbitzari honen ostalari-izena:"
 
 #. Type: string
 #. Description
 #: ../templates:2001
-#, fuzzy
-#| msgid "Please enter the hostname of your Jabber server (in lowercase)."
 msgid "Please enter a hostname for this Jabber server."
-msgstr "Jabber zerbitzariaren ostalari izena sartu (letra xehez)."
+msgstr "Idatzi Jabber zerbitzariaren ostalari-izena sartu."
 
 #. Type: string
 #. Description
@@ -40,39 +38,32 @@ msgid ""
 "If you would like to configure multiple hostnames for this server, you will "
 "have to do so manually in /etc/ejabberd/ejabberd.yml after installation."
 msgstr ""
+"Zerbitzari honentzako hainbat ostalari-izen konfiguratzea nahi izanez gero, "
+"eskuz ezarri beharko duzu /etc/ejabberd/ejabberd.yml fitxategian "
+"instalazioaren "
+"ostean."
 
 #. Type: string
 #. Description
 #: ../templates:3001
 msgid "Jabber server administrator username:"
-msgstr ""
+msgstr "Jabber zerbitzariaren administratzailearen erabiltzaile-izena:"
 
+# Ez euskaratu ${hostname}, aldagai bat da eta dinamikoki ezartzen da dagokion balioa.
 #. Type: string
 #. Description
 #: ../templates:3001
-#, fuzzy
-#| msgid ""
-#| "Please provide the name of an account to administrate the ejabberd "
-#| "server. After the installation of ejabberd you can use this account to "
-#| "log in with any Jabber client to do administrative tasks or go to https://"
-#| "${hostname}:5280/admin/ and log in with this account to enter the admin "
-#| "interface. Enter the username part here (e.g. ${user}), but use the full "
-#| "Jabber ID (e.g. ${user}@${hostname}) to log into ejabberd web interface; "
-#| "otherwise it will fail."
 msgid ""
 "Please provide the name of an account to administrate the ejabberd server. "
 "After the installation of ejabberd, you can log in to this account using "
 "either any Jabber client or a web browser pointed at the administrative "
 "https://${hostname}:5280/admin/ interface."
 msgstr ""
-"Kontu-izen bat eman, haren bidez ejabberd zerbitzaria administratzeko. "
-"Ejabberd instalatu ostean, kontu hau erabil dezakezu edozein Jabber "
-"bezerotan edo https://${hostname}:5280/admin/ helbideko administrazio-"
-"interfazean saioa hasi eta administrazio lanak egiteko. Hemen erabiltzaile-"
-"izena soilik sartu (adib. ${user}), baina Jabber ID osoa erabili (e.g. "
-"${user}@${hostname}) ejabberd-en web interfazean sartzeko, bestela huts "
-"egingo du."
+"Eman kontu baten izena ejabberd zerbitzaria kudeatzeko. ejabberd-en "
+"instalazioaren ondoren, kontu honetan sartzeko erabili Jabber bezero bat edo "
+"https://${hostname}:5280/admin helbidera zuzendutako web arakatzaile bat."
 
+# Ez itzuli ${user} ez eta ${user}@${hostname} ere, aldagaiak baitira.
 #. Type: string
 #. Description
 #: ../templates:3001
@@ -81,36 +72,37 @@ msgid ""
 "full Jabber ID (such as ${user}@${hostname}) is required to access the "
 "ejabberd web interface."
 msgstr ""
+"Idatzi hemen erabiltzaile-izenaren zatia (${user} gisa), baina "
+"Jabber ID osoa (${user}@${hostname}) behar da "
+"ejabberd-eko web interfazera sartzeko."
 
 #. Type: string
 #. Description
 #: ../templates:3001
-#, fuzzy
-#| msgid ""
-#| "Leave empty if you don't want to create an admin account automatically."
 msgid ""
 "Please leave this field empty if you don't want to create an administrator "
 "account automatically."
 msgstr ""
-"Bete gabe utzi administrazio kontua automatikoki sortzea nahi ez baduzu."
+"Utzi eremu hau hutsik administratzailearen kontua automatikoki sortzea nahi "
+"ez baduzu."
 
 #. Type: password
 #. Description
 #: ../templates:4001
 msgid "Jabber server administrator password:"
-msgstr ""
+msgstr "Jabber zerbitzariko administratzailearen pasahitza:"
 
 #. Type: password
 #. Description
 #: ../templates:4001
 msgid "Please enter the password for the administrative user."
-msgstr "Administratzaile erabiltzailearen pasahitza sartu."
+msgstr "Sartu administratzailearen pasahitza."
 
 #. Type: password
 #. Description
 #: ../templates:5001
 msgid "Re-enter password to verify:"
-msgstr ""
+msgstr "Berretsi pasahitza egiaztatzeko:"
 
 #. Type: password
 #. Description
@@ -119,27 +111,26 @@ msgid ""
 "Please enter the same administrator password again to verify that you have "
 "typed it correctly."
 msgstr ""
+"Sartu berriro administratzailearen pasahitza ongi idatzi duzula egiaztatzeko."
 
 #. Type: error
 #. Description
 #: ../templates:6001
 msgid "Password input error"
-msgstr ""
+msgstr "Pasahitzaren sarreraren errorea"
 
 #. Type: error
 #. Description
 #: ../templates:6001
-#, fuzzy
-#| msgid "The passwords you have typed do not match. Please try again."
 msgid ""
 "The two passwords you entered did not match or were empty. Please try again."
-msgstr "Sartutako pasahitzak ez datoz bat. Mesedez, berriro saiatu."
+msgstr "Sartutako pasahitzak ez datoz bat. Saiatu berriro."
 
 #. Type: error
 #. Description
 #: ../templates:7001
 msgid "Invalid administrator account username"
-msgstr ""
+msgstr "Administratzailearen kontuaren erabiltzaile-izena baliogabea"
 
 #. Type: error
 #. Description
@@ -150,12 +141,17 @@ msgid ""
 "If you used a full JID (e.g. user@hostname), the hostname needs to match the "
 "one previously specified."
 msgstr ""
+"Aurrez zehaztutako erabiltzaile-izenak debekatutako karaktereak ditu. "
+"Jarraitu ezazu JID-ren (Jabberren IDa) sintaxia "
+"(https://tools.ietf.org/html/rfc6122#appendix-A.5). "
+"JID osoa (adib. erabiltzailea@ostalari-izena) erabili baduzu, ostalari-izenak "
+"aurrez emandakoarekin bat etorri behar du."
 
 #. Type: error
 #. Description
 #: ../templates:8001
 msgid "Invalid hostname"
-msgstr ""
+msgstr "Ostalari-izen baliogabea"
 
 #. Type: error
 #. Description
@@ -164,13 +160,16 @@ msgid ""
 "The hostname previously specified contains forbidden characters or is "
 "otherwise invalid. Please correct it and try again."
 msgstr ""
+"Aurrez emandako ostalari-izenak debekatutako karaktereak ditu, "
+"edo bestela baliogabea da. Zuzendu ezazu eta saiatu berriro."
 
 #. Type: error
 #. Description
 #: ../templates:9001
 msgid "Invalid preseeded configuration"
-msgstr ""
+msgstr "Aurre-konfigurazioa baliogabea"
 
+# Ez itzuli ${preseed}, aldagai bat baita
 #. Type: error
 #. Description
 #: ../templates:9001
@@ -178,6 +177,9 @@ msgid ""
 "A newer ${preseed} validation is being used and has determined that the "
 "currently setup ${preseed} is invalid or incorrectly specified."
 msgstr ""
+"${preseed} egiaztapen berriagoa erabiltzen ari da eta uneko "
+"${preseed} aurre-konfigurazioa baliogabea edo oker zehaztuta dagoela "
+"atzeman da."
 
 #. Type: error
 #. Description
@@ -188,12 +190,16 @@ msgid ""
 "databases and usernames will be lost or invalidated in this process if the "
 "hostname is changed."
 msgstr ""
+"Zuzentzea nahi izanez gero, egin zure datuen babes-kopia eta exekutatu "
+"'dpkg-reconfigure ejabberd' komandoa bertsio-berritzea amaitzen denean. "
+"Jakin ezazu edozer datu-base eta erabiltzaile-izen galdu edo baliogabetuta "
+"geratuko direla ostalari-izena aldatzen bada."
 
 #. Type: note
 #. Description
 #: ../templates:10001
 msgid "Important changes to nodename (ERLANG_NODE) configuration"
-msgstr ""
+msgstr "Aldaketa garrantzitsuak nodo-izenaren (ERLANG_NODE) konfigurazioan"
 
 #. Type: note
 #. Description
@@ -203,6 +209,10 @@ msgid ""
 "configuration (ejabberd@localhost) which saves effort when moving XMPP "
 "domains to a different machine."
 msgstr ""
+"Nodo-izena aldatu egin da ejabberd-en bertsio berrian nodo-izenaren "
+"konfigurazioaren gomendioak jarraitzeko (ejabberd@localhost), "
+"XMPP domeinuak beste ordenagailu batera eramatean lanak aurrezten "
+"baititu."
 
 #. Type: note
 #. Description
@@ -212,6 +222,9 @@ msgid ""
 "the ERLANG_NODE option in /etc/default/ejabberd either back to ejabberd or "
 "to the name it was manually specified."
 msgstr ""
+"Honek uneko instalazioa apurtu dezake, hala ere erraz konpon daiteke "
+"/etc/default/ejabberd fitxategiko ERLANG_NODE parametroa editatuz "
+"baita ejabberd-era edo eskuz zehaztutako izenera itzuliz."
 
 #. Type: note
 #. Description
@@ -223,25 +236,9 @@ msgid ""
 "docs.ejabberd.im/admin/guide/managing/#change-computer-hostname). Please "
 "make appropriate backups of the database before attempting this method."
 msgstr ""
-
-#~ msgid "The username of an admin account for ejabberd:"
-#~ msgstr "Ejabberd-en administrazio konturako erabiltzaile-izena:"
-
-#~ msgid "The password for the admin account:"
-#~ msgstr "Pasahitza administrazio konturako:"
-
-#~ msgid "The password for the admin account again for verification:"
-#~ msgstr "Berriz sartu administrazio kontuko pasahitza, egiaztatzeko:"
-
-#~ msgid ""
-#~ "Please reenter the password for the administrative user for verification."
-#~ msgstr ""
-#~ "Berriz sartu administratzaile erabiltzailearen pasahitza, egiaztatzeko."
-
-#~ msgid "The passwords do not match!"
-#~ msgstr "Pasahitzak ez datoz bat!"
-
-#, fuzzy
-#~| msgid "The username of an admin account for ejabberd:"
-#~ msgid "The username of the admin account is invalid!"
-#~ msgstr "Ejabberd-en administrazio konturako erabiltzaile-izena:"
+"Hautsitako instalazio bat konpontzeko beste modu bat ejabberdctl-en "
+"mnesia_change_nodename aukera nodo-izenera aldatzea da mnesia "
+"datu-basean. Honi buruzko informazio gehiago ejabberd eskuliburuan "
+"(https://docs.ejabberd.im/admin/guide/managing/#change-computer-hostname) "
+"aurki dezakezu. Egin itzazu datu-baseen babes-kopiak bide hau jorratu "
+"aurretik."

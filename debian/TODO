@@ -1,1 +1,2 @@
-* the debconf question asking for the admin user shouldn't allow an empty input
+* find a way to add comments to all translations, that parameters such as
+  ${user}@${hostname} must not be translated
