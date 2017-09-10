@@ -37,7 +37,6 @@ get_hostname()
   # or if invoked by dpkg-reconfigure
   db_get ejabberd/hostname
   if [ -z "$RET" ] || ( [ -n "$RET" ] && [ ! -f /var/lib/ejabberd/.upgrade_flag ] ); then
-    db_reset ejabberd/hostname
     db_input medium ejabberd/hostname || true
     db_go || true
 
@@ -86,10 +85,6 @@ get_username()
   # If there is no username registered in the debconf database (new install)
   # or if invoked by dpkg-reconfigure
   if [ -z "$USER" ] || ( [ -n "$USER" ] && [ ! -f /var/lib/ejabberd/.upgrade_flag ] ) ; then
-    db_reset ejabberd/user
-    db_reset ejabberd/password
-    db_reset ejabberd/verify
-    
     db_input medium ejabberd/user || true
     db_go || true
 
@@ -103,6 +98,9 @@ get_username()
   
       # Check for invalid characters
       if [ "$(validate_username "$USER")" != 0 ]; then
+        db_reset ejabberd/user
+        db_reset ejabberd/password
+        db_reset ejabberd/verify
         db_input medium ejabberd/invaliduser || true
         db_go || true
         get_username
