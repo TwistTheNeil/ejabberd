@@ -20,7 +20,7 @@ ejabberd (17.08-1) UNRELEASED; urgency=medium
   * Updated debian/copyright
   * Don't error out in postinst if user already present (LP: #1501983)
   * Make scripts in debian/ executable
-  * Update po(t) files (Closes: #874804)
+  * Update po(t) files (Closes: #874269, #874804)
 
  -- Philipp Huebner <debalance@debian.org>  Sat, 02 Sep 2017 18:11:32 +0200
 
