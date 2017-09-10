@@ -177,7 +177,7 @@ msgid ""
 "A newer ${preseed} validation is being used and has determined that the "
 "currently setup ${preseed} is invalid or incorrectly specified."
 msgstr ""
-"Es wirde eine neuere ${preseed}-Validierung verwendet welche festgestellt "
+"Es wurde eine neuere ${preseed}-Validierung verwendet welche festgestellt "
 "hat, dass die aktuelle Konfiguration ungültig bzw. fehlerhaft ist."
 
 #. Type: error
@@ -209,7 +209,7 @@ msgid ""
 "domains to a different machine."
 msgstr ""
 "Der Nodename wurde geändert um den Vorgaben der ejabberd-Entwicklern zu "
-"folgen (ejabberd@localhost). Das machte es deutlich einfacher, XMPP-Domains "
+"folgen (ejabberd@localhost). Das macht es deutlich einfacher, XMPP-Domains "
 "auf einen anderen Server umzuziehen."
 
 #. Type: note
@@ -220,7 +220,7 @@ msgid ""
 "the ERLANG_NODE option in /etc/default/ejabberd either back to ejabberd or "
 "to the name it was manually specified."
 msgstr ""
-"Das könnte Probleme in der aktuellen Installation verursachen, ist aber "
+"Dies könnte Probleme in der aktuellen Installation verursachen, ist aber "
 "einfach zu korrigieren indem die Option ERLANG_NODE in /etc/default/ejabberd "
 "zurück auf ejabberd oder den zuvor manuell eingestellten Wert gesetzt wird."
 

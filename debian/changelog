@@ -1,4 +1,4 @@
-ejabberd (17.08-1) UNRELEASED; urgency=medium
+ejabberd (17.08-1) unstable; urgency=medium
 
   [ Neil Castelino ]
   * Avoid regeneration of ejabberd.pem on upgrades (Closes: #600146)
@@ -22,7 +22,7 @@ ejabberd (17.08-1) UNRELEASED; urgency=medium
   * Make scripts in debian/ executable
   * Update po(t) files (Closes: #874269, #874804)
 
- -- Philipp Huebner <debalance@debian.org>  Sat, 02 Sep 2017 18:11:32 +0200
+ -- Philipp Huebner <debalance@debian.org>  Sun, 10 Sep 2017 18:00:40 +0200
 
 ejabberd (17.07-1) unstable; urgency=medium
 
