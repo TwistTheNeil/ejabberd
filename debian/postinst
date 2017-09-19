@@ -114,6 +114,14 @@ register_admin()
 	fi
 }
 
+# After updates to packaging (config validation and nodename changes), we need
+# to keep track of the install process so we can aid and have users coming from
+# before these changes transition smoothly.
+# This flag will track whether the upgrade fails due to the nodename change
+# (it will remain if failed) so that the user will not be forced to change
+# configuration in debconf due to invalid configuration
+touch /var/lib/ejabberd/.postinst.flag && chmod 644 /var/lib/ejabberd/.postinst.flag
+
 case "$1" in
 	configure|reconfigure)
 		adduser --quiet --system --shell /bin/sh --group --home /var/lib/ejabberd ejabberd 2> /dev/null || true
@@ -137,5 +145,8 @@ case "$1" in
 		register_admin
 		;;
 esac
+
+# Remove the flag if install is successful
+rm -f /var/lib/ejabberd/.postinst.flag
 
 exit 0

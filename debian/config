@@ -49,7 +49,9 @@ get_hostname()
 
 		# Check hostname for invalid characters
 		# If there were invalid characters, show error and ask again
-		if [ "$(validate_hostname "$HOST")" != 0 ]; then
+		# Check for .postinst.flag as well - it means that the upgrade
+		# failed. If so, we don't want to force a user to change config
+		if [ "$(validate_hostname "$HOST")" != 0 ] && [ ! -f /var/lib/ejabberd/.postinst.flag ]; then
 			db_reset ejabberd/hostname
 			db_input medium ejabberd/invalidhostname || true
 			db_go || true
@@ -97,7 +99,9 @@ get_username()
 			db_set ejabberd/user "$USER"
 
 			# Check for invalid characters
-			if [ "$(validate_username "$USER")" != 0 ]; then
+			# Check for .postinst.flag as well - it means that the upgrade
+			# failed. If so, we don't want to force a user to change config
+			if [ "$(validate_username "$USER")" != 0 ] && [ ! -f /var/lib/ejabberd/.postinst.flag ]; then
 				db_reset ejabberd/user
 				db_reset ejabberd/password
 				db_reset ejabberd/verify
