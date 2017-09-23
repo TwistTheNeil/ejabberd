@@ -28,6 +28,11 @@ msgstr ""
 "Plural-Forms:  nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n"
 "%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
+# Note to translators:
+# Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
+# any other which may appear in the future. Changes to these variables will
+# break the scripts. Thank you!
+
 #. Type: string
 #. Description
 #: ../templates:2001

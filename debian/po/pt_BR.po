@@ -19,6 +19,11 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
+# Note to translators:
+# Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
+# any other which may appear in the future. Changes to these variables will
+# break the scripts. Thank you!
+
 #. Type: string
 #. Description
 #: ../templates:2001
