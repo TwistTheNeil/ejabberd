@@ -1,3 +1,16 @@
+ejabberd (17.08-3) unstable; urgency=medium
+
+  [ Philipp Huebner ]
+  * Replaced Build-Depends on dh-systemd with debhelper >= 9.20160709
+  * Improved logrotate configuration (Closes: #876961)
+  * Update it.po (Closes: #876389)
+  * Update fr.po (Closes: #877290)
+
+  [ Neil Castelino ]
+  * Added notes to translators and about variable usage in debian/templates
+
+ -- Philipp Huebner <debalance@debian.org>  Sat, 30 Sep 2017 16:37:23 +0200
+
 ejabberd (17.08-2) unstable; urgency=high
 
   [ Neil Castelino ]
