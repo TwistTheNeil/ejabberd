@@ -17,16 +17,16 @@ Index: ejabberd/ejabberd.service.template
  
  [Service]
  Type=forking
-@@ -9,10 +11,12 @@ Group=ejabberd
+@@ -9,10 +11,11 @@ Group=ejabberd
  LimitNOFILE=65536
  Restart=on-failure
  RestartSec=5
 -ExecStart=/bin/sh -c '@ctlscriptpath@/ejabberdctl start && @ctlscriptpath@/ejabberdctl started'
 -ExecStop=/bin/sh -c '@ctlscriptpath@/ejabberdctl stop && @ctlscriptpath@/ejabberdctl stopped'
 -ExecReload=@ctlscriptpath@/ejabberdctl reload_config
-+ExecStart=/bin/sh -c '/usr/sbin/ejabberdctl start && /usr/sbin/ejabberdctl started'                                     
+-PrivateDevices=true
++ExecStart=/bin/sh -c '/usr/sbin/ejabberdctl start && /usr/sbin/ejabberdctl started'
 +ExecStop=/bin/sh -c '/usr/sbin/ejabberdctl stop && /usr/sbin/ejabberdctl stopped'
- PrivateDevices=true
 +PrivateTmp=true
 +ProtectHome=true
 +ProtectSystem=full
