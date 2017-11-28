@@ -255,10 +255,8 @@ msgstr ""
 #. Type: string
 #. Description
 #: ../templates:11001
-#, fuzzy
-#| msgid "Hostname for this Jabber server:"
 msgid "ERL_OPTIONS for this ejabberd server:"
-msgstr "Rechnername für diesen Jabber-Server:"
+msgstr "ERL_OPTIONS für diesen Jabber-Server:"
 
 #. Type: string
 #. Description
@@ -268,16 +266,7 @@ msgid ""
 "It is also possible to set them by editing /etc/ejabberd/ejabberdctl.cfg. "
 "See the erl(1) man page for more information."
 msgstr ""
-
-#, fuzzy
-#~| msgid ""
-#~| "If you would like to configure multiple hostnames for this server, you "
-#~| "will have to do so manually in /etc/ejabberd/ejabberd.yml after "
-#~| "installation."
-#~ msgid ""
-#~ "If you would like a customized set of options, you may enter it here. You "
-#~ "may also edit /etc/ejabberd/ejabberdctl.cfg later if you desire."
-#~ msgstr ""
-#~ "Falls Sie mehrere Rechnernamen für diesen Server konfigurieren möchten, "
-#~ "müssen Sie dies nach der Installation manuell in /etc/ejabberd/ejabberd."
-#~ "yml vornehmen."
+"Um diesen Jabber-Server mit angepassten Erlang-Optionen auszuführen, geben "
+"Sie diese hier ein. Es ist ebenfalls möglich, sie durch manuelles Editieren "
+"von /etc/ejabberd/ejabberdctl.cfg zu konfigurieren. Weitere Informationen "
+"können in der erl(1) Handbuchseite gefunden werden (`man 1 erl`)."
