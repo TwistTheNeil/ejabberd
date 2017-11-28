@@ -1,12 +1,9 @@
 Makefile.in.diff
-rebar.config.diff
-src.includes.patch
 ejabberdctl.template.patch
 ejabberd.init.template.patch
-ejabberd.service.template.patch
 examples.mtr.patch
 ejabberdctl.cfg.example.diff
+ejabberd.service.template.patch
 ejabberd.yml.example.diff
-64150cc7c.patch
-1a58a201f8fe8d628f1d75f532eba07ba9a030b1.patch
-erlang_opts.patch
+src.includes.patch
+rebar.config.diff
