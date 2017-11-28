@@ -1,3 +1,21 @@
+ejabberd (17.11-1) unstable; urgency=medium
+
+  [ Neil Castelino ]
+  * Fix issue where debian/config did not work well with apt
+  * Include erlang options in debconf query during configuration
+    (Closes: #878034)
+
+  [ Philipp Huebner ]
+  * New upstream version 17.11
+  * Refreshed patches for 17.11
+  * Increased (Build-)Depends for 17.11
+  * Switched debian/watch to https
+  * Enabled new graphics feature in debian/rules
+  * Updated de.po
+  * Set apparmor profile to complain
+
+ -- Philipp Huebner <debalance@debian.org>  Tue, 28 Nov 2017 17:32:58 +0100
+
 ejabberd (17.08-3) unstable; urgency=medium
 
   [ Philipp Huebner ]
