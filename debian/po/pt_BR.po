@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: ejabberd\n"
 "Report-Msgid-Bugs-To: ejabberd@packages.debian.org\n"
-"POT-Creation-Date: 2017-08-27 23:58-0400\n"
+"POT-Creation-Date: 2017-11-21 23:34-0500\n"
 "PO-Revision-Date: 2017-09-04 19:48-0300\n"
 "Last-Translator: Adriano Rafael Gomes <adrianorg@debian.org>\n"
 "Language-Team: Brazilian Portuguese <debian-l10n-portuguese@lists.debian."
@@ -23,7 +23,6 @@ msgstr ""
 # Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
 # any other which may appear in the future. Changes to these variables will
 # break the scripts. Thank you!
-
 #. Type: string
 #. Description
 #: ../templates:2001
@@ -245,3 +244,37 @@ msgstr ""
 "guia do ejabberd (https://docs.ejabberd.im/admin/guide/managing/#change-"
 "computer-hostname). Por favor, faça cópias de segurança apropriadas do banco "
 "de dados antes de tentar esse método."
+
+# Note to translators:
+# Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
+# any other which may appear in the future. Changes to these variables will
+# break the scripts. Thank you!
+#. Type: string
+#. Description
+#: ../templates:11001
+#, fuzzy
+#| msgid "Hostname for this Jabber server:"
+msgid "ERL_OPTIONS for this ejabberd server:"
+msgstr "Nome de máquina para este servidor Jabber:"
+
+#. Type: string
+#. Description
+#: ../templates:11001
+msgid ""
+"To run the ejabberd server with customized Erlang options, enter them here. "
+"It is also possible to set them by editing /etc/ejabberd/ejabberdctl.cfg. "
+"See the erl(1) man page for more information."
+msgstr ""
+
+#, fuzzy
+#~| msgid ""
+#~| "If you would like to configure multiple hostnames for this server, you "
+#~| "will have to do so manually in /etc/ejabberd/ejabberd.yml after "
+#~| "installation."
+#~ msgid ""
+#~ "If you would like a customized set of options, you may enter it here. You "
+#~ "may also edit /etc/ejabberd/ejabberdctl.cfg later if you desire."
+#~ msgstr ""
+#~ "Se você deseja configurar múltiplos nomes de máquina para este servidor, "
+#~ "você deverá fazer isso manualmente em /etc/ejabberd/ejabberd.yml após a "
+#~ "instalação."

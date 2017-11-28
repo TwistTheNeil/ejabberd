@@ -103,3 +103,11 @@ _Description: Important changes to nodename (ERLANG_NODE) configuration
  method may be found on the ejabberd guide
  (https://docs.ejabberd.im/admin/guide/managing/#change-computer-hostname). Please
  make appropriate backups of the database before attempting this method.
+
+Template: ejabberd/erlangopts
+Type: string
+Default: -env ERL_CRASH_DUMP_BYTES 0
+_Description: ERL_OPTIONS for this ejabberd server:
+ To run the ejabberd server with customized Erlang options, enter them here.
+ It is also possible to set them by editing /etc/ejabberd/ejabberdctl.cfg.
+ See the erl(1) man page for more information.

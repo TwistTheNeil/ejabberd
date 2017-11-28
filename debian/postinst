@@ -6,8 +6,11 @@
 set -e
 
 CONFIG_SOURCE=/usr/share/ejabberd/ejabberd.yml.example
+EJABBERDCTL_CONFIG_SOURCE=/usr/share/ejabberd/ejabberdctl.cfg.example
 CONFIG_TARGET=/etc/ejabberd/ejabberd.yml
+EJABBERDCTL_CONFIG_TARGET=/etc/default/ejabberd
 TEMPFILE=$(mktemp)
+EJABBERDCTL_TEMPFILE=$(mktemp)
 
 . /usr/share/debconf/confmodule
 
@@ -43,6 +46,14 @@ setup_ejabberd()
 		if ! dpkg-statoverride --list /etc/ejabberd/ejabberd.pem >/dev/null; then
 			chown root:ejabberd /etc/ejabberd/ejabberd.pem
 		fi
+	fi
+
+	db_get ejabberd/erlangopts
+	ERLOPTS="$RET"
+	if [ -n "$ERLOPTS" ]; then
+		sed -e "s/#\?ERL_OPTIONS=.*/ERL_OPTIONS=\"$ERLOPTS\"/" "$EJABBERDCTL_CONFIG_SOURCE" > "$EJABBERDCTL_TEMPFILE"
+		ucf -three-way --debconf-ok "$EJABBERDCTL_TEMPFILE" "$EJABBERDCTL_CONFIG_TARGET"
+		chmod 644 "$EJABBERDCTL_CONFIG_TARGET"
 	fi
 
 	db_get ejabberd/hostname

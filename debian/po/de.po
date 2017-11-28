@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: ejabberd 15.03-2\n"
 "Report-Msgid-Bugs-To: ejabberd@packages.debian.org\n"
-"POT-Creation-Date: 2017-08-27 23:58-0400\n"
+"POT-Creation-Date: 2017-11-21 23:34-0500\n"
 "PO-Revision-Date: 2017-09-15 13:17+0200\n"
 "Last-Translator: Philipp Huebner <debalance@debian.org>\n"
 "Language-Team: German <debian-l10n-german@lists.debian.org>\n"
@@ -23,7 +23,6 @@ msgstr ""
 # Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
 # any other which may appear in the future. Changes to these variables will
 # break the scripts. Thank you!
-
 #. Type: string
 #. Description
 #: ../templates:2001
@@ -62,18 +61,19 @@ msgid ""
 "either any Jabber client or a web browser pointed at the administrative "
 "https://${hostname}:5280/admin/ interface."
 msgstr ""
-"Geben Sie bitte den Namen für ein Konto an, das den Ejabberd-Server verwalten "
-"kann. Nach der Installation können Sie sich an diesem Konto mittels eines "
-"beliebigen Jabber-Clients oider mit einem Webbrowser, der auf die "
-"administrative Schnittstelle https://${hostname}:5280/admin/ zeigt, anmelden."
+"Geben Sie bitte den Namen für ein Konto an, das den Ejabberd-Server "
+"verwalten kann. Nach der Installation können Sie sich an diesem Konto "
+"mittels eines beliebigen Jabber-Clients oider mit einem Webbrowser, der auf "
+"die administrative Schnittstelle https://${hostname}:5280/admin/ zeigt, "
+"anmelden."
 
 #. Type: string
 #. Description
 #: ../templates:3001
 msgid ""
-"You only need to enter the username part here (such as ${user}), but the full "
-"Jabber ID (such as ${user}@${hostname}) is required to access the ejabberd "
-"web interface."
+"You only need to enter the username part here (such as ${user}), but the "
+"full Jabber ID (such as ${user}@${hostname}) is required to access the "
+"ejabberd web interface."
 msgstr ""
 "Sie müssen hier nur den Benutzernamen-Anteil (z.B. ${user}) eingeben, "
 "verwenden Sie aber die komplette Jabber-ID (z.B. ${user}@${hostname}), um "
@@ -143,14 +143,15 @@ msgstr "Ungültiger Benutzername für administratives Konto"
 #: ../templates:7001
 msgid ""
 "The username previously specified contains forbidden characters. Please "
-"respect the JID syntax (https://tools.ietf.org/html/rfc6122#appendix-A.5). If "
-"you used a full JID (e.g. user@hostname), the hostname needs to match the one "
-"previously specified."
+"respect the JID syntax (https://tools.ietf.org/html/rfc6122#appendix-A.5). "
+"If you used a full JID (e.g. user@hostname), the hostname needs to match the "
+"one previously specified."
 msgstr ""
 "Der von Ihnen angegebene Benutzername enthält verbotene Zeichen. Bitte "
 "berücksichtigen Sie die JID-Syntax (https://tools.ietf.org/html/"
 "rfc6122#appendix-A.5). Falls Sie eine volle JID verwendet haben (z.B. "
-"Benutzer@Rechnername), muss der Rechnername auf den vorher angegebenen passen."
+"Benutzer@Rechnername), muss der Rechnername auf den vorher angegebenen "
+"passen."
 
 #. Type: error
 #. Description
@@ -212,22 +213,23 @@ msgid ""
 "configuration (ejabberd@localhost) which saves effort when moving XMPP "
 "domains to a different machine."
 msgstr ""
-"Der Knotenname wurde geändert, um die empfohlene Knotennamenkonfiguration der "
-"Originalautoren von Ejabberd (ejabberd@localhost) wiederzugeben. Damit wird "
-"Aufwand gespart, wenn XMPP-Domains auf eine andere Maschine verschoben werden."
+"Der Knotenname wurde geändert, um die empfohlene Knotennamenkonfiguration "
+"der Originalautoren von Ejabberd (ejabberd@localhost) wiederzugeben. Damit "
+"wird Aufwand gespart, wenn XMPP-Domains auf eine andere Maschine verschoben "
+"werden."
 
 #. Type: note
 #. Description
 #: ../templates:10001
 msgid ""
 "This may break the current installation but may easily be fixed by editing "
-"the ERLANG_NODE option in /etc/default/ejabberd either back to ejabberd or to "
-"the name it was manually specified."
+"the ERLANG_NODE option in /etc/default/ejabberd either back to ejabberd or "
+"to the name it was manually specified."
 msgstr ""
 "Dies könnte die aktuelle Installation beschädigen, kann aber leicht durch "
 "Bearbeitung der Option »ERLANG_NODE« in /etc/default/ejabberd korrigiert "
-"werden; entweder wieder zurück auf »ejabberd« oder auf den Namen, der manuell "
-"festgelegt worden war."
+"werden; entweder wieder zurück auf »ejabberd« oder auf den Namen, der "
+"manuell festgelegt worden war."
 
 #. Type: note
 #. Description
@@ -236,12 +238,46 @@ msgid ""
 "Another way to fix a broken installation is to use ejabberdctl's "
 "mnesia_change_nodename option to change the nodename in the mnesia database. "
 "More information on this method may be found on the ejabberd guide (https://"
-"docs.ejabberd.im/admin/guide/managing/#change-computer-hostname). Please make "
-"appropriate backups of the database before attempting this method."
+"docs.ejabberd.im/admin/guide/managing/#change-computer-hostname). Please "
+"make appropriate backups of the database before attempting this method."
 msgstr ""
-"Eine defekte Installation kann auch mit der Option mnesia_change_nodename von "
-"ejabberdctl korrigiert werden, um die Knotennamen in der Mnesia-Datenbank zu "
-"ändern. Weitere Informationen über diese Methode können im Ejabberd-Leitfaden "
-"(https://docs.ejabberd.im/admin/guide/managing/#change-computer-hostname) "
-"gefunden werden. Bitte legen Sie geeignete Sicherungskopien der Datenbank an, "
-"bevor Sie diese Methode versuchen."
+"Eine defekte Installation kann auch mit der Option mnesia_change_nodename "
+"von ejabberdctl korrigiert werden, um die Knotennamen in der Mnesia-"
+"Datenbank zu ändern. Weitere Informationen über diese Methode können im "
+"Ejabberd-Leitfaden (https://docs.ejabberd.im/admin/guide/managing/#change-"
+"computer-hostname) gefunden werden. Bitte legen Sie geeignete "
+"Sicherungskopien der Datenbank an, bevor Sie diese Methode versuchen."
+
+# Note to translators:
+# Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
+# any other which may appear in the future. Changes to these variables will
+# break the scripts. Thank you!
+#. Type: string
+#. Description
+#: ../templates:11001
+#, fuzzy
+#| msgid "Hostname for this Jabber server:"
+msgid "ERL_OPTIONS for this ejabberd server:"
+msgstr "Rechnername für diesen Jabber-Server:"
+
+#. Type: string
+#. Description
+#: ../templates:11001
+msgid ""
+"To run the ejabberd server with customized Erlang options, enter them here. "
+"It is also possible to set them by editing /etc/ejabberd/ejabberdctl.cfg. "
+"See the erl(1) man page for more information."
+msgstr ""
+
+#, fuzzy
+#~| msgid ""
+#~| "If you would like to configure multiple hostnames for this server, you "
+#~| "will have to do so manually in /etc/ejabberd/ejabberd.yml after "
+#~| "installation."
+#~ msgid ""
+#~ "If you would like a customized set of options, you may enter it here. You "
+#~ "may also edit /etc/ejabberd/ejabberdctl.cfg later if you desire."
+#~ msgstr ""
+#~ "Falls Sie mehrere Rechnernamen für diesen Server konfigurieren möchten, "
+#~ "müssen Sie dies nach der Installation manuell in /etc/ejabberd/ejabberd."
+#~ "yml vornehmen."

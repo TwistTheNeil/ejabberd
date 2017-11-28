@@ -9,3 +9,4 @@ ejabberdctl.cfg.example.diff
 ejabberd.yml.example.diff
 64150cc7c.patch
 1a58a201f8fe8d628f1d75f532eba07ba9a030b1.patch
+erlang_opts.patch

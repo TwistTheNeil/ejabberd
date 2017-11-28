@@ -141,6 +141,14 @@ get_credentials()
 	get_passwd
 }
 
+get_erlang_options() {
+	db_get ejabberd/erlangopts
+
+	db_input medium ejabberd/erlangopts || true
+	db_go || true
+	db_get ejabberd/erlangopts
+}
+
 # Source debconf library.
 . /usr/share/debconf/confmodule
 
@@ -154,8 +162,10 @@ get_hostname "$action" "$previous_version"
 
 FLAG="/var/lib/ejabberd/.admin_registered"
 if [ ! -f $FLAG ]; then
-	get_credentials "$1" "$2"
+	get_credentials "$action" "$previous_version"
 fi
+
+get_erlang_options "$action" "$previous_version"
 
 # If the config has an old node configuration (pre ejabberd/nodenamechanges),
 # use a flag so that debian/config may alert the user of a change and how to
