@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: ejabberd 17.07-2\n"
 "Report-Msgid-Bugs-To: ejabberd@packages.debian.org\n"
-"POT-Creation-Date: 2017-08-27 23:58-0400\n"
+"POT-Creation-Date: 2017-11-21 23:34-0500\n"
 "PO-Revision-Date: 2017-09-04 18:11+0000\n"
 "Last-Translator: Américo Monteiro <a_monteiro@gmx.com>\n"
 "Language-Team: Portuguese <>\n"
@@ -23,7 +23,6 @@ msgstr ""
 # Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
 # any other which may appear in the future. Changes to these variables will
 # break the scripts. Thank you!
-
 #. Type: string
 #. Description
 #: ../templates:2001
@@ -128,8 +127,8 @@ msgstr "Erro na entrada da palavra passe"
 msgid ""
 "The two passwords you entered did not match or were empty. Please try again."
 msgstr ""
-"As duas palavras passe que inseriu não correspondem ou estão vazias. "
-"Por favor tente de novo."
+"As duas palavras passe que inseriu não correspondem ou estão vazias. Por "
+"favor tente de novo."
 
 #. Type: error
 #. Description
@@ -147,9 +146,10 @@ msgid ""
 "one previously specified."
 msgstr ""
 "O nome de utilizador especificado anteriormente contém caracteres proibidos. "
-"Por favor respeite a sintaxe JID (https://tools.ietf.org/html/rfc6122#appendix"
-"-A.5). Se você usou um JID completo (ex. utilizador@nome-máquina), o nome de "
-"máquina precisa de corresponder ao especificado anteriormente."
+"Por favor respeite a sintaxe JID (https://tools.ietf.org/html/"
+"rfc6122#appendix-A.5). Se você usou um JID completo (ex. utilizador@nome-"
+"máquina), o nome de máquina precisa de corresponder ao especificado "
+"anteriormente."
 
 #. Type: error
 #. Description
@@ -164,8 +164,8 @@ msgid ""
 "The hostname previously specified contains forbidden characters or is "
 "otherwise invalid. Please correct it and try again."
 msgstr ""
-"O nome de máquina anteriormente especificado contém caracteres proibidos ou é "
-"inválido por outro motivo. Por favor corrija-o e tente de novo."
+"O nome de máquina anteriormente especificado contém caracteres proibidos ou "
+"é inválido por outro motivo. Por favor corrija-o e tente de novo."
 
 #. Type: error
 #. Description
@@ -193,9 +193,9 @@ msgid ""
 "hostname is changed."
 msgstr ""
 "Se desejar corrigi-la, por favor faça cópia de segurança dos seus dados e "
-"corra dpkg-reconfigure ejabberd após a actualização estar terminada e "
-"note que quaisquer bases de dados e nomes de utilizadores serão perdidos "
-"ou invalidados neste processo se o nome de máquina for alterado."
+"corra dpkg-reconfigure ejabberd após a actualização estar terminada e note "
+"que quaisquer bases de dados e nomes de utilizadores serão perdidos ou "
+"invalidados neste processo se o nome de máquina for alterado."
 
 #. Type: note
 #. Description
@@ -223,9 +223,9 @@ msgid ""
 "the ERLANG_NODE option in /etc/default/ejabberd either back to ejabberd or "
 "to the name it was manually specified."
 msgstr ""
-"Isto pode quebrar a instalação actual mas pode facilmente ser corrigido "
-"ao editar a opção ERLANG_NODE em /etc/default/ejabberd seja de volta "
-"para ejabberd ou para o nome que foi especificado manualmente."
+"Isto pode quebrar a instalação actual mas pode facilmente ser corrigido ao "
+"editar a opção ERLANG_NODE em /etc/default/ejabberd seja de volta para "
+"ejabberd ou para o nome que foi especificado manualmente."
 
 #. Type: note
 #. Description
@@ -238,10 +238,42 @@ msgid ""
 "make appropriate backups of the database before attempting this method."
 msgstr ""
 "Outra maneira de corrigir uma instalação quebrada é usar a opção "
-"mnesia_change_nodename do ejabberdctl para alterar o nodename na "
-"base de dados mnesia. Mais informação sobre este método pode ser encontrada "
-"no guia do ejabberd (https://docs.ejabberd.im/admin/guide/managing/#change-"
-"computer-hostname). Por favor faça cópias de segurança apropriadas da base "
-"de dados antes de tentar este método."
+"mnesia_change_nodename do ejabberdctl para alterar o nodename na base de "
+"dados mnesia. Mais informação sobre este método pode ser encontrada no guia "
+"do ejabberd (https://docs.ejabberd.im/admin/guide/managing/#change-computer-"
+"hostname). Por favor faça cópias de segurança apropriadas da base de dados "
+"antes de tentar este método."
 
+# Note to translators:
+# Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
+# any other which may appear in the future. Changes to these variables will
+# break the scripts. Thank you!
+#. Type: string
+#. Description
+#: ../templates:11001
+#, fuzzy
+#| msgid "Hostname for this Jabber server:"
+msgid "ERL_OPTIONS for this ejabberd server:"
+msgstr "Nome de máquina para este servidor Jabber:"
 
+#. Type: string
+#. Description
+#: ../templates:11001
+msgid ""
+"To run the ejabberd server with customized Erlang options, enter them here. "
+"It is also possible to set them by editing /etc/ejabberd/ejabberdctl.cfg. "
+"See the erl(1) man page for more information."
+msgstr ""
+
+#, fuzzy
+#~| msgid ""
+#~| "If you would like to configure multiple hostnames for this server, you "
+#~| "will have to do so manually in /etc/ejabberd/ejabberd.yml after "
+#~| "installation."
+#~ msgid ""
+#~ "If you would like a customized set of options, you may enter it here. You "
+#~ "may also edit /etc/ejabberd/ejabberdctl.cfg later if you desire."
+#~ msgstr ""
+#~ "Se desejar configurar múltiplos nomes de máquina para este servidor, você "
+#~ "terá de fazê-lo manualmente em /etc/ejabberd/ejabberd.yml após a "
+#~ "instalação."

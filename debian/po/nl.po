@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: ejabberd 17.07-2\n"
 "Report-Msgid-Bugs-To: ejabberd@packages.debian.org\n"
-"POT-Creation-Date: 2017-08-27 23:58-0400\n"
+"POT-Creation-Date: 2017-11-21 23:34-0500\n"
 "PO-Revision-Date: 2017-09-10 17:07+0200\n"
 "Last-Translator: Frans Spiesschaert <Frans.Spiesschaert@yucom.be>\n"
 "Language-Team: Debian Dutch l10n Team <debian-l10n-dutch@lists.debian.org>\n"
@@ -24,7 +24,6 @@ msgstr ""
 # Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
 # any other which may appear in the future. Changes to these variables will
 # break the scripts. Thank you!
-
 #. Type: string
 #. Description
 #: ../templates:2001
@@ -250,6 +249,40 @@ msgstr ""
 "in de ejabberd-handleiding (https://docs.ejabberd.im/admin/guide/managing/"
 "#change-computer-hostname). Maak op een passende manier een reservekopie van "
 "het gegevensbestand vooraleer u deze werkwijze gebruikt."
+
+# Note to translators:
+# Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
+# any other which may appear in the future. Changes to these variables will
+# break the scripts. Thank you!
+#. Type: string
+#. Description
+#: ../templates:11001
+#, fuzzy
+#| msgid "Hostname for this Jabber server:"
+msgid "ERL_OPTIONS for this ejabberd server:"
+msgstr "Computernaam voor deze Jabber-server:"
+
+#. Type: string
+#. Description
+#: ../templates:11001
+msgid ""
+"To run the ejabberd server with customized Erlang options, enter them here. "
+"It is also possible to set them by editing /etc/ejabberd/ejabberdctl.cfg. "
+"See the erl(1) man page for more information."
+msgstr ""
+
+#, fuzzy
+#~| msgid ""
+#~| "If you would like to configure multiple hostnames for this server, you "
+#~| "will have to do so manually in /etc/ejabberd/ejabberd.yml after "
+#~| "installation."
+#~ msgid ""
+#~ "If you would like a customized set of options, you may enter it here. You "
+#~ "may also edit /etc/ejabberd/ejabberdctl.cfg later if you desire."
+#~ msgstr ""
+#~ "Indien u voor deze server verschillende computernamen wilt configureren, "
+#~ "zult u dit na de installatie handmatig moeten doen in /etc/ejabberd/"
+#~ "ejabberd.yml."
 
 #~ msgid "The username of an admin account for ejabberd:"
 #~ msgstr "De gebruikersnaam van een beheerdersaccount voor ejabberd:"

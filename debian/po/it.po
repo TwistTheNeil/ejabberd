@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: ejabberd\n"
 "Report-Msgid-Bugs-To: ejabberd@packages.debian.org\n"
-"POT-Creation-Date: 2017-08-27 23:58-0400\n"
+"POT-Creation-Date: 2017-11-21 23:34-0500\n"
 "PO-Revision-Date: 2017-09-21 18:09+0200\n"
 "Last-Translator: Beatrice Torracca <beatricet@libero.it>\n"
 "Language-Team: Italian <debian-l10n-italian@lists.debian.org>\n"
@@ -21,7 +21,6 @@ msgstr ""
 # Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
 # any other which may appear in the future. Changes to these variables will
 # break the scripts. Thank you!
-
 #. Type: string
 #. Description
 #: ../templates:2001
@@ -143,9 +142,9 @@ msgid ""
 "one previously specified."
 msgstr ""
 "Il nome utente precedentemente specificato contiene caratteri non permessi. "
-"Rispettare la sintassi JID (https://tools.ietf.org/html/rfc6122#appendix-A.5)"
-". Se è stato usato un JID completo (ad esempio utente@homehost) il nome host "
-"deve corrispondere a quello specificato in precedenza."
+"Rispettare la sintassi JID (https://tools.ietf.org/html/rfc6122#appendix-"
+"A.5). Se è stato usato un JID completo (ad esempio utente@homehost) il nome "
+"host deve corrispondere a quello specificato in precedenza."
 
 #. Type: error
 #. Description
@@ -237,6 +236,39 @@ msgstr ""
 "Un altro modo di riparare un'installazione non funzionante è quello di usare "
 "l'opzione mnesia_change_nodename di ejabberdctl per modificare il nome di "
 "nodo nel database di mnesia. Ulteriori informazioni su questo metodo possono "
-"essere trovate nella guida di ejabberd "
-"(https://docs.ejabberd.im/admin/guide/managing/#change-computer-hostname). "
-"Fare i backup appropriati del database prima di tentare questo metodo."
+"essere trovate nella guida di ejabberd (https://docs.ejabberd.im/admin/guide/"
+"managing/#change-computer-hostname). Fare i backup appropriati del database "
+"prima di tentare questo metodo."
+
+# Note to translators:
+# Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
+# any other which may appear in the future. Changes to these variables will
+# break the scripts. Thank you!
+#. Type: string
+#. Description
+#: ../templates:11001
+#, fuzzy
+#| msgid "Hostname for this Jabber server:"
+msgid "ERL_OPTIONS for this ejabberd server:"
+msgstr "Nome host per questo server Jabber:"
+
+#. Type: string
+#. Description
+#: ../templates:11001
+msgid ""
+"To run the ejabberd server with customized Erlang options, enter them here. "
+"It is also possible to set them by editing /etc/ejabberd/ejabberdctl.cfg. "
+"See the erl(1) man page for more information."
+msgstr ""
+
+#, fuzzy
+#~| msgid ""
+#~| "If you would like to configure multiple hostnames for this server, you "
+#~| "will have to do so manually in /etc/ejabberd/ejabberd.yml after "
+#~| "installation."
+#~ msgid ""
+#~ "If you would like a customized set of options, you may enter it here. You "
+#~ "may also edit /etc/ejabberd/ejabberdctl.cfg later if you desire."
+#~ msgstr ""
+#~ "Se si desidera configurare più nomi host per questo server, è necessario "
+#~ "farlo manualmente in /etc/ejabberd/ejabberd.yml dopo l'installazione."
