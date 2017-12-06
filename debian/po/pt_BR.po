@@ -10,7 +10,7 @@ msgstr ""
 "Project-Id-Version: ejabberd\n"
 "Report-Msgid-Bugs-To: ejabberd@packages.debian.org\n"
 "POT-Creation-Date: 2017-11-21 23:34-0500\n"
-"PO-Revision-Date: 2017-09-04 19:48-0300\n"
+"PO-Revision-Date: 2017-11-28 20:59-0200\n"
 "Last-Translator: Adriano Rafael Gomes <adrianorg@debian.org>\n"
 "Language-Team: Brazilian Portuguese <debian-l10n-portuguese@lists.debian."
 "org>\n"
@@ -19,10 +19,6 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-# Note to translators:
-# Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
-# any other which may appear in the future. Changes to these variables will
-# break the scripts. Thank you!
 #. Type: string
 #. Description
 #: ../templates:2001
@@ -52,6 +48,10 @@ msgstr ""
 msgid "Jabber server administrator username:"
 msgstr "Nome de usuário do administrador do servidor Jabber:"
 
+# Note to translators:
+# Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
+# any other which may appear in the future. Changes to these variables will
+# break the scripts. Thank you!
 #. Type: string
 #. Description
 #: ../templates:3001
@@ -66,6 +66,10 @@ msgstr ""
 "qualquer cliente Jabber ou um navegador web apontado para a interface "
 "administrativa https://${hostname}:5280/admin/."
 
+# Note to translators:
+# Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
+# any other which may appear in the future. Changes to these variables will
+# break the scripts. Thank you!
 #. Type: string
 #. Description
 #: ../templates:3001
@@ -174,6 +178,10 @@ msgstr ""
 msgid "Invalid preseeded configuration"
 msgstr "Configuração pré-alimentada inválida"
 
+# Note to translators:
+# Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
+# any other which may appear in the future. Changes to these variables will
+# break the scripts. Thank you!
 #. Type: error
 #. Description
 #: ../templates:9001
@@ -245,17 +253,11 @@ msgstr ""
 "computer-hostname). Por favor, faça cópias de segurança apropriadas do banco "
 "de dados antes de tentar esse método."
 
-# Note to translators:
-# Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
-# any other which may appear in the future. Changes to these variables will
-# break the scripts. Thank you!
 #. Type: string
 #. Description
 #: ../templates:11001
-#, fuzzy
-#| msgid "Hostname for this Jabber server:"
 msgid "ERL_OPTIONS for this ejabberd server:"
-msgstr "Nome de máquina para este servidor Jabber:"
+msgstr "ERL_OPTIONS para este servidor Jabber:"
 
 #. Type: string
 #. Description
@@ -265,16 +267,6 @@ msgid ""
 "It is also possible to set them by editing /etc/ejabberd/ejabberdctl.cfg. "
 "See the erl(1) man page for more information."
 msgstr ""
-
-#, fuzzy
-#~| msgid ""
-#~| "If you would like to configure multiple hostnames for this server, you "
-#~| "will have to do so manually in /etc/ejabberd/ejabberd.yml after "
-#~| "installation."
-#~ msgid ""
-#~ "If you would like a customized set of options, you may enter it here. You "
-#~ "may also edit /etc/ejabberd/ejabberdctl.cfg later if you desire."
-#~ msgstr ""
-#~ "Se você deseja configurar múltiplos nomes de máquina para este servidor, "
-#~ "você deverá fazer isso manualmente em /etc/ejabberd/ejabberd.yml após a "
-#~ "instalação."
+"Para executar o servidor ejabberd com opções Erlang personalizadas, informe-"
+"as aqui. Também é possível defini-las editando /etc/ejabberd/ejabberdctl."
+"cfg. Veja a página de manual erl(1) para mais informação."
