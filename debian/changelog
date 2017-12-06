@@ -6,13 +6,19 @@ ejabberd (17.11-1) unstable; urgency=medium
     (Closes: #878034)
 
   [ Philipp Huebner ]
-  * New upstream version 17.11
+  * New upstream version 17.11 (Closes: #772031)
   * Refreshed patches for 17.11
   * Increased (Build-)Depends for 17.11
   * Switched debian/watch to https
   * Enabled new graphics feature in debian/rules
+  * Set apparmor profile to complain (Closes: #883143)
+  * Improved default ejabberd.yml
   * Updated de.po
-  * Set apparmor profile to complain
+  * Updated pt.po (Closes: #883024)
+  * Updated ru.po (Closes: #883416)
+  * Updated pt_BR.po (Closes: #883546)
+  * Updated es.po
+  * Updated nl.po
 
  -- Philipp Huebner <debalance@debian.org>  Tue, 28 Nov 2017 17:32:58 +0100
 
