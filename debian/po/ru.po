@@ -13,6 +13,10 @@
 # Sergei Golovan <sgolovan@nes.ru>, 2007.
 # Sergey Alyoshin <alyoshin.s@gmail.com>, 2008, 2015, 2017.
 #
+# Note to translators:
+# Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
+# any other which may appear in the future. Changes to these variables will
+# break the scripts. Thank you!
 msgid ""
 msgstr ""
 "Project-Id-Version: 17.11-1\n"
@@ -28,10 +32,6 @@ msgstr ""
 "Plural-Forms:  nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n"
 "%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
-# Note to translators:
-# Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
-# any other which may appear in the future. Changes to these variables will
-# break the scripts. Thank you!
 #. Type: string
 #. Description
 #: ../templates:2001
@@ -60,6 +60,10 @@ msgstr ""
 msgid "Jabber server administrator username:"
 msgstr "Пользователь для администрирования Jabber-сервера:"
 
+# Note to translators:
+# Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
+# any other which may appear in the future. Changes to these variables will
+# break the scripts. Thank you!
 #. Type: string
 #. Description
 #: ../templates:3001
