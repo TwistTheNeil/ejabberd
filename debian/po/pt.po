@@ -4,6 +4,11 @@
 #
 # Luísa Lourenço <kikentai@gmail.com>, 2007.
 # Américo Monteiro <a_monteiro@gmx.com>, 2015, 2017.
+#
+# Note to translators:
+# Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
+# any other which may appear in the future. Changes to these variables will
+# break the scripts. Thank you!
 msgid ""
 msgstr ""
 "Project-Id-Version: ejabberd 17.11-1\n"
@@ -19,10 +24,6 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "X-Generator: Lokalize 2.0\n"
 
-# Note to translators:
-# Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
-# any other which may appear in the future. Changes to these variables will
-# break the scripts. Thank you!
 #. Type: string
 #. Description
 #: ../templates:2001
@@ -51,6 +52,10 @@ msgstr ""
 msgid "Jabber server administrator username:"
 msgstr "Nome do utilizador administrador do servidor Jabber:"
 
+# Note to translators:
+# Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
+# any other which may appear in the future. Changes to these variables will
+# break the scripts. Thank you!
 #. Type: string
 #. Description
 #: ../templates:3001
@@ -65,6 +70,10 @@ msgstr ""
 "usando qualquer cliente Jabber ou um navegador web apontado à interface "
 "administrativa https://${hostname}:5280/admin/."
 
+# Note to translators:
+# Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
+# any other which may appear in the future. Changes to these variables will
+# break the scripts. Thank you!
 #. Type: string
 #. Description
 #: ../templates:3001
@@ -173,6 +182,10 @@ msgstr ""
 msgid "Invalid preseeded configuration"
 msgstr "Configuração de preseeded inválida"
 
+# Note to translators:
+# Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
+# any other which may appear in the future. Changes to these variables will
+# break the scripts. Thank you!
 #. Type: error
 #. Description
 #: ../templates:9001
@@ -244,10 +257,6 @@ msgstr ""
 "hostname). Por favor faça cópias de segurança apropriadas da base de dados "
 "antes de tentar este método."
 
-# Note to translators:
-# Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
-# any other which may appear in the future. Changes to these variables will
-# break the scripts. Thank you!
 #. Type: string
 #. Description
 #: ../templates:11001
