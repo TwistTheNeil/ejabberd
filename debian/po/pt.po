@@ -6,10 +6,10 @@
 # Américo Monteiro <a_monteiro@gmx.com>, 2015, 2017.
 msgid ""
 msgstr ""
-"Project-Id-Version: ejabberd 17.07-2\n"
+"Project-Id-Version: ejabberd 17.11-1\n"
 "Report-Msgid-Bugs-To: ejabberd@packages.debian.org\n"
 "POT-Creation-Date: 2017-11-21 23:34-0500\n"
-"PO-Revision-Date: 2017-09-04 18:11+0000\n"
+"PO-Revision-Date: 2017-11-28 21:59+0000\n"
 "Last-Translator: Américo Monteiro <a_monteiro@gmx.com>\n"
 "Language-Team: Portuguese <>\n"
 "Language: pt\n"
@@ -251,10 +251,8 @@ msgstr ""
 #. Type: string
 #. Description
 #: ../templates:11001
-#, fuzzy
-#| msgid "Hostname for this Jabber server:"
 msgid "ERL_OPTIONS for this ejabberd server:"
-msgstr "Nome de máquina para este servidor Jabber:"
+msgstr "ERL_OPTIONS para este servidor ejabberd:"
 
 #. Type: string
 #. Description
@@ -264,16 +262,6 @@ msgid ""
 "It is also possible to set them by editing /etc/ejabberd/ejabberdctl.cfg. "
 "See the erl(1) man page for more information."
 msgstr ""
-
-#, fuzzy
-#~| msgid ""
-#~| "If you would like to configure multiple hostnames for this server, you "
-#~| "will have to do so manually in /etc/ejabberd/ejabberd.yml after "
-#~| "installation."
-#~ msgid ""
-#~ "If you would like a customized set of options, you may enter it here. You "
-#~ "may also edit /etc/ejabberd/ejabberdctl.cfg later if you desire."
-#~ msgstr ""
-#~ "Se desejar configurar múltiplos nomes de máquina para este servidor, você "
-#~ "terá de fazê-lo manualmente em /etc/ejabberd/ejabberd.yml após a "
-#~ "instalação."
+"Para correr o servidor ejabberd com opções Erlang personalizadas, insira-as "
+"aqui. Também é possível defini-las ao editar /etc/ejabberd/ejabberdctl.cfg. "
+"Veja o manual erl(1) para mais informação."
