@@ -5,6 +5,10 @@
 # Felipe Augusto van de Wiel (faw) <faw@debian.org>, 2008.
 # Adriano Rafael Gomes <adrianorg@debian.org>, 2015-2017.
 #
+# Note to translators:
+# Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
+# any other which may appear in the future. Changes to these variables will
+# break the scripts. Thank you!
 msgid ""
 msgstr ""
 "Project-Id-Version: ejabberd\n"
