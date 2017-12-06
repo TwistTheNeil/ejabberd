@@ -5,6 +5,10 @@
 # Copyright (C) 2015 Torsten Werner <twerner@debian.org>
 # This file is distributed under the same license as the ejabberd package.
 #
+# Note to translators:
+# Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
+# any other which may appear in the future. Changes to these variables will
+# break the scripts. Thank you!
 msgid ""
 msgstr ""
 "Project-Id-Version: ejabberd 15.03-2\n"
@@ -19,10 +23,6 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "X-Generator: Poedit 2.0.3\n"
 
-# Note to translators:
-# Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
-# any other which may appear in the future. Changes to these variables will
-# break the scripts. Thank you!
 #. Type: string
 #. Description
 #: ../templates:2001
@@ -52,6 +52,10 @@ msgstr ""
 msgid "Jabber server administrator username:"
 msgstr "Benutzername des Jabber-Server-Administrators:"
 
+# Note to translators:
+# Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
+# any other which may appear in the future. Changes to these variables will
+# break the scripts. Thank you!
 #. Type: string
 #. Description
 #: ../templates:3001
@@ -67,6 +71,10 @@ msgstr ""
 "die administrative Schnittstelle https://${hostname}:5280/admin/ zeigt, "
 "anmelden."
 
+# Note to translators:
+# Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
+# any other which may appear in the future. Changes to these variables will
+# break the scripts. Thank you!
 #. Type: string
 #. Description
 #: ../templates:3001
@@ -175,6 +183,10 @@ msgstr ""
 msgid "Invalid preseeded configuration"
 msgstr "Ungültige voreingestellte Konfiguration"
 
+# Note to translators:
+# Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
+# any other which may appear in the future. Changes to these variables will
+# break the scripts. Thank you!
 #. Type: error
 #. Description
 #: ../templates:9001
@@ -248,10 +260,6 @@ msgstr ""
 "computer-hostname) gefunden werden. Bitte legen Sie geeignete "
 "Sicherungskopien der Datenbank an, bevor Sie diese Methode versuchen."
 
-# Note to translators:
-# Please do not translate the variables ${hostname}, ${user}, ${preseed}, and
-# any other which may appear in the future. Changes to these variables will
-# break the scripts. Thank you!
 #. Type: string
 #. Description
 #: ../templates:11001
