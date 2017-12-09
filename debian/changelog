@@ -19,6 +19,8 @@ ejabberd (17.11-1) unstable; urgency=medium
   * Updated pt_BR.po (Closes: #883546)
   * Updated es.po
   * Updated nl.po
+  * Improved AppArmor profile for usrmerge (Closes: #883930)
+    Thanks Vincas Dargis for reporting and patching!
 
  -- Philipp Huebner <debalance@debian.org>  Tue, 28 Nov 2017 17:32:58 +0100
 

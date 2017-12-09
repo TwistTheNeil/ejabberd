@@ -7,17 +7,19 @@
 
 	capability net_bind_service,
 	capability dac_override,
+	capability dac_read_search, # for sed
 
-	/bin/bash					rmix,
-	/bin/dash					rmix,
-	/bin/date					ix,
-	/bin/grep					ix,
-	/bin/ps						ix,
-	/bin/sed					ix,
-	/bin/sleep					ix,
+	/{,usr/}bin/bash				rmix,
+	/{,usr/}bin/cat					ix,
+	/{,usr/}bin/dash				rmix,
+	/{,usr/}bin/date				ix,
+	/{,usr/}bin/grep				ix,
+	/{,usr/}bin/ps					ix,
+	/{,usr/}bin/sed					ix,
+	/{,usr/}bin/sleep				ix,
 
 
-	/bin/su						px -> /usr/sbin/ejabberdctl//su,
+	/{,usr/}bin/su					px -> /usr/sbin/ejabberdctl//su,
 	profile su {
 		#include <abstractions/authentication>
 		#include <abstractions/base>
@@ -32,9 +34,9 @@
 		@{PROC}/@{pid}/loginuid			r,
 		@{PROC}/1/limits			r,
 
-		/bin/bash				px -> /usr/sbin/ejabberdctl,
-		/bin/dash				px -> /usr/sbin/ejabberdctl,
-		/bin/su					rm,
+		/{,usr/}bin/bash			px -> /usr/sbin/ejabberdctl,
+		/{,usr/}bin/dash			px -> /usr/sbin/ejabberdctl,
+		/{,usr/}bin/su				rm,
 
 		/etc/environment			r,
 		/etc/default/locale			r,
