@@ -14,7 +14,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: ejabberd\n"
 "Report-Msgid-Bugs-To: ejabberd@packages.debian.org\n"
-"POT-Creation-Date: 2017-11-21 23:34-0500\n"
+"POT-Creation-Date: 2017-12-06 08:27+0100\n"
 "PO-Revision-Date: 2017-11-28 23:31+0100\n"
 "Last-Translator: Jean-Pierre Giraud <jean-pierregiraud@neuf.fr>\n"
 "Language-Team: French <debian-l10n-french@lists.debian.org>\n"
@@ -268,7 +268,6 @@ msgstr ""
 #. Type: string
 #. Description
 #: ../templates:11001
-#| msgid "Hostname for this Jabber server:"
 msgid "ERL_OPTIONS for this ejabberd server:"
 msgstr "ERL_OPTIONS pour ce serveur ejabberd :"
 

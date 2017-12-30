@@ -6,7 +6,7 @@ ejabberd (17.11-1) unstable; urgency=medium
     (Closes: #878034)
 
   [ Philipp Huebner ]
-  * New upstream version 17.11 (Closes: #772031)
+  * New upstream version 17.11 (Closes: #772031, #883562, #885132)
   * Refreshed patches for 17.11
   * Increased (Build-)Depends for 17.11
   * Switched debian/watch to https
@@ -19,10 +19,11 @@ ejabberd (17.11-1) unstable; urgency=medium
   * Updated pt_BR.po (Closes: #883546)
   * Updated es.po
   * Updated nl.po
+  * Updated fr.po (Closes: #884531)
   * Improved AppArmor profile for usrmerge (Closes: #883930)
     Thanks Vincas Dargis for reporting and patching!
 
- -- Philipp Huebner <debalance@debian.org>  Tue, 28 Nov 2017 17:32:58 +0100
+ -- Philipp Huebner <debalance@debian.org>  Sat, 30 Dec 2017 17:01:53 +0100
 
 ejabberd (17.08-3) unstable; urgency=medium
 
