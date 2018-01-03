@@ -1,7 +1,7 @@
 Source: ejabberd
 Section: net
 Priority: optional
-Maintainer: Ejabberd Packaging Team <ejabberd@deb.at>
+Maintainer: Ejabberd Packaging Team <ejabberd@packages.debian.org>
 Uploaders: Konstantin Khomoutov <flatworm@users.sourceforge.net>, Philipp Huebner <debalance@debian.org>, Rhonda D'Vine <rhonda@debian.org>
 Build-Depends: debhelper (>= 9.20160709), dh-apparmor, libsqlite3-dev, po-debconf, rebar (>= 2.6.0),
  		erlang-asn1,
