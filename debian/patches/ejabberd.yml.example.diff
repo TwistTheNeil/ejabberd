@@ -57,7 +57,7 @@ Index: ejabberd/ejabberd.yml.example
 +  ## - "/etc/letsencrypt/live/example.com/*.pem"
 +
  ## If your system provides only a single CA file (CentOS/FreeBSD):
- ## s2s_cafile: "/etc/ssl/certs/ca-bundle.pem"
+ ## ca_file: "/etc/ssl/certs/ca-bundle.pem"
  
  ###.  =================
  ###'  TLS configuration
@@ -68,7 +68,7 @@ Index: ejabberd/ejabberd.yml.example
 -##      - "no_sslv3"
 -##      - "cipher_server_preference"
 -##      - "no_compression"
--##   'DHFILE': "/path/to/dhparams.pem" # generated with: openssl dhparam -out dhparams.pem 2048
+-##   'DH_FILE': "/path/to/dhparams.pem" # generated with: openssl dhparam -out dhparams.pem 2048
 -##
 +define_macro:
 +  'TLS_CIPHERS': "HIGH:!aNULL:!eNULL:!3DES:@STRENGTH"
@@ -128,16 +128,16 @@ Index: ejabberd/ejabberd.yml.example
    ##
    ## ejabberd_service: Interact with external components (transports, ...)
    ##
-@@ -233,14 +212,13 @@ listen:
+@@ -238,13 +217,13 @@ listen:
    ##   request_handlers:
    ##     "": mod_http_upload
    ##   tls: true
--  ##   certfile: "/path/to/xmpp.pem"
 -  ##   protocol_options: 'TLSOPTS'
 -  ##   dhfile: 'DHFILE'
+-  ##   ciphers: 'CIPHERS'
 +  ##   protocol_options: 'TLS_OPTIONS'
 +  ##   dhfile: 'DH_FILE'
-   ##   ciphers: 'CIPHERS'
++  ##   ciphers: 'TLS_CIPHERS'
  
  ## Disabling digest-md5 SASL authentication. digest-md5 requires plain-text
  ## password storage (see auth_password_format option).
@@ -146,16 +146,16 @@ Index: ejabberd/ejabberd.yml.example
  
  ###.  ==================
  ###'  S2S GLOBAL OPTIONS
-@@ -250,7 +228,7 @@ listen:
+@@ -254,7 +233,7 @@ listen:
  ## Allowed values are: false, optional or required
  ## You must specify 'certfiles' option
  ##
--## s2s_use_starttls: required
+-## s2s_use_starttls: optional
 +s2s_use_starttls: required
  
  ##
  ## S2S whitelist or blacklist
-@@ -284,7 +262,7 @@ auth_method: internal
+@@ -288,7 +267,7 @@ auth_method: internal
  ##
  ## Store the plain passwords or hashed for SCRAM:
  ## auth_password_format: plain
@@ -164,7 +164,7 @@ Index: ejabberd/ejabberd.yml.example
  ##
  ## Define the FQDN if ejabberd doesn't detect it:
  ## fqdn: "server3.example.com"
-@@ -552,14 +530,14 @@ access_rules:
+@@ -556,14 +535,14 @@ access_rules:
    ## Only allow to register from localhost
    trusted_network:
      - allow: loopback
@@ -187,7 +187,7 @@ Index: ejabberd/ejabberd.yml.example
  
  ## ===============
  ## API PERMISSIONS
-@@ -588,9 +566,9 @@ api_permissions:
+@@ -592,9 +571,9 @@ api_permissions:
    "admin access":
      who:
        - access:
@@ -200,7 +200,7 @@ Index: ejabberd/ejabberd.yml.example
        - oauth:
          - scope: "ejabberd:admin"
          - access:
-@@ -611,7 +589,7 @@ api_permissions:
+@@ -615,7 +594,7 @@ api_permissions:
  ## By default the frequency of account registrations from the same IP
  ## is limited to 1 account every 10 minutes. To disable, specify: infinity
  ## registration_timeout: 600
@@ -209,7 +209,7 @@ Index: ejabberd/ejabberd.yml.example
  ##
  ## Define specific Access Rules in a virtual host.
  ##
-@@ -645,7 +623,7 @@ language: "en"
+@@ -649,7 +628,7 @@ language: "en"
  ##
  ## Full path to a script that generates the image.
  ##
@@ -218,7 +218,7 @@ Index: ejabberd/ejabberd.yml.example
  
  ##
  ## Host for the URL and port where ejabberd listens for CAPTCHA requests.
-@@ -663,29 +641,29 @@ language: "en"
+@@ -667,29 +646,29 @@ language: "en"
  ## In order to use the acme certificate acquiring through "Let's Encrypt"
  ## an http listener has to be configured to listen to port 80 so that
  ## the authorization challenges posed by "Let's Encrypt" can be solved.
@@ -262,7 +262,7 @@ Index: ejabberd/ejabberd.yml.example
  
  ###.  =======
  ###'  MODULES
-@@ -696,14 +674,14 @@ acme:
+@@ -700,14 +679,14 @@ acme:
  modules:
    mod_adhoc: {}
    mod_admin_extra: {}
@@ -281,7 +281,7 @@ Index: ejabberd/ejabberd.yml.example
    mod_disco: {}
    mod_echo: {}
    mod_irc: {}
-@@ -752,43 +730,44 @@ modules:
+@@ -756,43 +735,44 @@ modules:
      plugins:
        - "flat"
        - "hometree"
@@ -360,9 +360,9 @@ Index: ejabberd/ejabberd.yml.example
    mod_shared_roster: {}
    mod_stats: {}
    mod_time: {}
-@@ -800,7 +779,8 @@ modules:
-     convert:
-       webp: jpeg
+@@ -804,7 +784,8 @@ modules:
+   ##   convert:
+   ##     webp: jpeg
    mod_version: {}
 -  mod_stream_mgmt: {}
 +  mod_stream_mgmt:
