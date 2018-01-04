@@ -1,3 +1,0 @@
-# These URIs are read-only, write-access is handled exclusively via SSH
-vcs-field-uses-insecure-uri vcs-git git://git.deb.at/pkg/ejabberd.git
-vcs-field-uses-insecure-uri vcs-browser http://git.deb.at/w/pkg/ejabberd.git
