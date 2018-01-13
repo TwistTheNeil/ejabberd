@@ -1,3 +1,11 @@
+ejabberd (18.01-1) unstable; urgency=medium
+
+  * New upstream version 18.01
+  * Refreshed patches for 18.01
+  * Updated (Build-)Depends
+
+ -- Philipp Huebner <debalance@debian.org>  Sat, 13 Jan 2018 14:40:10 +0100
+
 ejabberd (17.12-1) unstable; urgency=medium
 
   * New upstream version 17.12
