@@ -43,7 +43,7 @@ Index: ejabberd/ejabberd.yml.example
  
  ##
  ## overload protection: If you want to limit the number of messages per second
-@@ -110,30 +97,32 @@ hosts:
+@@ -110,10 +97,9 @@ hosts:
  ## chains of certificates or certificate keys. Full chains will be built
  ## automatically by ejabberd.
  ##
@@ -53,21 +53,20 @@ Index: ejabberd/ejabberd.yml.example
 -##
 +certfiles:
 +  - "/etc/ejabberd/ejabberd.pem"
-+  ## - "/etc/letsencrypt/live/example.org/*.pem"
-+  ## - "/etc/letsencrypt/live/example.com/*.pem"
 +
  ## If your system provides only a single CA file (CentOS/FreeBSD):
  ## ca_file: "/etc/ssl/certs/ca-bundle.pem"
  
- ###.  =================
- ###'  TLS configuration
- 
+@@ -124,20 +110,21 @@ hosts:
+ ## configuration of the TLS driver, so you don't need to
+ ## uncomment it.
+ ##
 -## define_macro:
 -##   'TLS_CIPHERS': "HIGH:!aNULL:!eNULL:!3DES:@STRENGTH"
 -##   'TLS_OPTIONS':
--##      - "no_sslv3"
--##      - "cipher_server_preference"
--##      - "no_compression"
+-##     - "no_sslv3"
+-##     - "cipher_server_preference"
+-##     - "no_compression"
 -##   'DH_FILE': "/path/to/dhparams.pem" # generated with: openssl dhparam -out dhparams.pem 2048
 -##
 +define_macro:
@@ -92,7 +91,7 @@ Index: ejabberd/ejabberd.yml.example
  
  ###.  ===============
  ###'  LISTENING PORTS
-@@ -147,21 +136,8 @@ listen:
+@@ -151,21 +138,8 @@ listen:
      port: 5222
      ip: "::"
      module: ejabberd_c2s
@@ -116,7 +115,7 @@ Index: ejabberd/ejabberd.yml.example
      max_stanza_size: 65536
      shaper: c2s_shaper
      access: c2s
-@@ -180,7 +156,10 @@ listen:
+@@ -184,7 +158,10 @@ listen:
      ##  "/pub/archive": mod_http_fileserver
      web_admin: true
      ## register: true
@@ -128,7 +127,7 @@ Index: ejabberd/ejabberd.yml.example
    ##
    ## ejabberd_service: Interact with external components (transports, ...)
    ##
-@@ -238,13 +217,13 @@ listen:
+@@ -242,13 +219,13 @@ listen:
    ##   request_handlers:
    ##     "": mod_http_upload
    ##   tls: true
@@ -146,7 +145,7 @@ Index: ejabberd/ejabberd.yml.example
  
  ###.  ==================
  ###'  S2S GLOBAL OPTIONS
-@@ -254,7 +233,7 @@ listen:
+@@ -258,7 +235,7 @@ listen:
  ## Allowed values are: false, optional or required
  ## You must specify 'certfiles' option
  ##
@@ -155,7 +154,7 @@ Index: ejabberd/ejabberd.yml.example
  
  ##
  ## S2S whitelist or blacklist
-@@ -288,7 +267,7 @@ auth_method: internal
+@@ -292,7 +269,7 @@ auth_method: internal
  ##
  ## Store the plain passwords or hashed for SCRAM:
  ## auth_password_format: plain
@@ -164,7 +163,7 @@ Index: ejabberd/ejabberd.yml.example
  ##
  ## Define the FQDN if ejabberd doesn't detect it:
  ## fqdn: "server3.example.com"
-@@ -556,14 +535,14 @@ access_rules:
+@@ -560,14 +537,14 @@ access_rules:
    ## Only allow to register from localhost
    trusted_network:
      - allow: loopback
@@ -187,7 +186,7 @@ Index: ejabberd/ejabberd.yml.example
  
  ## ===============
  ## API PERMISSIONS
-@@ -592,9 +571,9 @@ api_permissions:
+@@ -596,9 +573,9 @@ api_permissions:
    "admin access":
      who:
        - access:
@@ -200,7 +199,7 @@ Index: ejabberd/ejabberd.yml.example
        - oauth:
          - scope: "ejabberd:admin"
          - access:
-@@ -615,7 +594,7 @@ api_permissions:
+@@ -619,7 +596,7 @@ api_permissions:
  ## By default the frequency of account registrations from the same IP
  ## is limited to 1 account every 10 minutes. To disable, specify: infinity
  ## registration_timeout: 600
@@ -209,7 +208,7 @@ Index: ejabberd/ejabberd.yml.example
  ##
  ## Define specific Access Rules in a virtual host.
  ##
-@@ -649,7 +628,7 @@ language: "en"
+@@ -653,7 +630,7 @@ language: "en"
  ##
  ## Full path to a script that generates the image.
  ##
@@ -218,7 +217,7 @@ Index: ejabberd/ejabberd.yml.example
  
  ##
  ## Host for the URL and port where ejabberd listens for CAPTCHA requests.
-@@ -667,29 +646,29 @@ language: "en"
+@@ -671,29 +648,29 @@ language: "en"
  ## In order to use the acme certificate acquiring through "Let's Encrypt"
  ## an http listener has to be configured to listen to port 80 so that
  ## the authorization challenges posed by "Let's Encrypt" can be solved.
@@ -262,7 +261,7 @@ Index: ejabberd/ejabberd.yml.example
  
  ###.  =======
  ###'  MODULES
-@@ -700,14 +679,14 @@ acme:
+@@ -704,14 +681,14 @@ acme:
  modules:
    mod_adhoc: {}
    mod_admin_extra: {}
@@ -281,7 +280,7 @@ Index: ejabberd/ejabberd.yml.example
    mod_disco: {}
    mod_echo: {}
    mod_irc: {}
-@@ -756,43 +735,44 @@ modules:
+@@ -760,43 +737,44 @@ modules:
      plugins:
        - "flat"
        - "hometree"
@@ -360,7 +359,7 @@ Index: ejabberd/ejabberd.yml.example
    mod_shared_roster: {}
    mod_stats: {}
    mod_time: {}
-@@ -804,7 +784,8 @@ modules:
+@@ -808,7 +786,8 @@ modules:
    ##   convert:
    ##     webp: jpeg
    mod_version: {}
