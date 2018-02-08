@@ -1206,7 +1206,7 @@ ejabberd (1.1.2-1) unstable; urgency=low
   [ Sergei Golovan ]
   * new upstream release
   * added spanish translation
-  * removed no longer needed mod_muc_log patch 
+  * removed no longer needed mod_muc_log patch
   * added variable ERLANG_NODE, which allows to override default
     ejabberd node, to /etc/default/ejabberd file
   * changed erlang node selection by ejabberdctl (in some cases
