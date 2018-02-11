@@ -25,7 +25,7 @@ setup_ejabberd()
 	# The users database dir /var/lib/ejabberd must be writable by user ejabberd.
 	install -d /var/lib/ejabberd
 	if ! dpkg-statoverride --list /var/lib/ejabberd >/dev/null; then
-		chown -R ejabberd:ejabberd /var/lib/ejabberd
+		chown ejabberd:ejabberd /var/lib/ejabberd
 		chmod 700 /var/lib/ejabberd
 	fi
 

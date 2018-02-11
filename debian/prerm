@@ -24,7 +24,8 @@ case "$1" in
 			ctl backup "$BACKUP"
 			# Change ownership to root:root because ejabberd user might be
 			# removed on package removal.
-			chown -R root:root "$BACKUPDIR"
+			chown root:root "$BACKUPDIR"
+			chown root:root "$BACKUP"
 			chmod 700 "$BACKUPDIR"
 			echo
 			echo "The ejabberd database has been backed up to $BACKUP."
